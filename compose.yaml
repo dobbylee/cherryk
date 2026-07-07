@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: cherryk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cherryk
+      POSTGRES_USER: cherryk
+      POSTGRES_PASSWORD: cherryk
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cherryk -d cherryk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
