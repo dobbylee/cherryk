@@ -5,7 +5,7 @@ import {
   SESSION_COOKIE_NAME,
   expiredSessionCookieOptions,
 } from "@/server/auth/session";
-import { apiError } from "../_responses";
+import { apiError } from "../../_responses";
 
 export const runtime = "nodejs";
 

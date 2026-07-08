@@ -13,7 +13,7 @@ import {
   AuthServiceError,
   createAuthService,
 } from "@/server/services/authService";
-import { apiError } from "../_responses";
+import { apiError } from "../../_responses";
 
 export const runtime = "nodejs";
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { MeResponse } from "@/lib/contracts/auth";
 import { getCurrentUser } from "@/server/auth/currentUser";
-import { apiError } from "../_responses";
+import { apiError } from "../../_responses";
 
 export const runtime = "nodejs";
 
