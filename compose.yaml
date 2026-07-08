@@ -8,9 +8,9 @@ services:
       POSTGRES_USER: cherryk
       POSTGRES_PASSWORD: cherryk
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres18_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cherryk -d cherryk"]
       interval: 5s
@@ -18,4 +18,4 @@ services:
       retries: 10
 
 volumes:
-  postgres_data:
+  postgres18_data:

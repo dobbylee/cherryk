@@ -10,7 +10,7 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ??
-      "postgres://cherryk:cherryk@localhost:5432/cherryk",
+      "postgres://cherryk:cherryk@localhost:5433/cherryk",
   },
   strict: true,
   verbose: true,
