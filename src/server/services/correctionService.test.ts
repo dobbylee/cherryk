@@ -19,22 +19,23 @@ const testUser: AuthUser = {
 };
 
 const correctionOutput: CorrectionAIOutput = {
-  correctedText: "오늘 친구를 만났어요.",
-  naturalText: "오늘은 친구를 만났어요.",
-  explanationEn: "Use the object particle for the direct object.",
+  correctedText: "저는 학교에서 공부했어요.",
+  naturalText: "저는 학교에서 공부했어요.",
+  explanationEn:
+    "Use 에서 for the place where an action happens. 에 marks a destination.",
   mistakes: [
     {
-      tag: "particle_object",
-      originalPart: "친구",
-      correctedPart: "친구를",
-      explanationEn: "친구 is the direct object of 만나다.",
+      tag: "particle_location",
+      originalPart: "학교에",
+      correctedPart: "학교에서",
+      explanationEn: "공부하다 happens at 학교, so use 에서.",
       severity: "major",
     },
     {
-      tag: "particle_object",
-      originalPart: "사과",
-      correctedPart: "사과를",
-      explanationEn: "사과 is the direct object of 먹다.",
+      tag: "particle_location",
+      originalPart: "집에",
+      correctedPart: "집에서",
+      explanationEn: "공부하다 happens at 집, so use 에서.",
       severity: "minor",
     },
   ],
@@ -84,7 +85,7 @@ describe("correctionService", () => {
     );
 
     const result = await service.correctKorean(testUser, {
-      text: "오늘 친구 만났어요.",
+      text: "저는 학교에 공부했어요.",
       inputType: "text",
       level: "beginner",
       correctionStyle: "minimal",
@@ -92,16 +93,16 @@ describe("correctionService", () => {
 
     expect(result).toEqual({
       correctionId: "22222222-2222-4222-8222-222222222222",
-      originalText: "오늘 친구 만났어요.",
+      originalText: "저는 학교에 공부했어요.",
       ...correctionOutput,
-      recommendedTags: ["particle_object"],
+      recommendedTags: ["particle_location"],
     });
     expect(repository.recordInput).toMatchObject({
       userId: testUser.id,
       inputType: "text",
-      originalText: "오늘 친구 만났어요.",
+      originalText: "저는 학교에 공부했어요.",
       aiOutput: correctionOutput,
-      recommendedTags: ["particle_object"],
+      recommendedTags: ["particle_location"],
       now: testNow,
     });
   });
@@ -111,14 +112,14 @@ describe("correctionService", () => {
     const service = createCorrectionService(
       repository,
       createFakeAIProvider({
-        correctedText: "오늘 친구를 만났어요.",
-        naturalText: "오늘은 친구를 만났어요.",
-        explanationEn: "Use the object particle.",
+        correctedText: "저는 학교에서 공부했어요.",
+        naturalText: "저는 학교에서 공부했어요.",
+        explanationEn: "Use 에서 for an action location.",
         mistakes: [
           {
             tag: "not_allowed",
-            originalPart: "친구",
-            correctedPart: "친구를",
+            originalPart: "학교에",
+            correctedPart: "학교에서",
             explanationEn: "Invalid tag.",
             severity: "major",
           },
@@ -131,7 +132,7 @@ describe("correctionService", () => {
 
     await expect(
       service.correctKorean(testUser, {
-        text: "오늘 친구 만났어요.",
+        text: "저는 학교에 공부했어요.",
         inputType: "text",
         level: "beginner",
         correctionStyle: "minimal",

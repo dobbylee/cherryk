@@ -3,23 +3,28 @@ import type { AIProvider } from "./provider";
 export const mockAIProvider: AIProvider = {
   async extractKoreanTextFromImage() {
     return {
-      extractedText: "오늘 친구 만났어요.",
+      extractedText: "저는 학교에 공부했어요.",
       note: "Mock OCR output for local development.",
     };
   },
 
   async correctKorean(input) {
+    const correctedText = input.text.replace(
+      "학교에 공부했어요",
+      "학교에서 공부했어요",
+    );
+
     return {
-      correctedText: input.text.replace("친구 만났어요", "친구를 만났어요"),
-      naturalText: input.text.replace("오늘 친구", "오늘은 친구"),
+      correctedText,
+      naturalText: correctedText,
       explanationEn:
-        "Use the object particle when the noun receives the action.",
+        "Use 에서 for the place where an action happens. 에 marks a destination.",
       mistakes: [
         {
-          tag: "particle_object",
-          originalPart: "친구",
-          correctedPart: "친구를",
-          explanationEn: "친구 is the direct object of 만나다.",
+          tag: "particle_location",
+          originalPart: "학교에",
+          correctedPart: "학교에서",
+          explanationEn: "공부하다 happens at 학교, so use 에서.",
           severity: "major",
         },
       ],

@@ -5,23 +5,23 @@ describe("buildCorrectionReportMarkdown", () => {
   it("includes correction fields and recommended tags", () => {
     const report = buildCorrectionReportMarkdown({
       correctionId: "00000000-0000-4000-8000-000000000000",
-      originalText: "오늘 친구 만났어요.",
-      correctedText: "오늘 친구를 만났어요.",
-      naturalText: "오늘은 친구를 만났어요.",
-      explanationEn: "Use the object particle.",
+      originalText: "저는 학교에 공부했어요.",
+      correctedText: "저는 학교에서 공부했어요.",
+      naturalText: "저는 학교에서 공부했어요.",
+      explanationEn: "Use 에서 for an action location.",
       mistakes: [
         {
-          tag: "particle_object",
-          originalPart: "친구",
-          correctedPart: "친구를",
-          explanationEn: "The noun is the object of 만나다.",
+          tag: "particle_location",
+          originalPart: "학교에",
+          correctedPart: "학교에서",
+          explanationEn: "공부하다 happens at 학교.",
           severity: "major",
         },
       ],
-      recommendedTags: ["particle_object"],
+      recommendedTags: ["particle_location"],
     });
 
-    expect(report).toContain("오늘 친구를 만났어요.");
-    expect(report).toContain("- particle_object");
+    expect(report).toContain("저는 학교에서 공부했어요.");
+    expect(report).toContain("- particle_location");
   });
 });

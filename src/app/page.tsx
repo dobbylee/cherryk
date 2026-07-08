@@ -23,7 +23,7 @@ export default function HomePage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [text, setText] = useState("오늘 친구 만났어요.");
+  const [text, setText] = useState("저는 학교에 공부했어요.");
   const [level, setLevel] = useState<UserLevel>("beginner");
   const [correction, setCorrection] = useState<CorrectionResponse | null>(null);
   const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
