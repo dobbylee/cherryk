@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { fetchCurrentUser, loginWithInvite, logout } from "@/lib/api/auth";
 import { submitCorrection } from "@/lib/api/corrections";
+import { extractKoreanTextFromImage } from "@/lib/api/ocr";
 import type { AuthUser } from "@/lib/contracts/auth";
 import type {
   CorrectionResponse,
@@ -24,10 +32,15 @@ export default function HomePage() {
   const [inviteCode, setInviteCode] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [text, setText] = useState("저는 학교에 공부했어요.");
+  const [inputSource, setInputSource] =
+    useState<CorrectionInput["inputType"]>("text");
   const [level, setLevel] = useState<UserLevel>("beginner");
   const [correction, setCorrection] = useState<CorrectionResponse | null>(null);
   const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
   const [correctionStatus, setCorrectionStatus] = useState<FormStatus>("idle");
+  const [ocrStatus, setOcrStatus] = useState<FormStatus>("idle");
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
+  const [ocrExtractedText, setOcrExtractedText] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const correctionRequestIdRef = useRef(0);
@@ -85,6 +98,10 @@ export default function HomePage() {
       setUser(response.user);
       setCorrection(null);
       setCorrectionStatus("idle");
+      setOcrStatus("idle");
+      setOcrNote(null);
+      setOcrExtractedText(null);
+      setInputSource("text");
       setInviteCode("");
       setDisplayName("");
     } catch (error) {
@@ -100,6 +117,10 @@ export default function HomePage() {
     correctionRequestIdRef.current += 1;
     activeUserIdRef.current = null;
     setCorrectionStatus("idle");
+    setOcrStatus("idle");
+    setOcrNote(null);
+    setOcrExtractedText(null);
+    setInputSource("text");
 
     try {
       await logout();
@@ -127,7 +148,11 @@ export default function HomePage() {
 
     const payload: CorrectionInput = {
       text,
-      inputType: "text",
+      inputType: inputSource,
+      extractedText:
+        inputSource === "image_ocr"
+          ? (ocrExtractedText ?? undefined)
+          : undefined,
       level,
       correctionStyle: "minimal",
     };
@@ -155,6 +180,50 @@ export default function HomePage() {
         activeUserIdRef.current === userIdAtSubmit
       ) {
         setCorrectionStatus("idle");
+      }
+    }
+  }
+
+  async function handleOCRUpload(event: ChangeEvent<HTMLInputElement>) {
+    const image = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!image || !user || authStatus === "loading") {
+      return;
+    }
+
+    setMessage(null);
+    setOcrStatus("loading");
+    setCorrectionStatus("idle");
+    const requestId = correctionRequestIdRef.current + 1;
+    correctionRequestIdRef.current = requestId;
+    const userIdAtSubmit = user.id;
+
+    try {
+      const response = await extractKoreanTextFromImage(image);
+      if (
+        correctionRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setText(response.extractedText);
+        setInputSource("image_ocr");
+        setOcrNote(response.note ?? null);
+        setOcrExtractedText(response.extractedText);
+        setCorrection(null);
+      }
+    } catch (error) {
+      if (
+        correctionRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setMessage(error instanceof Error ? error.message : "OCR failed.");
+      }
+    } finally {
+      if (
+        correctionRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setOcrStatus("idle");
       }
     }
   }
@@ -257,6 +326,28 @@ export default function HomePage() {
             className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm"
             onSubmit={handleCorrection}
           >
+            <div className="mb-4 rounded-md border border-dashed border-[var(--line)] bg-white p-3">
+              <label className="text-sm font-semibold" htmlFor="ocr-image">
+                Handwriting image
+              </label>
+              <input
+                accept="image/*"
+                className="mt-2 block w-full text-sm text-[var(--muted)] file:mr-3 file:h-10 file:rounded-md file:border file:border-[var(--line)] file:bg-white file:px-3 file:text-sm file:font-semibold file:text-[var(--foreground)] disabled:opacity-60"
+                disabled={
+                  authStatus === "loading" ||
+                  correctionStatus === "loading" ||
+                  ocrStatus === "loading"
+                }
+                id="ocr-image"
+                onChange={handleOCRUpload}
+                type="file"
+              />
+              {ocrStatus === "loading" || ocrNote ? (
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  {ocrStatus === "loading" ? "Extracting text..." : ocrNote}
+                </p>
+              ) : null}
+            </div>
             <label className="text-sm font-semibold" htmlFor="korean-text">
               Write Korean
             </label>
@@ -283,6 +374,7 @@ export default function HomePage() {
                 disabled={
                   authStatus === "loading" ||
                   correctionStatus === "loading" ||
+                  ocrStatus === "loading" ||
                   !text.trim()
                 }
                 type="submit"

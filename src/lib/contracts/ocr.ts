@@ -5,4 +5,7 @@ export const OCRAIOutputSchema = z.object({
   note: z.string().optional(),
 });
 
+export const OCRExtractResponseSchema = OCRAIOutputSchema;
+
 export type OCRAIOutput = z.infer<typeof OCRAIOutputSchema>;
+export type OCRExtractResponse = z.infer<typeof OCRExtractResponseSchema>;
