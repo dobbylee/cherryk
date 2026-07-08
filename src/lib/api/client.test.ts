@@ -42,4 +42,25 @@ describe("fetchJson", () => {
       body,
     });
   });
+
+  it("throws API error messages when present", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: "invalid_request",
+              message: "Correction request is invalid.",
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await expect(fetchJson("/api/test")).rejects.toThrow(
+      "Correction request is invalid.",
+    );
+  });
 });

@@ -10,6 +10,10 @@
   --accent: #b91c3a;
   --accent-strong: #8f1230;
   --secondary: #0f766e;
+  --tag-bg: #e8f5f2;
+  --danger: #9f1239;
+  --danger-bg: #fff1f2;
+  --danger-line: #fecdd3;
 }
 
 * {

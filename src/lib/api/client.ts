@@ -18,8 +18,27 @@ export async function fetchJson<TResponse>(
   const payload = (await response.json()) as TResponse;
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    const apiMessage = readApiErrorMessage(payload);
+    throw new Error(
+      apiMessage ?? `Request failed with status ${response.status}`,
+    );
   }
 
   return payload;
+}
+
+function readApiErrorMessage(payload: unknown) {
+  if (typeof payload === "object" && payload !== null && "error" in payload) {
+    const error = payload.error;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof error.message === "string"
+    ) {
+      return error.message;
+    }
+  }
+
+  return null;
 }
