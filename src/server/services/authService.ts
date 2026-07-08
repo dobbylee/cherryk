@@ -11,7 +11,7 @@ import type { AuthRepository } from "@/server/repositories/authRepository";
 
 export class AuthServiceError extends Error {
   constructor(
-    readonly code: "invalid_invite",
+    readonly code: "invalid_invite" | "invalid_invite_seed" | "unauthorized",
     message: string,
   ) {
     super(message);
@@ -25,10 +25,20 @@ export type LoginWithInviteResult = {
   sessionExpiresAt: Date;
 };
 
+export type SeedInviteCodeRequest = {
+  inviteCode: string;
+  label?: string | null;
+  maxUses: number;
+  expiresAt?: Date | null;
+  resetUsedCount?: boolean;
+};
+
 export type AuthService = {
   loginWithInvite(input: InviteLoginRequest): Promise<LoginWithInviteResult>;
   getCurrentUser(request: Request): Promise<AuthUser | null>;
+  requireCurrentUser(request: Request): Promise<AuthUser>;
   logout(request: Request): Promise<void>;
+  seedInviteCode(input: SeedInviteCodeRequest): Promise<void>;
 };
 
 type AuthServiceOptions = {
@@ -43,6 +53,18 @@ export function createAuthService(
 ): AuthService {
   const now = options.now ?? (() => new Date());
   const createToken = options.createToken ?? createSessionToken;
+
+  async function getCurrentUser(request: Request) {
+    const sessionToken = readSessionTokenFromRequest(request);
+    if (!sessionToken) {
+      return null;
+    }
+
+    return repository.findUserBySessionTokenHash(
+      hashSessionToken(sessionToken, requireAuthSecret(options.authSecret)),
+      now(),
+    );
+  }
 
   return {
     async loginWithInvite(input) {
@@ -72,16 +94,15 @@ export function createAuthService(
       };
     },
 
-    async getCurrentUser(request) {
-      const sessionToken = readSessionTokenFromRequest(request);
-      if (!sessionToken) {
-        return null;
+    getCurrentUser,
+
+    async requireCurrentUser(request) {
+      const user = await getCurrentUser(request);
+      if (!user) {
+        throw new AuthServiceError("unauthorized", "Authentication required.");
       }
 
-      return repository.findUserBySessionTokenHash(
-        hashSessionToken(sessionToken, requireAuthSecret(options.authSecret)),
-        now(),
-      );
+      return user;
     },
 
     async logout(request) {
@@ -93,6 +114,31 @@ export function createAuthService(
       await repository.deleteSessionByTokenHash(
         hashSessionToken(sessionToken, requireAuthSecret(options.authSecret)),
       );
+    },
+
+    async seedInviteCode(input) {
+      const inviteCode = input.inviteCode.trim();
+      if (
+        !inviteCode ||
+        !Number.isInteger(input.maxUses) ||
+        input.maxUses < 1
+      ) {
+        throw new AuthServiceError(
+          "invalid_invite_seed",
+          "Invite seed must include a code and a positive maxUses value.",
+        );
+      }
+
+      await repository.upsertInviteCode({
+        codeHash: hashInviteCode(
+          inviteCode,
+          requireAuthSecret(options.authSecret),
+        ),
+        label: input.label ?? null,
+        maxUses: input.maxUses,
+        expiresAt: input.expiresAt ?? null,
+        resetUsedCount: input.resetUsedCount ?? false,
+      });
     },
   };
 }

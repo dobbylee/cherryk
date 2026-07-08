@@ -8,6 +8,7 @@ import {
 import type {
   AuthRepository,
   CreateInviteSessionInput,
+  SeedInviteCodeInput,
 } from "@/server/repositories/authRepository";
 import { AuthServiceError, createAuthService } from "./authService";
 
@@ -23,13 +24,16 @@ function createFakeRepository(
 ): AuthRepository & {
   inviteSessionInput: CreateInviteSessionInput | null;
   deletedTokenHash: string | null;
+  seedInviteCodeInput: SeedInviteCodeInput | null;
 } {
   const repository: AuthRepository & {
     inviteSessionInput: CreateInviteSessionInput | null;
     deletedTokenHash: string | null;
+    seedInviteCodeInput: SeedInviteCodeInput | null;
   } = {
     inviteSessionInput: null,
     deletedTokenHash: null,
+    seedInviteCodeInput: null,
     async createInviteSession(input: CreateInviteSessionInput) {
       repository.inviteSessionInput = input;
       return testUser;
@@ -39,6 +43,9 @@ function createFakeRepository(
     },
     async deleteSessionByTokenHash(tokenHash: string) {
       repository.deletedTokenHash = tokenHash;
+    },
+    async upsertInviteCode(input: SeedInviteCodeInput) {
+      repository.seedInviteCodeInput = input;
     },
     ...overrides,
   };
@@ -106,6 +113,34 @@ describe("authService", () => {
     await expect(service.getCurrentUser(request)).resolves.toEqual(testUser);
   });
 
+  it("requires a current user for protected routes", async () => {
+    const service = createAuthService(createFakeRepository(), {
+      authSecret: "test-secret",
+      now: () => testNow,
+    });
+    const request = new Request("http://localhost/api/v1/corrections", {
+      headers: {
+        cookie: `${SESSION_COOKIE_NAME}=raw-session-token`,
+      },
+    });
+
+    await expect(service.requireCurrentUser(request)).resolves.toEqual(
+      testUser,
+    );
+  });
+
+  it("rejects protected requests without a session", async () => {
+    const service = createAuthService(createFakeRepository(), {
+      authSecret: "test-secret",
+      now: () => testNow,
+    });
+    const request = new Request("http://localhost/api/v1/corrections");
+
+    await expect(service.requireCurrentUser(request)).rejects.toMatchObject({
+      code: "unauthorized",
+    });
+  });
+
   it("deletes the hashed session token on logout", async () => {
     const repository = createFakeRepository();
     const service = createAuthService(repository, {
@@ -123,5 +158,51 @@ describe("authService", () => {
     expect(repository.deletedTokenHash).toBe(
       hashSessionToken("raw-session-token", "test-secret"),
     );
+  });
+
+  it("seeds an invite code hash without storing the raw code", async () => {
+    const repository = createFakeRepository();
+    const service = createAuthService(repository, {
+      authSecret: "test-secret",
+    });
+
+    await service.seedInviteCode({
+      inviteCode: " friend-dev-code ",
+      label: "Local development",
+      maxUses: 20,
+      resetUsedCount: true,
+    });
+
+    expect(repository.seedInviteCodeInput).toEqual({
+      codeHash: hashInviteCode("friend-dev-code", "test-secret"),
+      label: "Local development",
+      maxUses: 20,
+      expiresAt: null,
+      resetUsedCount: true,
+    });
+  });
+
+  it("rejects invalid invite seed input", async () => {
+    const service = createAuthService(createFakeRepository(), {
+      authSecret: "test-secret",
+    });
+
+    await expect(
+      service.seedInviteCode({
+        inviteCode: " ",
+        maxUses: 20,
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_invite_seed",
+    });
+
+    await expect(
+      service.seedInviteCode({
+        inviteCode: "friend-dev-code",
+        maxUses: 0,
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_invite_seed",
+    });
   });
 });

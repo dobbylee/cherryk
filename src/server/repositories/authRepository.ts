@@ -11,6 +11,14 @@ export type CreateInviteSessionInput = {
   now: Date;
 };
 
+export type SeedInviteCodeInput = {
+  codeHash: string;
+  label: string | null;
+  maxUses: number;
+  expiresAt: Date | null;
+  resetUsedCount: boolean;
+};
+
 export type AuthRepository = {
   createInviteSession(
     input: CreateInviteSessionInput,
@@ -20,6 +28,7 @@ export type AuthRepository = {
     now: Date,
   ): Promise<AuthUser | null>;
   deleteSessionByTokenHash(tokenHash: string): Promise<void>;
+  upsertInviteCode(input: SeedInviteCodeInput): Promise<void>;
 };
 
 export function createAuthRepository(db: Db): AuthRepository {
@@ -29,6 +38,7 @@ export function createAuthRepository(db: Db): AuthRepository {
       findUserBySessionTokenHash(db, tokenHash, now),
     deleteSessionByTokenHash: (tokenHash) =>
       deleteSessionByTokenHash(db, tokenHash),
+    upsertInviteCode: (input) => upsertInviteCode(db, input),
   };
 }
 
@@ -104,4 +114,25 @@ async function findUserBySessionTokenHash(
 
 async function deleteSessionByTokenHash(db: Db, tokenHash: string) {
   await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
+}
+
+async function upsertInviteCode(db: Db, input: SeedInviteCodeInput) {
+  await db
+    .insert(inviteCodes)
+    .values({
+      codeHash: input.codeHash,
+      label: input.label,
+      maxUses: input.maxUses,
+      expiresAt: input.expiresAt,
+      usedCount: 0,
+    })
+    .onConflictDoUpdate({
+      target: inviteCodes.codeHash,
+      set: {
+        label: input.label,
+        maxUses: input.maxUses,
+        expiresAt: input.expiresAt,
+        ...(input.resetUsedCount ? { usedCount: 0 } : {}),
+      },
+    });
 }

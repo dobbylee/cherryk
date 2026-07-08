@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import type { LogoutResponse } from "@/lib/contracts/auth";
-import { createDb } from "@/server/db";
+import { createRequestAuthService } from "@/server/auth/currentUser";
 import {
   SESSION_COOKIE_NAME,
   expiredSessionCookieOptions,
 } from "@/server/auth/session";
-import { createAuthRepository } from "@/server/repositories/authRepository";
-import { createAuthService } from "@/server/services/authService";
 import { apiError } from "../_responses";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const service = createAuthService(createAuthRepository(createDb()));
-    await service.logout(request);
+    await createRequestAuthService().logout(request);
 
     const response = NextResponse.json<LogoutResponse>({ ok: true });
     response.cookies.set(
