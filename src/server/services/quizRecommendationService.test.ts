@@ -25,6 +25,9 @@ describe("quizRecommendationService", () => {
         requestedTags.push(tags);
         return [recommendedQuiz];
       },
+      async createQuizDrafts() {
+        throw new Error("Not used.");
+      },
     };
     const service = createQuizRecommendationService(repository);
 
@@ -47,6 +50,9 @@ describe("quizRecommendationService", () => {
             choices: recommendedQuiz.choices.slice(0, 3),
           },
         ];
+      },
+      async createQuizDrafts() {
+        throw new Error("Not used.");
       },
     };
     const service = createQuizRecommendationService(repository);
