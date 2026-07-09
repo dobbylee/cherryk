@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "crypto";
+import { ADMIN_SECRET_HEADER } from "@/lib/contracts/admin";
 
-export const ADMIN_SECRET_HEADER = "x-admin-secret";
+export { ADMIN_SECRET_HEADER };
 
 export class AdminAuthError extends Error {
   constructor(
