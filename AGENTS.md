@@ -46,6 +46,24 @@ Turn tasks into verifiable goals and loop until verified.
 - Treat `pnpm test` as the default local quality gate; it runs lint, typecheck, and unit tests.
 - If a verification command cannot run, report the blocker plainly.
 
+## Harness Evolution
+
+Improve the harness only when it would prevent important repeat failures.
+
+- When a task exposes a concrete failure, consider whether a focused test, checklist item, or review rule should prevent it from recurring.
+- Do not turn every possible issue into a rule. Score candidate rules with `agent-harness/workflow.md` and add only high-value, repeatable safeguards.
+- Prefer executable verification over prose rules when the failure can be tested cheaply.
+- Keep durable workflow rules in `AGENTS.md` or `agent-harness/`; keep product plans and handoff notes in `local/`.
+- Remove or merge a harness rule if it duplicates an existing rule without making behavior clearer.
+
+## Decision Ownership
+
+Do not make business or product decisions silently.
+
+- If implementation depends on a product, learning, privacy, operations, or rollout decision that is not already decided, pause and present a recommended option with tradeoffs.
+- Separate confirmed decisions from assumptions and recommendations.
+- Record user-confirmed project decisions in the appropriate planning document instead of burying them in code comments or final-message prose.
+
 ## Project-Specific Guardrails
 
 - Keep API contracts under `src/lib/contracts`.
