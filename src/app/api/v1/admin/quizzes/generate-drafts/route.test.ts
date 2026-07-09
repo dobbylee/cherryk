@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ADMIN_SECRET_HEADER } from "@/server/auth/admin";
+import { mockAIProvider } from "@/server/ai/mockAIProvider";
 import { POST } from "./route";
 
 const mocks = vi.hoisted(() => ({
   createDb: vi.fn(() => ({})),
   createQuizRepository: vi.fn(),
+  createAIProvider: vi.fn(() => mockAIProvider),
+}));
+
+vi.mock("@/server/ai/configuredProvider", () => ({
+  createAIProvider: mocks.createAIProvider,
 }));
 
 vi.mock("@/server/db", () => ({

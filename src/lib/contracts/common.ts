@@ -1,10 +1,12 @@
 import { z } from "zod";
 
-export const UserLevelSchema = z.enum([
+export const UserLevels = [
   "beginner",
   "lower_intermediate",
   "intermediate",
-]);
+] as const;
+
+export const UserLevelSchema = z.enum(UserLevels);
 
 export const ApiErrorSchema = z.object({
   error: z.object({

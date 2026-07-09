@@ -3,7 +3,7 @@ import {
   QuizDraftInputSchema,
   type AdminQuizDraftGenerationResponse,
 } from "@/lib/contracts/quiz";
-import { mockAIProvider } from "@/server/ai/mockAIProvider";
+import { createAIProvider } from "@/server/ai/configuredProvider";
 import { AdminAuthError, requireAdminSecret } from "@/server/auth/admin";
 import { createDb } from "@/server/db";
 import { createQuizRepository } from "@/server/repositories/quizRepository";
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   try {
     const service = createAdminQuizService(
       createQuizRepository(createDb()),
-      mockAIProvider,
+      createAIProvider(),
     );
     const response = await service.generateDrafts(parsed.data);
 

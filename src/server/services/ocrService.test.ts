@@ -9,7 +9,7 @@ import {
 
 function createFakeAIProvider(
   output: unknown,
-  onExtract?: (input: { imageBase64: string }) => void,
+  onExtract?: (input: { imageBase64: string; imageMimeType: string }) => void,
 ): AIProvider {
   return {
     async correctKorean() {
@@ -40,6 +40,7 @@ describe("ocrService", () => {
         },
         (input) => {
           expect(input.imageBase64).toBe("/9j/");
+          expect(input.imageMimeType).toBe("image/jpeg");
         },
       ),
     );
@@ -80,6 +81,47 @@ describe("ocrService", () => {
     ).rejects.toMatchObject({ code: "invalid_image" });
     await expect(
       service.extractKoreanTextFromImage(spoofedImage),
+    ).rejects.toMatchObject({ code: "invalid_image" });
+  });
+
+  it("rejects formats that cannot be sent directly to OpenAI vision", async () => {
+    const service = createOCRService(
+      createFakeAIProvider({ extractedText: "unused" }, () => {
+        throw new Error("Should not call AI for unsupported image formats.");
+      }),
+    );
+    const gifImage = new File(["GIF89a"], "note.gif", {
+      type: "image/gif",
+    });
+    const heicImage = new File(
+      [
+        new Uint8Array([
+          0x00, 0x00, 0x00, 0x00, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69,
+          0x63,
+        ]),
+      ],
+      "note.heic",
+      { type: "image/heic" },
+    );
+    const avifImage = new File(
+      [
+        new Uint8Array([
+          0x00, 0x00, 0x00, 0x00, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69,
+          0x66,
+        ]),
+      ],
+      "note.avif",
+      { type: "image/avif" },
+    );
+
+    await expect(
+      service.extractKoreanTextFromImage(gifImage),
+    ).rejects.toMatchObject({ code: "invalid_image" });
+    await expect(
+      service.extractKoreanTextFromImage(heicImage),
+    ).rejects.toMatchObject({ code: "invalid_image" });
+    await expect(
+      service.extractKoreanTextFromImage(avifImage),
     ).rejects.toMatchObject({ code: "invalid_image" });
   });
 

@@ -3,7 +3,7 @@ import {
   CorrectionInputSchema,
   type CorrectionResponse,
 } from "@/lib/contracts/correction";
-import { mockAIProvider } from "@/server/ai/mockAIProvider";
+import { createAIProvider } from "@/server/ai/configuredProvider";
 import { requireCurrentUser } from "@/server/auth/currentUser";
 import { createDb } from "@/server/db";
 import { createCorrectionRepository } from "@/server/repositories/correctionRepository";
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   try {
     const service = createCorrectionService(
       createCorrectionRepository(createDb()),
-      mockAIProvider,
+      createAIProvider(),
     );
     const response = await service.correctKorean(userResult, parsed.data);
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { OCRExtractResponse } from "@/lib/contracts/ocr";
-import { mockAIProvider } from "@/server/ai/mockAIProvider";
+import { createAIProvider } from "@/server/ai/configuredProvider";
 import { requireCurrentUser } from "@/server/auth/currentUser";
 import { AuthServiceError } from "@/server/services/authService";
 import {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const service = createOCRService(mockAIProvider);
+    const service = createOCRService(createAIProvider());
     const response = await service.extractKoreanTextFromImage(image);
 
     return NextResponse.json<OCRExtractResponse>(response);
