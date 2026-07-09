@@ -1,7 +1,10 @@
 import {
   AdminQuizDraftGenerationResponseSchema,
+  AdminQuizUpdateResponseSchema,
   QuizDraftOutputSchema,
   type AdminQuizDraftGenerationResponse,
+  type AdminQuizUpdateRequest,
+  type AdminQuizUpdateResponse,
   type QuizDraftInput,
 } from "@/lib/contracts/quiz";
 import type { AIProvider } from "@/server/ai/provider";
@@ -9,7 +12,10 @@ import type { QuizRepository } from "@/server/repositories/quizRepository";
 
 export class AdminQuizServiceError extends Error {
   constructor(
-    readonly code: "invalid_ai_output",
+    readonly code:
+      | "invalid_ai_output"
+      | "quiz_not_found"
+      | "quiz_choices_locked",
     message: string,
   ) {
     super(message);
@@ -20,7 +26,10 @@ export class AdminQuizServiceError extends Error {
 export function createAdminQuizService(
   repository: QuizRepository,
   aiProvider: AIProvider,
+  options: { now?: () => Date } = {},
 ) {
+  const now = options.now ?? (() => new Date());
+
   return {
     async generateDrafts(
       input: QuizDraftInput,
@@ -44,6 +53,35 @@ export function createAdminQuizService(
       });
 
       return AdminQuizDraftGenerationResponseSchema.parse({ drafts });
+    },
+
+    async updateQuiz(
+      id: string,
+      update: AdminQuizUpdateRequest,
+    ): Promise<AdminQuizUpdateResponse> {
+      const result = await repository.updateQuiz({
+        id,
+        update,
+        now: now(),
+      });
+
+      if (!result) {
+        throw new AdminQuizServiceError(
+          "quiz_not_found",
+          "Quiz was not found.",
+        );
+      }
+
+      if ("code" in result) {
+        throw new AdminQuizServiceError(
+          result.code,
+          "Quiz choices cannot be replaced after attempts exist.",
+        );
+      }
+
+      return AdminQuizUpdateResponseSchema.parse({
+        quiz: result,
+      });
     },
   };
 }

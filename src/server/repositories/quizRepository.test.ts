@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { quizChoices, quizQuestions } from "@/server/db/schema";
+import { quizAttempts, quizChoices, quizQuestions } from "@/server/db/schema";
 import { createQuizRepository } from "./quizRepository";
 
 vi.mock("drizzle-orm", () => ({
@@ -57,6 +57,75 @@ function createFakeDraftDb() {
   };
 
   return { db, insertedQuestions, insertedChoices };
+}
+
+function createFakeUpdateDb(
+  updatedRows: unknown[] = [],
+  attemptedRows: unknown[] = [],
+) {
+  const updateSet: unknown[] = [];
+  const deletedChoices: unknown[] = [];
+  const insertedChoices: unknown[] = [];
+  const tx = {
+    select: vi.fn(() => ({
+      from: vi.fn((table) => {
+        if (table !== quizAttempts) {
+          throw new Error("Unexpected select table.");
+        }
+
+        return {
+          where: vi.fn(() => ({
+            limit: vi.fn(async () => attemptedRows),
+          })),
+        };
+      }),
+    })),
+    update: vi.fn((table) => {
+      if (table !== quizQuestions) {
+        throw new Error("Unexpected update table.");
+      }
+
+      return {
+        set: vi.fn((value) => {
+          updateSet.push(value);
+          return {
+            where: vi.fn(() => ({
+              returning: vi.fn(async () => updatedRows),
+            })),
+          };
+        }),
+      };
+    }),
+    delete: vi.fn((table) => {
+      if (table !== quizChoices) {
+        throw new Error("Unexpected delete table.");
+      }
+
+      return {
+        where: vi.fn((value) => {
+          deletedChoices.push(value);
+          return Promise.resolve();
+        }),
+      };
+    }),
+    insert: vi.fn((table) => {
+      if (table !== quizChoices) {
+        throw new Error("Unexpected insert table.");
+      }
+
+      return {
+        values: vi.fn((values) => {
+          insertedChoices.push(values);
+          return Promise.resolve();
+        }),
+      };
+    }),
+  };
+  const db = {
+    transaction: vi.fn(async (callback) => callback(tx)),
+  };
+
+  return { db, updateSet, deletedChoices, insertedChoices };
 }
 
 describe("quizRepository", () => {
@@ -161,5 +230,127 @@ describe("quizRepository", () => {
         },
       ],
     ]);
+  });
+
+  it("updates quiz review fields and replaces choices", async () => {
+    const now = new Date("2026-07-09T00:00:00.000Z");
+    const { db, updateSet, deletedChoices, insertedChoices } =
+      createFakeUpdateDb([
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          status: "approved",
+        },
+      ]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.updateQuiz({
+        id: "11111111-1111-4111-8111-111111111111",
+        now,
+        update: {
+          status: "approved",
+          reviewNote: "Ready.",
+          choices: [
+            { text: "은", isCorrect: false, sortOrder: 0 },
+            { text: "를", isCorrect: true, sortOrder: 1 },
+            { text: "에", isCorrect: false, sortOrder: 2 },
+            { text: "이", isCorrect: false, sortOrder: 3 },
+          ],
+        },
+      }),
+    ).resolves.toEqual({
+      id: "11111111-1111-4111-8111-111111111111",
+      status: "approved",
+    });
+    expect(updateSet).toEqual([
+      {
+        status: "approved",
+        reviewNote: "Ready.",
+        updatedAt: now,
+      },
+    ]);
+    expect(deletedChoices).toHaveLength(1);
+    expect(insertedChoices).toEqual([
+      [
+        {
+          quizQuestionId: "11111111-1111-4111-8111-111111111111",
+          choiceText: "은",
+          isCorrect: false,
+          sortOrder: 0,
+        },
+        {
+          quizQuestionId: "11111111-1111-4111-8111-111111111111",
+          choiceText: "를",
+          isCorrect: true,
+          sortOrder: 1,
+        },
+        {
+          quizQuestionId: "11111111-1111-4111-8111-111111111111",
+          choiceText: "에",
+          isCorrect: false,
+          sortOrder: 2,
+        },
+        {
+          quizQuestionId: "11111111-1111-4111-8111-111111111111",
+          choiceText: "이",
+          isCorrect: false,
+          sortOrder: 3,
+        },
+      ],
+    ]);
+  });
+
+  it("returns null when a quiz update does not match a quiz", async () => {
+    const { db, insertedChoices } = createFakeUpdateDb([]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.updateQuiz({
+        id: "11111111-1111-4111-8111-111111111111",
+        now: new Date("2026-07-09T00:00:00.000Z"),
+        update: {
+          status: "approved",
+          choices: [
+            { text: "은", isCorrect: false, sortOrder: 0 },
+            { text: "를", isCorrect: true, sortOrder: 1 },
+            { text: "에", isCorrect: false, sortOrder: 2 },
+            { text: "이", isCorrect: false, sortOrder: 3 },
+          ],
+        },
+      }),
+    ).resolves.toBeNull();
+    expect(insertedChoices).toEqual([]);
+  });
+
+  it("rejects choice replacement when attempts already reference choices", async () => {
+    const { db, updateSet, deletedChoices, insertedChoices } =
+      createFakeUpdateDb(
+        [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            status: "approved",
+          },
+        ],
+        [{ id: "22222222-2222-4222-8222-222222222222" }],
+      );
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.updateQuiz({
+        id: "11111111-1111-4111-8111-111111111111",
+        now: new Date("2026-07-09T00:00:00.000Z"),
+        update: {
+          choices: [
+            { text: "은", isCorrect: false, sortOrder: 0 },
+            { text: "를", isCorrect: true, sortOrder: 1 },
+            { text: "에", isCorrect: false, sortOrder: 2 },
+            { text: "이", isCorrect: false, sortOrder: 3 },
+          ],
+        },
+      }),
+    ).resolves.toEqual({ code: "quiz_choices_locked" });
+    expect(updateSet).toEqual([]);
+    expect(deletedChoices).toEqual([]);
+    expect(insertedChoices).toEqual([]);
   });
 });

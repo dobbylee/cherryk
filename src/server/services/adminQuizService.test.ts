@@ -3,6 +3,7 @@ import type { AIProvider } from "@/server/ai/provider";
 import type {
   CreateQuizDraftsInput,
   QuizRepository,
+  UpdateQuizInput,
 } from "@/server/repositories/quizRepository";
 import {
   AdminQuizServiceError,
@@ -25,11 +26,20 @@ const draftQuestion = {
 
 function createFakeRepository(): QuizRepository & {
   draftInput: CreateQuizDraftsInput | null;
+  updateInput: UpdateQuizInput | null;
+  updateResult: Awaited<ReturnType<QuizRepository["updateQuiz"]>>;
 } {
   const repository: QuizRepository & {
     draftInput: CreateQuizDraftsInput | null;
+    updateInput: UpdateQuizInput | null;
+    updateResult: Awaited<ReturnType<QuizRepository["updateQuiz"]>>;
   } = {
     draftInput: null,
+    updateInput: null,
+    updateResult: {
+      id: "22222222-2222-4222-8222-222222222222",
+      status: "approved",
+    },
     async findApprovedQuizzesByTags() {
       return [];
     },
@@ -41,6 +51,10 @@ function createFakeRepository(): QuizRepository & {
           ...input.questions[0],
         },
       ];
+    },
+    async updateQuiz(input) {
+      repository.updateInput = input;
+      return repository.updateResult;
     },
   };
 
@@ -161,5 +175,74 @@ describe("adminQuizService", () => {
       }),
     ).rejects.toBeInstanceOf(AdminQuizServiceError);
     expect(repository.draftInput).toBeNull();
+  });
+
+  it("updates a quiz through the repository", async () => {
+    const now = new Date("2026-07-09T00:00:00.000Z");
+    const repository = createFakeRepository();
+    const service = createAdminQuizService(
+      repository,
+      createFakeAIProvider({ questions: [] }),
+      { now: () => now },
+    );
+
+    await expect(
+      service.updateQuiz("22222222-2222-4222-8222-222222222222", {
+        status: "approved",
+        reviewNote: "Ready.",
+      }),
+    ).resolves.toEqual({
+      quiz: {
+        id: "22222222-2222-4222-8222-222222222222",
+        status: "approved",
+      },
+    });
+    expect(repository.updateInput).toEqual({
+      id: "22222222-2222-4222-8222-222222222222",
+      update: {
+        status: "approved",
+        reviewNote: "Ready.",
+      },
+      now,
+    });
+  });
+
+  it("raises quiz_not_found when the repository cannot update the quiz", async () => {
+    const repository = createFakeRepository();
+    repository.updateResult = null;
+    const service = createAdminQuizService(
+      repository,
+      createFakeAIProvider({ questions: [] }),
+    );
+
+    await expect(
+      service.updateQuiz("22222222-2222-4222-8222-222222222222", {
+        status: "approved",
+      }),
+    ).rejects.toMatchObject({
+      code: "quiz_not_found",
+    });
+  });
+
+  it("raises quiz_choices_locked when attempts already reference choices", async () => {
+    const repository = createFakeRepository();
+    repository.updateResult = { code: "quiz_choices_locked" };
+    const service = createAdminQuizService(
+      repository,
+      createFakeAIProvider({ questions: [] }),
+    );
+
+    await expect(
+      service.updateQuiz("22222222-2222-4222-8222-222222222222", {
+        choices: [
+          { text: "은", isCorrect: false, sortOrder: 0 },
+          { text: "를", isCorrect: true, sortOrder: 1 },
+          { text: "에", isCorrect: false, sortOrder: 2 },
+          { text: "이", isCorrect: false, sortOrder: 3 },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: "quiz_choices_locked",
+    });
   });
 });

@@ -1,27 +1,115 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { UserLevelSchema } from "@/lib/contracts/common";
 import { GrammarTagSchema, type GrammarTag } from "@/lib/contracts/grammar-tags";
+import { QuizStatusSchema } from "@/lib/contracts/quiz";
 import type {
   AdminQuizDraft,
+  AdminQuizUpdateRequest,
+  QuizStatus,
   QuizDraftOutput,
   RecommendedQuiz,
 } from "@/lib/contracts/quiz";
 import type { Db } from "@/server/db";
-import { quizChoices, quizQuestions } from "@/server/db/schema";
+import { quizAttempts, quizChoices, quizQuestions } from "@/server/db/schema";
 
 export type QuizRepository = {
   findApprovedQuizzesByTags(tags: GrammarTag[]): Promise<RecommendedQuiz[]>;
   createQuizDrafts(input: CreateQuizDraftsInput): Promise<AdminQuizDraft[]>;
+  updateQuiz(
+    input: UpdateQuizInput,
+  ): Promise<UpdateQuizResult | UpdateQuizConflict | null>;
 };
 
 export type CreateQuizDraftsInput = {
   questions: QuizDraftOutput["questions"];
 };
 
+export type UpdateQuizInput = {
+  id: string;
+  update: AdminQuizUpdateRequest;
+  now: Date;
+};
+
+export type UpdateQuizResult = {
+  id: string;
+  status: QuizStatus;
+};
+
+export type UpdateQuizConflict = {
+  code: "quiz_choices_locked";
+};
+
 export function createQuizRepository(db: Db): QuizRepository {
   return {
     findApprovedQuizzesByTags: (tags) => findApprovedQuizzesByTags(db, tags),
     createQuizDrafts: (input) => createQuizDrafts(db, input),
+    updateQuiz: (input) => updateQuiz(db, input),
+  };
+}
+
+async function updateQuiz(db: Db, input: UpdateQuizInput) {
+  return db.transaction(async (tx) => {
+    if (input.update.choices) {
+      const attempted = await tx
+        .select({ id: quizAttempts.id })
+        .from(quizAttempts)
+        .where(eq(quizAttempts.quizQuestionId, input.id))
+        .limit(1);
+
+      if (attempted.length > 0) {
+        return { code: "quiz_choices_locked" } as const;
+      }
+    }
+
+    const [updated] = await tx
+      .update(quizQuestions)
+      .set({
+        ...toQuizQuestionUpdate(input.update),
+        updatedAt: input.now,
+      })
+      .where(eq(quizQuestions.id, input.id))
+      .returning({
+        id: quizQuestions.id,
+        status: quizQuestions.status,
+      });
+
+    if (!updated) {
+      return null;
+    }
+
+    if (input.update.choices) {
+      await tx
+        .delete(quizChoices)
+        .where(eq(quizChoices.quizQuestionId, input.id));
+      await tx.insert(quizChoices).values(
+        input.update.choices.map((choice) => ({
+          ...(choice.id ? { id: choice.id } : {}),
+          quizQuestionId: input.id,
+          choiceText: choice.text,
+          isCorrect: choice.isCorrect,
+          sortOrder: choice.sortOrder,
+        })),
+      );
+    }
+
+    return {
+      id: updated.id,
+      status: QuizStatusSchema.parse(updated.status),
+    };
+  });
+}
+
+function toQuizQuestionUpdate(update: AdminQuizUpdateRequest) {
+  return {
+    ...(update.tag !== undefined ? { tag: update.tag } : {}),
+    ...(update.difficulty !== undefined ? { difficulty: update.difficulty } : {}),
+    ...(update.questionEn !== undefined ? { questionEn: update.questionEn } : {}),
+    ...(update.sentenceKo !== undefined ? { sentenceKo: update.sentenceKo } : {}),
+    ...(update.answerExplanationEn !== undefined
+      ? { answerExplanationEn: update.answerExplanationEn }
+      : {}),
+    ...(update.status !== undefined ? { status: update.status } : {}),
+    ...(update.reviewNote !== undefined ? { reviewNote: update.reviewNote } : {}),
   };
 }
 

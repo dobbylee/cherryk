@@ -28,6 +28,9 @@ describe("quizRecommendationService", () => {
       async createQuizDrafts() {
         throw new Error("Not used.");
       },
+      async updateQuiz() {
+        throw new Error("Not used.");
+      },
     };
     const service = createQuizRecommendationService(repository);
 
@@ -52,6 +55,9 @@ describe("quizRecommendationService", () => {
         ];
       },
       async createQuizDrafts() {
+        throw new Error("Not used.");
+      },
+      async updateQuiz() {
         throw new Error("Not used.");
       },
     };

@@ -3,6 +3,7 @@ import { GrammarTags } from "./grammar-tags";
 import {
   QuizDraftInputSchema,
   QuizDraftOutputSchema,
+  AdminQuizUpdateRequestSchema,
   QuizRecommendationQuerySchema,
 } from "./quiz";
 
@@ -49,5 +50,60 @@ describe("QuizRecommendationQuerySchema", () => {
         tags: GrammarTags,
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("AdminQuizUpdateRequestSchema", () => {
+  it("rejects empty updates", () => {
+    expect(AdminQuizUpdateRequestSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("requires exactly one correct choice when choices are updated", () => {
+    expect(
+      AdminQuizUpdateRequestSchema.safeParse({
+        choices: [
+          { text: "은", isCorrect: false, sortOrder: 0 },
+          { text: "를", isCorrect: true, sortOrder: 1 },
+          { text: "에", isCorrect: true, sortOrder: 2 },
+          { text: "이", isCorrect: false, sortOrder: 3 },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires unique choice sort orders", () => {
+    expect(
+      AdminQuizUpdateRequestSchema.safeParse({
+        choices: [
+          { text: "은", isCorrect: false, sortOrder: 0 },
+          { text: "를", isCorrect: true, sortOrder: 0 },
+          { text: "에", isCorrect: false, sortOrder: 2 },
+          { text: "이", isCorrect: false, sortOrder: 3 },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires unique defined choice ids", () => {
+    expect(
+      AdminQuizUpdateRequestSchema.safeParse({
+        choices: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            text: "은",
+            isCorrect: false,
+            sortOrder: 0,
+          },
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            text: "를",
+            isCorrect: true,
+            sortOrder: 1,
+          },
+          { text: "에", isCorrect: false, sortOrder: 2 },
+          { text: "이", isCorrect: false, sortOrder: 3 },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });
