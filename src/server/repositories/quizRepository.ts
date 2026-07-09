@@ -7,6 +7,7 @@ import type {
   AdminQuizUpdateRequest,
   QuizStatus,
   QuizDraftOutput,
+  QuizAttemptResponse,
   RecommendedQuiz,
 } from "@/lib/contracts/quiz";
 import type { Db } from "@/server/db";
@@ -18,6 +19,9 @@ export type QuizRepository = {
   updateQuiz(
     input: UpdateQuizInput,
   ): Promise<UpdateQuizResult | UpdateQuizConflict | null>;
+  recordQuizAttempt(
+    input: RecordQuizAttemptInput,
+  ): Promise<QuizAttemptResponse | RecordQuizAttemptConflict | null>;
 };
 
 export type CreateQuizDraftsInput = {
@@ -39,12 +43,72 @@ export type UpdateQuizConflict = {
   code: "quiz_choices_locked";
 };
 
+export type RecordQuizAttemptInput = {
+  userId: string;
+  quizId: string;
+  selectedChoiceId: string;
+};
+
+export type RecordQuizAttemptConflict = {
+  code: "invalid_choice";
+};
+
 export function createQuizRepository(db: Db): QuizRepository {
   return {
     findApprovedQuizzesByTags: (tags) => findApprovedQuizzesByTags(db, tags),
     createQuizDrafts: (input) => createQuizDrafts(db, input),
     updateQuiz: (input) => updateQuiz(db, input),
+    recordQuizAttempt: (input) => recordQuizAttempt(db, input),
   };
+}
+
+async function recordQuizAttempt(db: Db, input: RecordQuizAttemptInput) {
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        quizId: quizQuestions.id,
+        answerExplanationEn: quizQuestions.answerExplanationEn,
+        choiceId: quizChoices.id,
+        isCorrect: quizChoices.isCorrect,
+      })
+      .from(quizQuestions)
+      .innerJoin(quizChoices, eq(quizChoices.quizQuestionId, quizQuestions.id))
+      .where(
+        and(
+          eq(quizQuestions.id, input.quizId),
+          eq(quizQuestions.status, "approved"),
+        ),
+      );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const selectedChoice = rows.find(
+      (choice) => choice.choiceId === input.selectedChoiceId,
+    );
+    if (!selectedChoice) {
+      return { code: "invalid_choice" } as const;
+    }
+
+    const correctChoice = rows.find((choice) => choice.isCorrect);
+    if (!correctChoice) {
+      throw new Error("Approved quiz has no correct choice.");
+    }
+
+    await tx.insert(quizAttempts).values({
+      userId: input.userId,
+      quizQuestionId: input.quizId,
+      selectedChoiceId: input.selectedChoiceId,
+      isCorrect: selectedChoice.isCorrect,
+    });
+
+    return {
+      isCorrect: selectedChoice.isCorrect,
+      correctChoiceId: correctChoice.choiceId,
+      explanationEn: rows[0].answerExplanationEn,
+    };
+  });
 }
 
 async function updateQuiz(db: Db, input: UpdateQuizInput) {

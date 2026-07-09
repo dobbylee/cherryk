@@ -128,6 +128,42 @@ function createFakeUpdateDb(
   return { db, updateSet, deletedChoices, insertedChoices };
 }
 
+function createFakeAttemptDb(rows: unknown[] = []) {
+  const insertedAttempts: unknown[] = [];
+  const tx = {
+    select: vi.fn(() => ({
+      from: vi.fn((table) => {
+        if (table !== quizQuestions) {
+          throw new Error("Unexpected select table.");
+        }
+
+        return {
+          innerJoin: vi.fn(() => ({
+            where: vi.fn(async () => rows),
+          })),
+        };
+      }),
+    })),
+    insert: vi.fn((table) => {
+      if (table !== quizAttempts) {
+        throw new Error("Unexpected insert table.");
+      }
+
+      return {
+        values: vi.fn((values) => {
+          insertedAttempts.push(values);
+          return Promise.resolve();
+        }),
+      };
+    }),
+  };
+  const db = {
+    transaction: vi.fn(async (callback) => callback(tx)),
+  };
+
+  return { db, insertedAttempts };
+}
+
 describe("quizRepository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -352,5 +388,89 @@ describe("quizRepository", () => {
     expect(updateSet).toEqual([]);
     expect(deletedChoices).toEqual([]);
     expect(insertedChoices).toEqual([]);
+  });
+
+  it("records attempts for approved quizzes and returns the answer", async () => {
+    const { db, insertedAttempts } = createFakeAttemptDb([
+      {
+        quizId: "11111111-1111-4111-8111-111111111111",
+        answerExplanationEn:
+          "Use 를 because 사과 is the direct object of 먹어요.",
+        choiceId: "22222222-2222-4222-8222-222222222222",
+        isCorrect: false,
+      },
+      {
+        quizId: "11111111-1111-4111-8111-111111111111",
+        answerExplanationEn:
+          "Use 를 because 사과 is the direct object of 먹어요.",
+        choiceId: "33333333-3333-4333-8333-333333333333",
+        isCorrect: true,
+      },
+    ]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.recordQuizAttempt({
+        userId: "44444444-4444-4444-8444-444444444444",
+        quizId: "11111111-1111-4111-8111-111111111111",
+        selectedChoiceId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).resolves.toEqual({
+      isCorrect: true,
+      correctChoiceId: "33333333-3333-4333-8333-333333333333",
+      explanationEn: "Use 를 because 사과 is the direct object of 먹어요.",
+    });
+    expect(eq).toHaveBeenCalledWith(quizQuestions.status, "approved");
+    expect(insertedAttempts).toEqual([
+      {
+        userId: "44444444-4444-4444-8444-444444444444",
+        quizQuestionId: "11111111-1111-4111-8111-111111111111",
+        selectedChoiceId: "33333333-3333-4333-8333-333333333333",
+        isCorrect: true,
+      },
+    ]);
+  });
+
+  it("returns null when an approved quiz is not available", async () => {
+    const { db, insertedAttempts } = createFakeAttemptDb([]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.recordQuizAttempt({
+        userId: "44444444-4444-4444-8444-444444444444",
+        quizId: "11111111-1111-4111-8111-111111111111",
+        selectedChoiceId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).resolves.toBeNull();
+    expect(insertedAttempts).toEqual([]);
+  });
+
+  it("rejects selected choices that do not belong to the quiz", async () => {
+    const { db, insertedAttempts } = createFakeAttemptDb([
+      {
+        quizId: "11111111-1111-4111-8111-111111111111",
+        answerExplanationEn:
+          "Use 를 because 사과 is the direct object of 먹어요.",
+        choiceId: "22222222-2222-4222-8222-222222222222",
+        isCorrect: false,
+      },
+      {
+        quizId: "11111111-1111-4111-8111-111111111111",
+        answerExplanationEn:
+          "Use 를 because 사과 is the direct object of 먹어요.",
+        choiceId: "33333333-3333-4333-8333-333333333333",
+        isCorrect: true,
+      },
+    ]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.recordQuizAttempt({
+        userId: "44444444-4444-4444-8444-444444444444",
+        quizId: "11111111-1111-4111-8111-111111111111",
+        selectedChoiceId: "55555555-5555-4555-8555-555555555555",
+      }),
+    ).resolves.toEqual({ code: "invalid_choice" });
+    expect(insertedAttempts).toEqual([]);
   });
 });

@@ -4,6 +4,7 @@ import {
   QuizDraftInputSchema,
   QuizDraftOutputSchema,
   AdminQuizUpdateRequestSchema,
+  QuizAttemptRequestSchema,
   QuizRecommendationQuerySchema,
 } from "./quiz";
 
@@ -50,6 +51,17 @@ describe("QuizRecommendationQuerySchema", () => {
         tags: GrammarTags,
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("QuizAttemptRequestSchema", () => {
+  it("requires quiz and selected choice UUIDs", () => {
+    expect(
+      QuizAttemptRequestSchema.safeParse({
+        quizId: "not-a-uuid",
+        selectedChoiceId: "33333333-3333-4333-8333-333333333333",
+      }).success,
+    ).toBe(false);
   });
 });
 

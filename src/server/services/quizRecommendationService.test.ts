@@ -31,6 +31,9 @@ describe("quizRecommendationService", () => {
       async updateQuiz() {
         throw new Error("Not used.");
       },
+      async recordQuizAttempt() {
+        throw new Error("Not used.");
+      },
     };
     const service = createQuizRecommendationService(repository);
 
@@ -58,6 +61,9 @@ describe("quizRecommendationService", () => {
         throw new Error("Not used.");
       },
       async updateQuiz() {
+        throw new Error("Not used.");
+      },
+      async recordQuizAttempt() {
         throw new Error("Not used.");
       },
     };

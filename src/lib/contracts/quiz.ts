@@ -66,6 +66,17 @@ export const QuizRecommendationResponseSchema = z.object({
   quizzes: z.array(RecommendedQuizSchema),
 });
 
+export const QuizAttemptRequestSchema = z.object({
+  quizId: z.uuid(),
+  selectedChoiceId: z.uuid(),
+});
+
+export const QuizAttemptResponseSchema = z.object({
+  isCorrect: z.boolean(),
+  correctChoiceId: z.uuid(),
+  explanationEn: z.string().trim().min(1),
+});
+
 export const AdminQuizDraftChoiceSchema = QuizChoiceDraftSchema;
 
 export const AdminQuizDraftSchema = QuizDraftQuestionSchema.extend({
@@ -155,6 +166,8 @@ export type RecommendedQuiz = z.infer<typeof RecommendedQuizSchema>;
 export type QuizRecommendationResponse = z.infer<
   typeof QuizRecommendationResponseSchema
 >;
+export type QuizAttemptRequest = z.infer<typeof QuizAttemptRequestSchema>;
+export type QuizAttemptResponse = z.infer<typeof QuizAttemptResponseSchema>;
 export type AdminQuizDraft = z.infer<typeof AdminQuizDraftSchema>;
 export type AdminQuizDraftGenerationResponse = z.infer<
   typeof AdminQuizDraftGenerationResponseSchema

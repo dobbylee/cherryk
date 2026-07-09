@@ -56,6 +56,9 @@ function createFakeRepository(): QuizRepository & {
       repository.updateInput = input;
       return repository.updateResult;
     },
+    async recordQuizAttempt() {
+      throw new Error("Not used.");
+    },
   };
 
   return repository;
