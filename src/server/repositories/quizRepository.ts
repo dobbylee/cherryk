@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { UserLevelSchema } from "@/lib/contracts/common";
 import { GrammarTagSchema, type GrammarTag } from "@/lib/contracts/grammar-tags";
 import { QuizStatusSchema } from "@/lib/contracts/quiz";
@@ -11,7 +11,12 @@ import type {
   RecommendedQuiz,
 } from "@/lib/contracts/quiz";
 import type { Db } from "@/server/db";
-import { quizAttempts, quizChoices, quizQuestions } from "@/server/db/schema";
+import {
+  quizAttempts,
+  quizChoices,
+  quizQuestions,
+  userTagStats,
+} from "@/server/db/schema";
 
 export type QuizRepository = {
   findApprovedQuizzesByTags(tags: GrammarTag[]): Promise<RecommendedQuiz[]>;
@@ -22,6 +27,7 @@ export type QuizRepository = {
   recordQuizAttempt(
     input: RecordQuizAttemptInput,
   ): Promise<QuizAttemptResponse | RecordQuizAttemptConflict | null>;
+  findTopUserTags(userId: string): Promise<GrammarTag[]>;
 };
 
 export type CreateQuizDraftsInput = {
@@ -59,7 +65,21 @@ export function createQuizRepository(db: Db): QuizRepository {
     createQuizDrafts: (input) => createQuizDrafts(db, input),
     updateQuiz: (input) => updateQuiz(db, input),
     recordQuizAttempt: (input) => recordQuizAttempt(db, input),
+    findTopUserTags: (userId) => findTopUserTags(db, userId),
   };
+}
+
+async function findTopUserTags(db: Db, userId: string) {
+  const rows = await db
+    .select({ tag: userTagStats.tag })
+    .from(userTagStats)
+    .where(eq(userTagStats.userId, userId))
+    .orderBy(desc(userTagStats.count), desc(userTagStats.lastSeenAt));
+
+  return rows
+    .map((row) => GrammarTagSchema.safeParse(row.tag))
+    .filter((tag) => tag.success)
+    .map((tag) => tag.data);
 }
 
 async function recordQuizAttempt(db: Db, input: RecordQuizAttemptInput) {

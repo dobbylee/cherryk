@@ -39,6 +39,9 @@ function createFakeRepository(): QuizRepository & {
       repository.attemptInput = input;
       return repository.attemptResult;
     },
+    async findTopUserTags() {
+      throw new Error("Not used.");
+    },
   };
 
   return repository;

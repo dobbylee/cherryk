@@ -73,6 +73,9 @@ describe("GET /api/v1/quizzes/recommend", () => {
           },
         ];
       },
+      async findTopUserTags() {
+        throw new Error("Not used.");
+      },
     });
 
     const response = await GET(
@@ -127,6 +130,9 @@ describe("GET /api/v1/quizzes/recommend", () => {
         expect(tags).toEqual(GrammarTags);
         return [];
       },
+      async findTopUserTags() {
+        throw new Error("Not used.");
+      },
     });
 
     const response = await GET(
@@ -136,6 +142,47 @@ describe("GET /api/v1/quizzes/recommend", () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it("uses user tag stats when tags are not provided", async () => {
+    mocks.createQuizRepository.mockReturnValue({
+      async findTopUserTags(userId: string) {
+        expect(userId).toBe(testUser.id);
+        return ["particle_location"];
+      },
+      async findApprovedQuizzesByTags(tags: string[]) {
+        expect(tags).toEqual(["particle_location"]);
+        return [];
+      },
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/v1/quizzes/recommend"),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ quizzes: [] });
+  });
+
+  it("does not fall back when tags are explicitly empty", async () => {
+    mocks.createQuizRepository.mockReturnValue({
+      async findTopUserTags() {
+        throw new Error("Not used.");
+      },
+      async findApprovedQuizzesByTags(tags: string[]) {
+        expect(tags).toEqual([]);
+        return [];
+      },
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/v1/quizzes/recommend?tags="),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ quizzes: [] });
   });
 
   it("returns 401 when the user is not authenticated", async () => {

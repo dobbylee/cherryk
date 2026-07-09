@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { quizAttempts, quizChoices, quizQuestions } from "@/server/db/schema";
 import { createQuizRepository } from "./quizRepository";
@@ -6,6 +6,7 @@ import { createQuizRepository } from "./quizRepository";
 vi.mock("drizzle-orm", () => ({
   and: vi.fn((...conditions: unknown[]) => ({ type: "and", conditions })),
   asc: vi.fn((column: unknown) => ({ type: "asc", column })),
+  desc: vi.fn((column: unknown) => ({ type: "desc", column })),
   eq: vi.fn((left: unknown, right: unknown) => ({ type: "eq", left, right })),
   inArray: vi.fn((left: unknown, right: unknown) => ({
     type: "inArray",
@@ -26,6 +27,19 @@ function createFakeDb(rows: unknown[] = []) {
   };
 
   return { db, query };
+}
+
+function createFakeTopTagsDb(rows: unknown[] = []) {
+  const query = {
+    from: vi.fn(() => query),
+    where: vi.fn(() => query),
+    orderBy: vi.fn(async () => rows),
+  };
+  const db = {
+    select: vi.fn(() => query),
+  };
+
+  return { db };
 }
 
 function createFakeDraftDb() {
@@ -184,6 +198,21 @@ describe("quizRepository", () => {
 
     await expect(repository.findApprovedQuizzesByTags([])).resolves.toEqual([]);
     expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it("finds top valid user tags by count and recency", async () => {
+    const { db } = createFakeTopTagsDb([
+      { tag: "particle_object" },
+      { tag: "not_allowed" },
+      { tag: "spacing" },
+    ]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.findTopUserTags("11111111-1111-4111-8111-111111111111"),
+    ).resolves.toEqual(["particle_object", "spacing"]);
+    expect(eq).toHaveBeenCalled();
+    expect(desc).toHaveBeenCalledTimes(2);
   });
 
   it("creates quiz drafts with draft status and sorted choices", async () => {

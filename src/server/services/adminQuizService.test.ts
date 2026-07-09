@@ -59,6 +59,9 @@ function createFakeRepository(): QuizRepository & {
     async recordQuizAttempt() {
       throw new Error("Not used.");
     },
+    async findTopUserTags() {
+      throw new Error("Not used.");
+    },
   };
 
   return repository;

@@ -18,8 +18,11 @@ export async function GET(request: Request) {
     return userResult;
   }
 
+  const searchParams = new URL(request.url).searchParams;
   const parsed = QuizRecommendationQuerySchema.safeParse({
-    tags: parseTags(new URL(request.url).searchParams.get("tags")),
+    tags: searchParams.has("tags")
+      ? parseTags(searchParams.get("tags"))
+      : undefined,
   });
   if (!parsed.success) {
     return apiError("invalid_request", "Quiz recommendation query is invalid.", 400);
@@ -29,7 +32,10 @@ export async function GET(request: Request) {
     const service = createQuizRecommendationService(
       createQuizRepository(createDb()),
     );
-    const response = await service.recommendByTags(parsed.data.tags);
+    const response = await service.recommendByTags(
+      userResult,
+      searchParams.has("tags") ? parsed.data.tags : null,
+    );
 
     return NextResponse.json<QuizRecommendationResponse>(response);
   } catch {
