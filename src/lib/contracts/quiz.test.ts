@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { QuizDraftInputSchema, QuizDraftOutputSchema } from "./quiz";
+import { GrammarTags } from "./grammar-tags";
+import {
+  QuizDraftInputSchema,
+  QuizDraftOutputSchema,
+  QuizRecommendationQuerySchema,
+} from "./quiz";
 
 describe("QuizDraftInputSchema", () => {
   it("rejects unbounded draft generation counts", () => {
@@ -34,5 +39,15 @@ describe("QuizDraftOutputSchema", () => {
         ],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("QuizRecommendationQuerySchema", () => {
+  it("accepts the full v1 grammar tag set", () => {
+    expect(
+      QuizRecommendationQuerySchema.safeParse({
+        tags: GrammarTags,
+      }).success,
+    ).toBe(true);
   });
 });

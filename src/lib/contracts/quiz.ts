@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { UserLevelSchema } from "./common";
-import { GrammarTagSchema } from "./grammar-tags";
+import { GrammarTagSchema, GrammarTags } from "./grammar-tags";
 
 export const QuizStatusSchema = z.enum(["draft", "approved", "rejected"]);
 
@@ -44,6 +44,35 @@ export const QuizDraftOutputSchema = z
     });
   });
 
+export const QuizRecommendationQuerySchema = z.object({
+  tags: z.array(GrammarTagSchema).max(GrammarTags.length).default([]),
+});
+
+export const RecommendedQuizChoiceSchema = z.object({
+  id: z.uuid(),
+  text: z.string().trim().min(1),
+});
+
+export const RecommendedQuizSchema = z.object({
+  id: z.uuid(),
+  tag: GrammarTagSchema,
+  difficulty: UserLevelSchema,
+  questionEn: z.string().trim().min(1),
+  sentenceKo: z.string().trim().min(1),
+  choices: z.array(RecommendedQuizChoiceSchema).length(4),
+});
+
+export const QuizRecommendationResponseSchema = z.object({
+  quizzes: z.array(RecommendedQuizSchema),
+});
+
 export type QuizStatus = z.infer<typeof QuizStatusSchema>;
 export type QuizDraftInput = z.infer<typeof QuizDraftInputSchema>;
 export type QuizDraftOutput = z.infer<typeof QuizDraftOutputSchema>;
+export type QuizRecommendationQuery = z.infer<
+  typeof QuizRecommendationQuerySchema
+>;
+export type RecommendedQuiz = z.infer<typeof RecommendedQuizSchema>;
+export type QuizRecommendationResponse = z.infer<
+  typeof QuizRecommendationResponseSchema
+>;
