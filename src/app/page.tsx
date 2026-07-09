@@ -17,7 +17,6 @@ import type {
   CorrectionInput,
 } from "@/lib/contracts/correction";
 import type { UserLevel } from "@/lib/contracts/common";
-import { buildCorrectionReportMarkdown } from "@/lib/download/correction-report";
 
 type FormStatus = "idle" | "loading";
 
@@ -41,6 +40,7 @@ export default function HomePage() {
   const [ocrStatus, setOcrStatus] = useState<FormStatus>("idle");
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const [ocrExtractedText, setOcrExtractedText] = useState<string | null>(null);
+  const [hasCopiedCorrection, setHasCopiedCorrection] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const correctionRequestIdRef = useRef(0);
@@ -97,6 +97,7 @@ export default function HomePage() {
       activeUserIdRef.current = response.user.id;
       setUser(response.user);
       setCorrection(null);
+      setHasCopiedCorrection(false);
       setCorrectionStatus("idle");
       setOcrStatus("idle");
       setOcrNote(null);
@@ -126,6 +127,7 @@ export default function HomePage() {
       await logout();
       setUser(null);
       setCorrection(null);
+      setHasCopiedCorrection(false);
     } catch (error) {
       activeUserIdRef.current = user?.id ?? null;
       setMessage(error instanceof Error ? error.message : "Logout failed.");
@@ -164,6 +166,7 @@ export default function HomePage() {
         activeUserIdRef.current === userIdAtSubmit
       ) {
         setCorrection(response);
+        setHasCopiedCorrection(false);
       }
     } catch (error) {
       if (
@@ -210,6 +213,7 @@ export default function HomePage() {
         setOcrNote(response.note ?? null);
         setOcrExtractedText(response.extractedText);
         setCorrection(null);
+        setHasCopiedCorrection(false);
       }
     } catch (error) {
       if (
@@ -228,22 +232,19 @@ export default function HomePage() {
     }
   }
 
-  function handleDownload() {
+  async function handleCopyCorrectedText() {
     if (!correction) {
       return;
     }
 
-    const markdown = buildCorrectionReportMarkdown(correction);
-    const url = URL.createObjectURL(
-      new Blob([markdown], { type: "text/markdown" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `korean-correction-${new Date()
-      .toISOString()
-      .slice(0, 10)}.md`;
-    link.click();
-    URL.revokeObjectURL(url);
+    setMessage(null);
+
+    try {
+      await navigator.clipboard.writeText(correction.correctedText);
+      setHasCopiedCorrection(true);
+    } catch {
+      setMessage("Copy failed.");
+    }
   }
 
   return (
@@ -420,10 +421,10 @@ export default function HomePage() {
               <h2 className="text-sm font-semibold">Correction Result</h2>
               <button
                 className="h-9 rounded-md border border-[var(--line)] px-3 text-sm font-semibold"
-                onClick={handleDownload}
+                onClick={handleCopyCorrectedText}
                 type="button"
               >
-                Download
+                {hasCopiedCorrection ? "Copied" : "Copy text"}
               </button>
             </div>
             <dl className="mt-4 grid gap-4 text-sm">

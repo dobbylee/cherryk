@@ -105,6 +105,37 @@ describe("correctionService", () => {
       recommendedTags: ["particle_location"],
       now: testNow,
     });
+    expect(repository.recordInput?.extractedText).toBeUndefined();
+  });
+
+  it("stores OCR extracted text separately from user-edited correction text", async () => {
+    const repository = createFakeRepository();
+    const service = createCorrectionService(
+      repository,
+      createFakeAIProvider(correctionOutput),
+      {
+        now: () => testNow,
+      },
+    );
+
+    const result = await service.correctKorean(testUser, {
+      text: "저는 학교에 공부했어요.",
+      inputType: "image_ocr",
+      extractedText: "저는 학교어 공부했어요.",
+      level: "beginner",
+      correctionStyle: "minimal",
+    });
+
+    expect(result.originalText).toBe("저는 학교에 공부했어요.");
+    expect(repository.recordInput).toMatchObject({
+      userId: testUser.id,
+      inputType: "image_ocr",
+      originalText: "저는 학교에 공부했어요.",
+      extractedText: "저는 학교어 공부했어요.",
+      aiOutput: correctionOutput,
+      recommendedTags: ["particle_location"],
+      now: testNow,
+    });
   });
 
   it("rejects invalid AI correction output before storing", async () => {

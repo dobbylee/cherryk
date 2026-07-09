@@ -1,6 +1,6 @@
 # Korean Correction Coach
 
-Mobile-first web MVP for Korean writing correction, handwriting OCR, reviewed MCQ practice, and correction report downloads.
+Mobile-first web MVP for Korean writing correction, handwriting OCR, reviewed MCQ practice, and corrected-text copy.
 
 ## Local Setup
 
