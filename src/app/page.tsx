@@ -11,12 +11,20 @@ import {
 import { fetchCurrentUser, loginWithInvite, logout } from "@/lib/api/auth";
 import { submitCorrection } from "@/lib/api/corrections";
 import { extractKoreanTextFromImage } from "@/lib/api/ocr";
+import {
+  fetchQuizRecommendations,
+  submitQuizAttempt,
+} from "@/lib/api/quizzes";
 import type { AuthUser } from "@/lib/contracts/auth";
 import type {
   CorrectionResponse,
   CorrectionInput,
 } from "@/lib/contracts/correction";
 import type { UserLevel } from "@/lib/contracts/common";
+import type {
+  QuizAttemptResponse,
+  RecommendedQuiz,
+} from "@/lib/contracts/quiz";
 
 type FormStatus = "idle" | "loading";
 
@@ -41,9 +49,20 @@ export default function HomePage() {
   const [ocrNote, setOcrNote] = useState<string | null>(null);
   const [ocrExtractedText, setOcrExtractedText] = useState<string | null>(null);
   const [hasCopiedCorrection, setHasCopiedCorrection] = useState(false);
+  const [quizzes, setQuizzes] = useState<RecommendedQuiz[]>([]);
+  const [activeQuizIndex, setActiveQuizIndex] = useState(0);
+  const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
+  const [quizAttempt, setQuizAttempt] = useState<QuizAttemptResponse | null>(
+    null,
+  );
+  const [quizStatus, setQuizStatus] = useState<FormStatus>("idle");
+  const [quizAttemptStatus, setQuizAttemptStatus] =
+    useState<FormStatus>("idle");
+  const [quizMessage, setQuizMessage] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
   const correctionRequestIdRef = useRef(0);
+  const quizRequestIdRef = useRef(0);
 
   useEffect(() => {
     activeUserIdRef.current = user?.id ?? null;
@@ -80,6 +99,18 @@ export default function HomePage() {
     () => correction?.recommendedTags ?? [],
     [correction],
   );
+  const activeQuiz = quizzes[activeQuizIndex] ?? null;
+
+  function resetPractice() {
+    quizRequestIdRef.current += 1;
+    setQuizzes([]);
+    setActiveQuizIndex(0);
+    setSelectedChoiceId(null);
+    setQuizAttempt(null);
+    setQuizStatus("idle");
+    setQuizAttemptStatus("idle");
+    setQuizMessage(null);
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,6 +134,7 @@ export default function HomePage() {
       setOcrNote(null);
       setOcrExtractedText(null);
       setInputSource("text");
+      resetPractice();
       setInviteCode("");
       setDisplayName("");
     } catch (error) {
@@ -116,12 +148,14 @@ export default function HomePage() {
     setMessage(null);
     setAuthStatus("loading");
     correctionRequestIdRef.current += 1;
+    quizRequestIdRef.current += 1;
     activeUserIdRef.current = null;
     setCorrectionStatus("idle");
     setOcrStatus("idle");
     setOcrNote(null);
     setOcrExtractedText(null);
     setInputSource("text");
+    resetPractice();
 
     try {
       await logout();
@@ -167,6 +201,7 @@ export default function HomePage() {
       ) {
         setCorrection(response);
         setHasCopiedCorrection(false);
+        resetPractice();
       }
     } catch (error) {
       if (
@@ -214,6 +249,7 @@ export default function HomePage() {
         setOcrExtractedText(response.extractedText);
         setCorrection(null);
         setHasCopiedCorrection(false);
+        resetPractice();
       }
     } catch (error) {
       if (
@@ -245,6 +281,118 @@ export default function HomePage() {
     } catch {
       setMessage("Copy failed.");
     }
+  }
+
+  async function handleLoadRecommendedQuizzes() {
+    if (
+      !user ||
+      authStatus === "loading" ||
+      quizStatus === "loading" ||
+      quizAttemptStatus === "loading"
+    ) {
+      return;
+    }
+
+    setMessage(null);
+    setQuizMessage(null);
+    setQuizStatus("loading");
+    setQuizAttemptStatus("idle");
+    setSelectedChoiceId(null);
+    setQuizAttempt(null);
+    const requestId = quizRequestIdRef.current + 1;
+    quizRequestIdRef.current = requestId;
+    const userIdAtSubmit = user.id;
+
+    try {
+      const response = await fetchQuizRecommendations(
+        recommendedTags.length ? recommendedTags : undefined,
+      );
+      if (
+        quizRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setQuizzes(response.quizzes);
+        setActiveQuizIndex(0);
+        setSelectedChoiceId(null);
+        setQuizAttempt(null);
+        setQuizMessage(
+          response.quizzes.length ? null : "No approved quizzes yet.",
+        );
+      }
+    } catch (error) {
+      if (
+        quizRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setQuizMessage(
+          error instanceof Error ? error.message : "Practice failed.",
+        );
+      }
+    } finally {
+      if (
+        quizRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setQuizStatus("idle");
+      }
+    }
+  }
+
+  async function handleQuizAttempt(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (
+      !user ||
+      !activeQuiz ||
+      !selectedChoiceId ||
+      quizStatus === "loading" ||
+      quizAttemptStatus === "loading"
+    ) {
+      return;
+    }
+
+    setQuizMessage(null);
+    setQuizAttemptStatus("loading");
+    const requestId = quizRequestIdRef.current + 1;
+    quizRequestIdRef.current = requestId;
+    const userIdAtSubmit = user.id;
+
+    try {
+      const response = await submitQuizAttempt({
+        quizId: activeQuiz.id,
+        selectedChoiceId,
+      });
+      if (
+        quizRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setQuizAttempt(response);
+      }
+    } catch (error) {
+      if (
+        quizRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setQuizMessage(
+          error instanceof Error ? error.message : "Quiz attempt failed.",
+        );
+      }
+    } finally {
+      if (
+        quizRequestIdRef.current === requestId &&
+        activeUserIdRef.current === userIdAtSubmit
+      ) {
+        setQuizAttemptStatus("idle");
+      }
+    }
+  }
+
+  function handleNextQuiz() {
+    setActiveQuizIndex((currentIndex) =>
+      Math.min(currentIndex + 1, quizzes.length - 1),
+    );
+    setSelectedChoiceId(null);
+    setQuizAttempt(null);
+    setQuizMessage(null);
   }
 
   return (
@@ -474,28 +622,119 @@ export default function HomePage() {
                   )}
                 </div>
                 <button
-                  className="mt-4 h-10 w-full rounded-md border border-[var(--line)] bg-white text-sm font-semibold text-[var(--muted)]"
-                  disabled
+                  className="mt-4 h-10 w-full rounded-md border border-[var(--accent)] bg-white text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
+                  disabled={
+                    authStatus === "loading" ||
+                    correctionStatus === "loading" ||
+                    ocrStatus === "loading" ||
+                    quizStatus === "loading" ||
+                    quizAttemptStatus === "loading"
+                  }
+                  onClick={handleLoadRecommendedQuizzes}
                   type="button"
                 >
-                  Practice MCQ
+                  {quizStatus === "loading" ? "Loading..." : "Practice MCQ"}
                 </button>
-                <div className="mt-5 border-t border-[var(--line)] pt-4">
-                  <p className="text-sm font-bold text-[var(--accent)]">
-                    Review lane
+                {quizMessage ? (
+                  <p className="mt-3 text-sm text-[var(--muted)]">
+                    {quizMessage}
                   </p>
-                  <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                    <span className="border-l-2 border-[var(--line)] pl-3">
-                      AI draft
-                    </span>
-                    <span className="border-l-2 border-[var(--line)] pl-3">
-                      Native review
-                    </span>
-                    <span className="border-l-2 border-[var(--line)] pl-3">
-                      Approved quiz
-                    </span>
-                  </div>
-                </div>
+                ) : null}
+                {activeQuiz ? (
+                  <form
+                    className="mt-5 border-t border-[var(--line)] pt-4"
+                    onSubmit={handleQuizAttempt}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold text-[var(--muted)]">
+                        {activeQuizIndex + 1} / {quizzes.length}
+                      </span>
+                      <span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs font-semibold text-[var(--secondary)]">
+                        {activeQuiz.tag}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-base font-semibold tracking-normal">
+                      {activeQuiz.questionEn}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      {activeQuiz.sentenceKo}
+                    </p>
+                    <div className="mt-4 grid gap-2">
+                      {activeQuiz.choices.map((choice) => {
+                        const isSelected = choice.id === selectedChoiceId;
+                        const isCorrectChoice =
+                          quizAttempt?.correctChoiceId === choice.id;
+                        const isWrongSelected =
+                          quizAttempt && isSelected && !isCorrectChoice;
+
+                        return (
+                          <button
+                            className={`min-h-10 rounded-md border bg-white px-3 py-2 text-left text-sm font-semibold ${
+                              isCorrectChoice
+                                ? "border-[var(--accent)] text-[var(--accent-strong)]"
+                                : isWrongSelected
+                                  ? "border-[var(--danger-line)] text-[var(--danger)]"
+                                  : isSelected
+                                    ? "border-[var(--accent)] text-[var(--foreground)]"
+                                    : "border-[var(--line)] text-[var(--foreground)]"
+                            }`}
+                            disabled={
+                              !!quizAttempt ||
+                              quizStatus === "loading" ||
+                              quizAttemptStatus === "loading"
+                            }
+                            key={choice.id}
+                            onClick={() => setSelectedChoiceId(choice.id)}
+                            type="button"
+                          >
+                            {choice.text}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {quizAttempt ? (
+                      <div
+                        className="mt-4 rounded-md border border-[var(--line)] bg-white p-3"
+                        role="status"
+                      >
+                        <p className="text-sm font-semibold">
+                          {quizAttempt.isCorrect ? "Correct" : "Review"}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                          {quizAttempt.explanationEn}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        className="h-10 flex-1 rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
+                        disabled={
+                          !selectedChoiceId ||
+                          !!quizAttempt ||
+                          quizStatus === "loading" ||
+                          quizAttemptStatus === "loading"
+                        }
+                        type="submit"
+                      >
+                        {quizAttemptStatus === "loading"
+                          ? "Checking..."
+                          : "Check"}
+                      </button>
+                      <button
+                        className="h-10 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-semibold text-[var(--foreground)] disabled:opacity-60"
+                        disabled={
+                          activeQuizIndex >= quizzes.length - 1 ||
+                          quizStatus === "loading" ||
+                          quizAttemptStatus === "loading"
+                        }
+                        onClick={handleNextQuiz}
+                        type="button"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
               </aside>
             </section>
 
