@@ -3,17 +3,14 @@
 Use this checklist for each implementation task.
 
 1. Read `AGENTS.md` and `local/plan.md`.
-2. State assumptions or ask if the task has multiple plausible meanings.
-3. If a business or product decision is needed, present a recommendation and tradeoffs before implementing.
-4. Define success criteria in a form that can be checked.
-5. Identify the smallest coherent implementation slice.
-6. Edit only the files needed for that slice.
-7. Run focused verification that matches the success criteria.
-8. If the task exposed a failure mode, decide whether it deserves a harness update using the scoring rubric below.
-9. Ask an xhigh subagent to review the changed files with `agent-harness/prompts/xhigh-implementation-review.md`.
-10. Fix every valid finding.
-11. Repeat verification and xhigh review until the reviewer returns exactly `No Findings`.
-12. Summarize changed files, verification, review result, and any harness rule added or deliberately skipped.
+2. Resolve ambiguity or product decisions that can change correctness or scope.
+3. Define checkable success criteria and the smallest coherent implementation slice.
+4. Edit only the files needed for that slice.
+5. Run focused verification that matches the success criteria.
+6. If the task exposed a repeatable failure mode, evaluate it with the harness rubric below. When it qualifies, add the smallest safeguard and verify that it catches or prevents the failure.
+7. Ask the project `reviewer` subagent to review the changed files with `agent-harness/prompts/implementation-review.md`.
+8. Fix every valid finding, then repeat verification and review until the reviewer returns exactly `No Findings`.
+9. Summarize changed files, verification, review result, and any harness rule added or deliberately skipped.
 
 ## Success Criteria Examples
 
@@ -48,7 +45,7 @@ Add or change a harness rule only when the total score is at least 8, or when Se
 ## Harness Update Placement
 
 - Add tests when the failure is deterministic and cheap to exercise.
-- Add an xhigh prompt check when the failure requires architectural or judgment-based review.
+- Add a reviewer prompt check when the failure requires architectural or judgment-based review.
 - Add `AGENTS.md` guidance only for durable behavior that every agent must follow.
 - Add `agent-harness/workflow.md` guidance for process, scoring, and handoff rules.
 - Add stack or version decisions to `agent-harness/decisions.md`.

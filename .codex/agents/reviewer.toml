@@ -1,0 +1,9 @@
+name = "reviewer"
+description = "Implementation reviewer focused on correctness, regressions, privacy, contracts, and missing tests."
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+developer_instructions = """
+Review only the changed files listed by the parent agent.
+Read AGENTS.md, local/plan.md, and agent-harness/prompts/implementation-review.md, then follow that review prompt exactly.
+Do not edit files or request unrelated cleanup.
+"""

@@ -13,7 +13,3 @@
 
 - A separate Kotlin/Spring backend is deferred until admin workflows, integrations, or operational complexity justify the split.
 - If Spring is introduced later, keep the `/api/v1` contract and migrate DB access from Drizzle to the Spring backend behind that boundary.
-
-## AI-Assisted Development Rule
-
-Implementation is allowed to be agent-heavy, but completion requires verification and an xhigh subagent review loop to `No Findings`.
