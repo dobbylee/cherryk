@@ -14,7 +14,6 @@ import { fetchCurrentUser, logout } from "@/lib/api/auth";
 import { submitCorrection } from "@/lib/api/corrections";
 import { extractKoreanTextFromImage } from "@/lib/api/ocr";
 import type { AuthUser } from "@/lib/contracts/auth";
-import type { UserLevel } from "@/lib/contracts/common";
 import type {
   CorrectionInput,
   CorrectionResponse,
@@ -22,19 +21,12 @@ import type {
 
 type FormStatus = "idle" | "loading";
 
-const levelOptions: { value: UserLevel; label: string }[] = [
-  { value: "beginner", label: "Beginner" },
-  { value: "lower_intermediate", label: "Lower intermediate" },
-  { value: "intermediate", label: "Intermediate" },
-];
-
 export default function CorrectionPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [text, setText] = useState("저는 학교에 공부했어요.");
   const [inputSource, setInputSource] =
     useState<CorrectionInput["inputType"]>("text");
-  const [level, setLevel] = useState<UserLevel>("beginner");
   const [correction, setCorrection] = useState<CorrectionResponse | null>(null);
   const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
   const [correctionStatus, setCorrectionStatus] = useState<FormStatus>("idle");
@@ -122,7 +114,7 @@ export default function CorrectionPage() {
         inputSource === "image_ocr"
           ? (ocrExtractedText ?? undefined)
           : undefined,
-      level,
+      level: user.level,
       correctionStyle: "minimal",
     };
 
@@ -243,9 +235,6 @@ export default function CorrectionPage() {
               <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
                 {inputSource === "image_ocr" ? "OCR input" : "Text input"}
               </span>
-              <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
-                {formatLevel(level)}
-              </span>
             </div>
           </div>
 
@@ -294,19 +283,7 @@ export default function CorrectionPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <select
-                aria-label="Korean level"
-                className="h-11 rounded-md border border-[var(--line)] bg-white px-3 text-sm text-[var(--foreground)]"
-                onChange={(event) => setLevel(event.target.value as UserLevel)}
-                value={level}
-              >
-                {levelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+            <div className="flex justify-end">
               <button
                 className="h-11 rounded-md border border-[var(--accent)] bg-white px-5 text-sm font-semibold text-[var(--accent-strong)] shadow-[inset_0_0_0_1px_rgb(255_255_255_/_75%)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
                 disabled={
@@ -470,8 +447,4 @@ function ResultBlock({
       </dd>
     </div>
   );
-}
-
-function formatLevel(level: UserLevel) {
-  return levelOptions.find((option) => option.value === level)?.label ?? level;
 }

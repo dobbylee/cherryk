@@ -1,12 +1,5 @@
 import Link from "next/link";
 import type { AuthUser } from "@/lib/contracts/auth";
-import type { UserLevel } from "@/lib/contracts/common";
-
-const levelLabels: Record<UserLevel, string> = {
-  beginner: "Beginner",
-  lower_intermediate: "Lower intermediate",
-  intermediate: "Intermediate",
-};
 
 export function AppHeader({
   authBusy,
@@ -27,7 +20,7 @@ export function AppHeader({
       {user ? (
         <div className="flex items-center justify-between gap-3 sm:justify-end">
           <p className="min-w-0 text-sm font-medium text-[var(--muted)]">
-            {user.displayName || "Friend"} / {levelLabels[user.level]}
+            {user.displayName || "Friend"}
           </p>
           <button
             className="h-10 rounded-md border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--foreground)] hover:border-[var(--accent)] disabled:opacity-60"
