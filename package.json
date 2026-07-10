@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed:dev": "tsx src/server/db/seedDevInvite.ts",
+    "db:seed:invite": "tsx src/server/db/seedInvite.ts",
     "db:seed:quizzes": "tsx src/server/db/seedInitialApprovedQuizzes.ts",
     "db:studio": "drizzle-kit studio",
     "db:psql": "docker compose exec postgres psql -U cherryk -d cherryk"

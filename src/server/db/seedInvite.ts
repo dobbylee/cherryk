@@ -21,13 +21,12 @@ async function main() {
     await createAuthService(createAuthRepository(connection.db)).seedInviteCode(
       {
         inviteCode,
-        label: "Local development",
+        label: "Initial invite",
         maxUses: 20,
-        resetUsedCount: true,
       },
     );
 
-    console.log("Seeded development invite code from INVITE_CODE_SEED.");
+    console.log("Seeded invite code from INVITE_CODE_SEED.");
   } finally {
     await connection.close();
   }

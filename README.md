@@ -10,7 +10,7 @@ cp .env.example .env.local
 # Set AUTH_SECRET in .env.local before seeding.
 docker compose up -d postgres
 pnpm db:migrate
-pnpm db:seed:dev
+pnpm db:seed:invite
 pnpm db:seed:quizzes
 pnpm dev
 ```
@@ -32,7 +32,7 @@ pnpm test:unit
 pnpm build
 pnpm db:generate
 pnpm db:migrate
-pnpm db:seed:dev
+pnpm db:seed:invite
 pnpm db:seed:quizzes
 pnpm db:psql
 ```
