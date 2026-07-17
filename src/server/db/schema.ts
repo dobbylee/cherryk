@@ -50,7 +50,6 @@ export const corrections = pgTable("corrections", {
     .references(() => users.id, { onDelete: "cascade" }),
   inputType: text("input_type").notNull(),
   originalText: text("original_text").notNull(),
-  extractedText: text("extracted_text"),
   correctedText: text("corrected_text").notNull(),
   naturalText: text("natural_text"),
   explanationEn: text("explanation_en"),

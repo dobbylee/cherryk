@@ -33,7 +33,6 @@ export default function CorrectionPage() {
   const [correctionStatus, setCorrectionStatus] = useState<FormStatus>("idle");
   const [ocrStatus, setOcrStatus] = useState<FormStatus>("idle");
   const [ocrNote, setOcrNote] = useState<string | null>(null);
-  const [ocrExtractedText, setOcrExtractedText] = useState<string | null>(null);
   const [selectedImageName, setSelectedImageName] = useState<string | null>(
     null,
   );
@@ -111,10 +110,6 @@ export default function CorrectionPage() {
     const payload: CorrectionInput = {
       text,
       inputType: inputSource,
-      extractedText:
-        inputSource === "image_ocr"
-          ? (ocrExtractedText ?? undefined)
-          : undefined,
       level: user.level,
       correctionStyle: "minimal",
     };
@@ -159,7 +154,6 @@ export default function CorrectionPage() {
         setText(response.extractedText);
         setInputSource("image_ocr");
         setOcrNote(response.note ?? null);
-        setOcrExtractedText(response.extractedText);
         setCorrection(null);
         setHasCopiedCorrection(false);
       }

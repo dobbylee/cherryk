@@ -12,7 +12,6 @@ export type CreateCorrectionRecordInput = {
   userId: string;
   inputType: "text" | "image_ocr";
   originalText: string;
-  extractedText?: string;
   aiOutput: CorrectionAIOutput;
   recommendedTags: GrammarTag[];
   now: Date;
@@ -41,7 +40,6 @@ async function createCorrectionRecord(
         userId: input.userId,
         inputType: input.inputType,
         originalText: input.originalText,
-        extractedText: input.extractedText,
         correctedText: input.aiOutput.correctedText,
         explanationEn: input.aiOutput.explanationEn,
       })

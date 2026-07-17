@@ -5,7 +5,6 @@ import { GrammarTagSchema } from "./grammar-tags";
 export const CorrectionInputSchema = z.object({
   text: z.string().trim().min(1).max(4000),
   inputType: z.enum(["text", "image_ocr"]),
-  extractedText: z.string().trim().max(4000).optional(),
   level: UserLevelSchema,
   correctionStyle: z.literal("minimal"),
 });

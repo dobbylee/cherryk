@@ -8,6 +8,13 @@
       "when": 1783397631353,
       "tag": "0000_left_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784276650449,
+      "tag": "0001_military_iron_fist",
+      "breakpoints": true
     }
   ]
 }

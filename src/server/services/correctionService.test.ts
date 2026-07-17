@@ -97,10 +97,9 @@ describe("correctionService", () => {
       recommendedTags: ["particle_location"],
       now: testNow,
     });
-    expect(repository.recordInput?.extractedText).toBeUndefined();
   });
 
-  it("stores OCR extracted text separately from user-edited correction text", async () => {
+  it("stores only the user-edited text when correction starts from OCR", async () => {
     const repository = createFakeRepository();
     const service = createCorrectionService(
       repository,
@@ -113,7 +112,6 @@ describe("correctionService", () => {
     const result = await service.correctKorean(testUser, {
       text: "저는 학교에 공부했어요.",
       inputType: "image_ocr",
-      extractedText: "저는 학교어 공부했어요.",
       level: "beginner",
       correctionStyle: "minimal",
     });
@@ -123,10 +121,55 @@ describe("correctionService", () => {
       userId: testUser.id,
       inputType: "image_ocr",
       originalText: "저는 학교에 공부했어요.",
-      extractedText: "저는 학교어 공부했어요.",
       aiOutput: correctionOutput,
       recommendedTags: ["particle_location"],
       now: testNow,
+    });
+  });
+
+  it("preserves original formatting when the model only changes line breaks", async () => {
+    const repository = createFakeRepository();
+    const originalText =
+      "오늘은 서쪽 지방을 중심으로 공기가 무척\n탁하겠습니다.";
+    const service = createCorrectionService(
+      repository,
+      createFakeAIProvider({
+        correctedText:
+          "오늘은 서쪽 지방을 중심으로 공기가 무척 탁하겠습니다.",
+        explanationEn:
+          "Only the line break in the middle of the sentence was removed.",
+        mistakes: [
+          {
+            tag: "spacing",
+            originalPart: "무척\n탁하겠습니다",
+            correctedPart: "무척 탁하겠습니다",
+            explanationEn:
+              "A line break was changed to a regular space.",
+            severity: "minor",
+          },
+        ],
+      }),
+      { now: () => testNow },
+    );
+
+    const result = await service.correctKorean(testUser, {
+      text: originalText,
+      inputType: "image_ocr",
+      level: "beginner",
+      correctionStyle: "minimal",
+    });
+
+    expect(result).toMatchObject({
+      originalText,
+      correctedText: originalText,
+      explanationEn: "No corrections were needed.",
+      mistakes: [],
+      recommendedTags: [],
+    });
+    expect(repository.recordInput?.aiOutput).toEqual({
+      correctedText: originalText,
+      explanationEn: "No corrections were needed.",
+      mistakes: [],
     });
   });
 

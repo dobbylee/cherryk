@@ -42,14 +42,15 @@ describe("openAIProvider", () => {
       fetch: fetchMock as unknown as typeof fetch,
     });
 
-    await expect(
-      provider.correctKorean({
-        text: "저는 학교에 공부했어요.",
-        inputType: "text",
-        level: "beginner",
-        correctionStyle: "minimal",
-      }),
-    ).resolves.toEqual({
+    const correctionInput = {
+      text: "저는 학교에 공부했어요.",
+      inputType: "image_ocr",
+      extractedText: "이전 OCR 전체 텍스트",
+      level: "beginner",
+      correctionStyle: "minimal",
+    } as const;
+
+    await expect(provider.correctKorean(correctionInput)).resolves.toEqual({
       correctedText: "저는 학교에서 공부했어요.",
       explanationEn: "Use 에서 for the place where an action happens.",
       mistakes: [
@@ -70,6 +71,11 @@ describe("openAIProvider", () => {
     expect(body.model).toBe("test-text-model");
     expect(body.reasoning).toEqual({ effort: "medium" });
     expect(body.store).toBe(false);
+    expect(JSON.parse(body.input)).toEqual({
+      text: "저는 학교에 공부했어요.",
+      level: "beginner",
+      correctionStyle: "minimal",
+    });
     expect(body.text.format).toMatchObject({
       type: "json_schema",
       name: "korean_correction",
@@ -77,6 +83,9 @@ describe("openAIProvider", () => {
     });
     expect(body.input).toContain("학교에 공부했어요");
     expect(body.instructions).toContain("correctedText must be Korean");
+    expect(body.instructions).toContain(
+      "Do not treat layout-only line-break changes as mistakes",
+    );
     expect(body.text.format.schema.required).not.toContain("naturalText");
     expect(body.text.format.schema.properties).not.toHaveProperty(
       "naturalText",

@@ -53,7 +53,11 @@ export function createOpenAIProvider(
         schemaName: "korean_correction",
         schema: correctionOutputSchema,
         instructions: correctionInstructions,
-        input: JSON.stringify(input),
+        input: JSON.stringify({
+          text: input.text,
+          level: input.level,
+          correctionStyle: input.correctionStyle,
+        }),
       });
     },
 
@@ -232,6 +236,7 @@ const correctionInstructions = [
   "You correct Korean learner writing.",
   "Preserve meaning and make the smallest correction that fixes real errors.",
   "Do not over-correct natural casual Korean.",
+  "Preserve line breaks and paragraph breaks. Do not treat layout-only line-break changes as mistakes.",
   "correctedText must be Korean and must never be an English translation.",
   "Each mistake must describe a real change: originalPart and correctedPart must differ and must match the relevant source and corrected text exactly.",
   "Return English explanations and tags only from the allowed enum.",

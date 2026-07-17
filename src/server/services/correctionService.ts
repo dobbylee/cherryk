@@ -57,7 +57,6 @@ export function createCorrectionService(
         userId: user.id,
         inputType: input.inputType,
         originalText: input.text,
-        extractedText: input.extractedText,
         aiOutput: normalizedOutput,
         recommendedTags,
         now: now(),
@@ -77,6 +76,17 @@ function normalizeCorrectionOutput(
   originalText: string,
   output: CorrectionAIOutput,
 ): CorrectionAIOutput {
+  if (
+    normalizeWhitespace(originalText) ===
+    normalizeWhitespace(output.correctedText)
+  ) {
+    return {
+      correctedText: originalText,
+      explanationEn: "No corrections were needed.",
+      mistakes: [],
+    };
+  }
+
   const originalIsKorean = containsHangul(originalText);
   if (
     originalIsKorean &&
@@ -102,6 +112,10 @@ function normalizeCorrectionOutput(
       return describesChange && matchesOriginal && matchesCorrection;
     }),
   };
+}
+
+function normalizeWhitespace(value: string) {
+  return value.trim().replace(/\s+/gu, " ");
 }
 
 function containsHangul(value: string) {
