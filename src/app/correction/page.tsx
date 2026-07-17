@@ -13,6 +13,7 @@ import { AppHeader } from "@/app/_components/app-header";
 import { fetchCurrentUser, logout } from "@/lib/api/auth";
 import { submitCorrection } from "@/lib/api/corrections";
 import { extractKoreanTextFromImage } from "@/lib/api/ocr";
+import { buildCorrectionHighlightSegments } from "@/lib/correctionHighlights";
 import type { AuthUser } from "@/lib/contracts/auth";
 import type {
   CorrectionInput,
@@ -323,13 +324,11 @@ export default function CorrectionPage() {
               <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2">
                 <ResultBlock label="Original" value={correction.originalText} />
                 <ResultBlock
+                  correctionChanges={correction.mistakes}
                   label="Corrected"
+                  originalValue={correction.originalText}
                   tone="accent"
                   value={correction.correctedText}
-                />
-                <ResultBlock
-                  label="More natural"
-                  value={correction.naturalText}
                 />
                 <ResultBlock
                   label="Explanation"
@@ -425,14 +424,29 @@ function ErrorMessage({ message }: { message: string }) {
 }
 
 function ResultBlock({
+  correctionChanges,
   label,
+  originalValue,
   value,
   tone = "default",
 }: {
+  correctionChanges?: {
+    originalPart: string;
+    correctedPart: string;
+  }[];
   label: string;
+  originalValue?: string;
   value: string;
   tone?: "default" | "accent";
 }) {
+  const segments = correctionChanges
+    ? buildCorrectionHighlightSegments(
+        originalValue ?? "",
+        value,
+        correctionChanges,
+      )
+    : null;
+
   return (
     <div className="border-t border-[var(--line)] pt-3">
       <dt className="font-semibold">{label}</dt>
@@ -443,7 +457,20 @@ function ResultBlock({
             : "text-[var(--muted)]"
         }`}
       >
-        {value}
+        {segments
+          ? segments.map((segment, index) => (
+              <span
+                className={
+                  segment.highlighted
+                    ? "font-bold text-[var(--accent-strong)]"
+                    : undefined
+                }
+                key={`${segment.highlighted}-${index}`}
+              >
+                {segment.text}
+              </span>
+            ))
+          : value}
       </dd>
     </div>
   );

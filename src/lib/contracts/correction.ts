@@ -20,7 +20,6 @@ export const CorrectionMistakeSchema = z.object({
 
 export const CorrectionAIOutputSchema = z.object({
   correctedText: z.string(),
-  naturalText: z.string(),
   explanationEn: z.string(),
   mistakes: z.array(CorrectionMistakeSchema),
 });

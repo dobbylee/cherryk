@@ -1,6 +1,6 @@
 name = "reviewer"
 description = "Implementation reviewer focused on correctness, regressions, privacy, contracts, and missing tests."
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Review only the changed files listed by the parent agent.

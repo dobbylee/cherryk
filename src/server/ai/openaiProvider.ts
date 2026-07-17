@@ -63,7 +63,10 @@ export function createOpenAIProvider(
         note: string | null;
       }>({
         apiKey: requireValue(options.apiKey, "OPENAI_API_KEY is required."),
-        model: requireValue(options.visionModel, "AI_VISION_MODEL is required."),
+        model: requireValue(
+          options.visionModel,
+          "AI_VISION_MODEL is required.",
+        ),
         reasoningEffort: options.reasoningEffort,
         fetcher,
         schemaName: "korean_ocr",
@@ -167,7 +170,11 @@ async function requestStructuredOutput<T>(input: {
 }
 
 function readOutputText(payload: unknown) {
-  if (typeof payload !== "object" || payload === null || !("output" in payload)) {
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("output" in payload)
+  ) {
     return null;
   }
 
@@ -225,6 +232,8 @@ const correctionInstructions = [
   "You correct Korean learner writing.",
   "Preserve meaning and make the smallest correction that fixes real errors.",
   "Do not over-correct natural casual Korean.",
+  "correctedText must be Korean and must never be an English translation.",
+  "Each mistake must describe a real change: originalPart and correctedPart must differ and must match the relevant source and corrected text exactly.",
   "Return English explanations and tags only from the allowed enum.",
 ].join("\n");
 
@@ -255,10 +264,9 @@ const userLevelProperty = {
 const correctionOutputSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["correctedText", "naturalText", "explanationEn", "mistakes"],
+  required: ["correctedText", "explanationEn", "mistakes"],
   properties: {
     correctedText: { type: "string" },
-    naturalText: { type: "string" },
     explanationEn: { type: "string" },
     mistakes: {
       type: "array",

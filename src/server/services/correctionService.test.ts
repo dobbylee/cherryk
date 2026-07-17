@@ -20,7 +20,6 @@ const testUser: AuthUser = {
 
 const correctionOutput: CorrectionAIOutput = {
   correctedText: "저는 학교에서 공부했어요.",
-  naturalText: "저는 학교에서 공부했어요.",
   explanationEn:
     "Use 에서 for the place where an action happens. 에 marks a destination.",
   mistakes: [
@@ -30,13 +29,6 @@ const correctionOutput: CorrectionAIOutput = {
       correctedPart: "학교에서",
       explanationEn: "공부하다 happens at 학교, so use 에서.",
       severity: "major",
-    },
-    {
-      tag: "particle_location",
-      originalPart: "집에",
-      correctedPart: "집에서",
-      explanationEn: "공부하다 happens at 집, so use 에서.",
-      severity: "minor",
     },
   ],
 };
@@ -138,13 +130,138 @@ describe("correctionService", () => {
     });
   });
 
+  it("removes mistakes without a real change or matching text", async () => {
+    const repository = createFakeRepository();
+    const service = createCorrectionService(
+      repository,
+      createFakeAIProvider({
+        ...correctionOutput,
+        mistakes: [
+          ...correctionOutput.mistakes,
+          {
+            tag: "word_choice",
+            originalPart: "공부했어요",
+            correctedPart: "공부했어요",
+            explanationEn: "No actual change.",
+            severity: "minor",
+          },
+          {
+            tag: "word_choice",
+            originalPart: "없는 원문",
+            correctedPart: "학교에서",
+            explanationEn: "The original part is hallucinated.",
+            severity: "minor",
+          },
+          {
+            tag: "word_choice",
+            originalPart: "학교에",
+            correctedPart: "없는 교정",
+            explanationEn: "The corrected part is hallucinated.",
+            severity: "minor",
+          },
+        ],
+      }),
+      {
+        now: () => testNow,
+      },
+    );
+
+    const result = await service.correctKorean(testUser, {
+      text: "저는 학교에 공부했어요.",
+      inputType: "text",
+      level: "beginner",
+      correctionStyle: "minimal",
+    });
+
+    expect(result.mistakes).toEqual(correctionOutput.mistakes);
+    expect(result.recommendedTags).toEqual(["particle_location"]);
+    expect(repository.recordInput?.aiOutput).toMatchObject({
+      mistakes: correctionOutput.mistakes,
+    });
+  });
+
+  it("rejects a non-Korean correctedText for Korean input", async () => {
+    const repository = createFakeRepository();
+    const service = createCorrectionService(
+      repository,
+      createFakeAIProvider({
+        ...correctionOutput,
+        correctedText: "I studied at 학교.",
+      }),
+      {
+        now: () => testNow,
+      },
+    );
+
+    await expect(
+      service.correctKorean(testUser, {
+        text: "저는 학교에 공부했어요.",
+        inputType: "text",
+        level: "beginner",
+        correctionStyle: "minimal",
+      }),
+    ).rejects.toBeInstanceOf(CorrectionServiceError);
+    expect(repository.recordInput).toBeNull();
+  });
+
+  it("allows common Latin abbreviations inside predominantly Korean output", async () => {
+    const repository = createFakeRepository();
+    const service = createCorrectionService(
+      repository,
+      createFakeAIProvider({
+        ...correctionOutput,
+        correctedText: "저는 AI를 학교에서 공부했어요.",
+        mistakes: [],
+      }),
+      {
+        now: () => testNow,
+      },
+    );
+
+    await expect(
+      service.correctKorean(testUser, {
+        text: "저는 AI를 학교에 공부했어요.",
+        inputType: "text",
+        level: "beginner",
+        correctionStyle: "minimal",
+      }),
+    ).resolves.toMatchObject({
+      correctedText: "저는 AI를 학교에서 공부했어요.",
+    });
+  });
+
+  it("allows a multi-letter brand name in a short Korean sentence", async () => {
+    const repository = createFakeRepository();
+    const service = createCorrectionService(
+      repository,
+      createFakeAIProvider({
+        correctedText: "OpenAI 좋아요.",
+        explanationEn: "The short Korean sentence is acceptable as written.",
+        mistakes: [],
+      }),
+      {
+        now: () => testNow,
+      },
+    );
+
+    await expect(
+      service.correctKorean(testUser, {
+        text: "OpenAI 좋아요.",
+        inputType: "text",
+        level: "beginner",
+        correctionStyle: "minimal",
+      }),
+    ).resolves.toMatchObject({
+      correctedText: "OpenAI 좋아요.",
+    });
+  });
+
   it("rejects invalid AI correction output before storing", async () => {
     const repository = createFakeRepository();
     const service = createCorrectionService(
       repository,
       createFakeAIProvider({
         correctedText: "저는 학교에서 공부했어요.",
-        naturalText: "저는 학교에서 공부했어요.",
         explanationEn: "Use 에서 for an action location.",
         mistakes: [
           {

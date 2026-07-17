@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createOpenAIProvider,
-  OpenAIProviderError,
-} from "./openaiProvider";
+import { createOpenAIProvider, OpenAIProviderError } from "./openaiProvider";
 
 function createResponse(output: unknown) {
   return Response.json({
@@ -25,7 +22,6 @@ describe("openAIProvider", () => {
     const fetchMock = vi.fn<typeof fetch>(async () =>
       createResponse({
         correctedText: "저는 학교에서 공부했어요.",
-        naturalText: "저는 학교에서 공부했어요.",
         explanationEn: "Use 에서 for the place where an action happens.",
         mistakes: [
           {
@@ -55,7 +51,6 @@ describe("openAIProvider", () => {
       }),
     ).resolves.toEqual({
       correctedText: "저는 학교에서 공부했어요.",
-      naturalText: "저는 학교에서 공부했어요.",
       explanationEn: "Use 에서 for the place where an action happens.",
       mistakes: [
         {
@@ -81,6 +76,14 @@ describe("openAIProvider", () => {
       strict: true,
     });
     expect(body.input).toContain("학교에 공부했어요");
+    expect(body.instructions).toContain("correctedText must be Korean");
+    expect(body.text.format.schema.required).not.toContain("naturalText");
+    expect(body.text.format.schema.properties).not.toHaveProperty(
+      "naturalText",
+    );
+    expect(body.instructions).toContain(
+      "originalPart and correctedPart must differ",
+    );
   });
 
   it("sends OCR images as data URLs and normalizes null notes", async () => {

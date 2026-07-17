@@ -16,7 +16,6 @@ export const mockAIProvider: AIProvider = {
 
     return {
       correctedText,
-      naturalText: correctedText,
       explanationEn:
         "Use 에서 for the place where an action happens. 에 marks a destination.",
       mistakes: [

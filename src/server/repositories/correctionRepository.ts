@@ -43,7 +43,6 @@ async function createCorrectionRecord(
         originalText: input.originalText,
         extractedText: input.extractedText,
         correctedText: input.aiOutput.correctedText,
-        naturalText: input.aiOutput.naturalText,
         explanationEn: input.aiOutput.explanationEn,
       })
       .returning({ id: corrections.id });

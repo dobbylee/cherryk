@@ -36,7 +36,7 @@ Do not make business or product decisions silently.
 
 ## Required Review Loop
 
-Every implementation change must run a subagent review loop before final delivery. Use the project `reviewer` agent, configured at `high` reasoning effort in `.codex/agents/reviewer.toml`; do not pin a model name so it inherits the current model.
+Every implementation change must run a subagent review loop before final delivery. Use the project `reviewer` agent, configured at `xhigh` reasoning effort in `.codex/agents/reviewer.toml`; do not pin a model name so it inherits the current model.
 
 1. Finish the local implementation and run relevant verification.
 2. Spawn the `reviewer` subagent using `agent-harness/prompts/implementation-review.md`.
