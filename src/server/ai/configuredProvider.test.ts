@@ -19,7 +19,19 @@ describe("createAIProvider", () => {
         OPENAI_API_KEY: "test-key",
         AI_TEXT_MODEL: "test-text-model",
         AI_VISION_MODEL: "test-vision-model",
+        AI_REASONING_EFFORT: "low",
       }),
     ).not.toBe(mockAIProvider);
+  });
+
+  it("rejects an invalid reasoning effort", () => {
+    expect(() =>
+      createAIProvider({
+        OPENAI_API_KEY: "test-key",
+        AI_TEXT_MODEL: "test-text-model",
+        AI_VISION_MODEL: "test-vision-model",
+        AI_REASONING_EFFORT: "fast",
+      }),
+    ).toThrow("AI_REASONING_EFFORT must be one of");
   });
 });

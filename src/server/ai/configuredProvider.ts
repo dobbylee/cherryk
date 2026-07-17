@@ -1,5 +1,9 @@
 import { mockAIProvider } from "./mockAIProvider";
-import { createOpenAIProvider } from "./openaiProvider";
+import {
+  createOpenAIProvider,
+  ReasoningEfforts,
+  type ReasoningEffort,
+} from "./openaiProvider";
 import type { AIProvider } from "./provider";
 
 type AIProviderEnv = {
@@ -7,6 +11,7 @@ type AIProviderEnv = {
   OPENAI_API_KEY?: string;
   AI_TEXT_MODEL?: string;
   AI_VISION_MODEL?: string;
+  AI_REASONING_EFFORT?: string;
 };
 
 export function createAIProvider(env: AIProviderEnv = readAIProviderEnv()): AIProvider {
@@ -22,6 +27,7 @@ export function createAIProvider(env: AIProviderEnv = readAIProviderEnv()): AIPr
     apiKey: env.OPENAI_API_KEY,
     textModel: env.AI_TEXT_MODEL,
     visionModel: env.AI_VISION_MODEL,
+    reasoningEffort: parseReasoningEffort(env.AI_REASONING_EFFORT),
   });
 }
 
@@ -31,5 +37,20 @@ function readAIProviderEnv(): AIProviderEnv {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     AI_TEXT_MODEL: process.env.AI_TEXT_MODEL,
     AI_VISION_MODEL: process.env.AI_VISION_MODEL,
+    AI_REASONING_EFFORT: process.env.AI_REASONING_EFFORT,
   };
+}
+
+function parseReasoningEffort(value?: string): ReasoningEffort | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (ReasoningEfforts.includes(value as ReasoningEffort)) {
+    return value as ReasoningEffort;
+  }
+
+  throw new Error(
+    `AI_REASONING_EFFORT must be one of: ${ReasoningEfforts.join(", ")}.`,
+  );
 }

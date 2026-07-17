@@ -42,6 +42,7 @@ describe("openAIProvider", () => {
       apiKey: "test-key",
       textModel: "test-text-model",
       visionModel: "test-vision-model",
+      reasoningEffort: "medium",
       fetch: fetchMock as unknown as typeof fetch,
     });
 
@@ -72,6 +73,7 @@ describe("openAIProvider", () => {
     const body = JSON.parse(String(init?.body));
     expect(headers.get("Authorization")).toBe("Bearer test-key");
     expect(body.model).toBe("test-text-model");
+    expect(body.reasoning).toEqual({ effort: "medium" });
     expect(body.store).toBe(false);
     expect(body.text.format).toMatchObject({
       type: "json_schema",
@@ -109,6 +111,7 @@ describe("openAIProvider", () => {
     expect(body.model).toBe("test-vision-model");
     expect(body.input[0].content[1]).toEqual({
       type: "input_image",
+      detail: "original",
       image_url: "data:image/png;base64,aW1hZ2U=",
     });
     expect(body.text.format.name).toBe("korean_ocr");

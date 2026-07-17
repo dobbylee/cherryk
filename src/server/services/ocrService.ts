@@ -4,6 +4,10 @@ import {
   type OCRExtractResponse,
 } from "@/lib/contracts/ocr";
 import type { AIProvider } from "@/server/ai/provider";
+import {
+  normalizeOCRImage,
+  type SupportedOCRImageMimeType,
+} from "@/server/services/ocrImageNormalizer";
 
 export const OCR_IMAGE_FIELD_NAME = "image";
 export const MAX_OCR_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -39,10 +43,25 @@ export function createOCRService(aiProvider: AIProvider) {
         );
       }
 
-      const imageBase64 = Buffer.from(imageBytes).toString("base64");
+      let normalizedImage: Awaited<ReturnType<typeof normalizeOCRImage>>;
+      try {
+        normalizedImage = await normalizeOCRImage({
+          imageBytes: new Uint8Array(imageBytes),
+          imageMimeType,
+        });
+      } catch {
+        throw new OCRServiceError(
+          "invalid_image",
+          "Image could not be processed.",
+        );
+      }
+
+      const imageBase64 = Buffer.from(normalizedImage.imageBytes).toString(
+        "base64",
+      );
       const aiResult = await aiProvider.extractKoreanTextFromImage({
         imageBase64,
-        imageMimeType,
+        imageMimeType: normalizedImage.imageMimeType,
       });
       const parsed = OCRAIOutputSchema.safeParse(aiResult);
 
@@ -75,7 +94,9 @@ function validateImage(image: OCRImageFile) {
   }
 }
 
-function getSupportedImageMimeType(bytes: Uint8Array) {
+function getSupportedImageMimeType(
+  bytes: Uint8Array,
+): SupportedOCRImageMimeType | null {
   if (hasPrefix(bytes, [0xff, 0xd8, 0xff])) {
     return "image/jpeg";
   }

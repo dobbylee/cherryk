@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import type { AIProvider } from "@/server/ai/provider";
 import {
@@ -29,9 +30,13 @@ function createFakeAIProvider(
 
 describe("ocrService", () => {
   it("extracts Korean text from an image without storing the original file", async () => {
-    const image = new File([new Uint8Array([0xff, 0xd8, 0xff])], "note.jpg", {
+    const imageBytes = await createTestImage(4096, 2048, "jpeg");
+    const image = new File([toArrayBuffer(imageBytes)], "note.jpg", {
       type: "image/png",
     });
+    let sentImage:
+      | { imageBase64: string; imageMimeType: string }
+      | undefined;
     const service = createOCRService(
       createFakeAIProvider(
         {
@@ -39,8 +44,7 @@ describe("ocrService", () => {
           note: "Mock OCR output for local development.",
         },
         (input) => {
-          expect(input.imageBase64).toBe("/9j/");
-          expect(input.imageMimeType).toBe("image/jpeg");
+          sentImage = input;
         },
       ),
     );
@@ -48,6 +52,16 @@ describe("ocrService", () => {
     await expect(service.extractKoreanTextFromImage(image)).resolves.toEqual({
       extractedText: "저는 학교에 공부했어요.",
       note: "Mock OCR output for local development.",
+    });
+
+    expect(sentImage?.imageMimeType).toBe("image/jpeg");
+    const normalizedMetadata = await sharp(
+      Buffer.from(sentImage?.imageBase64 ?? "", "base64"),
+    ).metadata();
+    expect(normalizedMetadata).toMatchObject({
+      width: 2048,
+      height: 1024,
+      format: "jpeg",
     });
   });
 
@@ -69,6 +83,11 @@ describe("ocrService", () => {
     const spoofedImage = new File(["not an image"], "note.png", {
       type: "image/png",
     });
+    const corruptJpeg = new File(
+      [new Uint8Array([0xff, 0xd8, 0xff])],
+      "corrupt.jpg",
+      { type: "image/jpeg" },
+    );
 
     await expect(
       service.extractKoreanTextFromImage(emptyImage),
@@ -81,6 +100,9 @@ describe("ocrService", () => {
     ).rejects.toMatchObject({ code: "invalid_image" });
     await expect(
       service.extractKoreanTextFromImage(spoofedImage),
+    ).rejects.toMatchObject({ code: "invalid_image" });
+    await expect(
+      service.extractKoreanTextFromImage(corruptJpeg),
     ).rejects.toMatchObject({ code: "invalid_image" });
   });
 
@@ -126,7 +148,8 @@ describe("ocrService", () => {
   });
 
   it("rejects invalid AI OCR output", async () => {
-    const image = new File([new Uint8Array([0xff, 0xd8, 0xff])], "note.jpg", {
+    const imageBytes = await createTestImage(32, 32, "jpeg");
+    const image = new File([toArrayBuffer(imageBytes)], "note.jpg", {
       type: "image/png",
     });
     const service = createOCRService(createFakeAIProvider({ note: "missing" }));
@@ -136,3 +159,27 @@ describe("ocrService", () => {
     ).rejects.toBeInstanceOf(OCRServiceError);
   });
 });
+
+function createTestImage(
+  width: number,
+  height: number,
+  format: "jpeg" | "png" | "webp",
+) {
+  const image = sharp({
+    create: {
+      width,
+      height,
+      channels: 3,
+      background: "white",
+    },
+  });
+
+  return image[format]().toBuffer();
+}
+
+function toArrayBuffer(bytes: Buffer) {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}

@@ -13,8 +13,20 @@ type OpenAIProviderOptions = {
   apiKey?: string;
   textModel?: string;
   visionModel?: string;
+  reasoningEffort?: ReasoningEffort;
   fetch?: FetchLike;
 };
+
+export const ReasoningEfforts = [
+  "none",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type ReasoningEffort = (typeof ReasoningEfforts)[number];
 
 export class OpenAIProviderError extends Error {
   constructor(
@@ -36,6 +48,7 @@ export function createOpenAIProvider(
       return requestStructuredOutput<CorrectionAIOutput>({
         apiKey: requireValue(options.apiKey, "OPENAI_API_KEY is required."),
         model: requireValue(options.textModel, "AI_TEXT_MODEL is required."),
+        reasoningEffort: options.reasoningEffort,
         fetcher,
         schemaName: "korean_correction",
         schema: correctionOutputSchema,
@@ -51,6 +64,7 @@ export function createOpenAIProvider(
       }>({
         apiKey: requireValue(options.apiKey, "OPENAI_API_KEY is required."),
         model: requireValue(options.visionModel, "AI_VISION_MODEL is required."),
+        reasoningEffort: options.reasoningEffort,
         fetcher,
         schemaName: "korean_ocr",
         schema: ocrOutputSchema,
@@ -65,6 +79,7 @@ export function createOpenAIProvider(
               },
               {
                 type: "input_image",
+                detail: "original",
                 image_url: `data:${input.imageMimeType};base64,${input.imageBase64}`,
               },
             ],
@@ -79,6 +94,7 @@ export function createOpenAIProvider(
       return requestStructuredOutput<QuizDraftOutput>({
         apiKey: requireValue(options.apiKey, "OPENAI_API_KEY is required."),
         model: requireValue(options.textModel, "AI_TEXT_MODEL is required."),
+        reasoningEffort: options.reasoningEffort,
         fetcher,
         schemaName: "quiz_drafts",
         schema: quizDraftOutputSchema,
@@ -92,6 +108,7 @@ export function createOpenAIProvider(
 async function requestStructuredOutput<T>(input: {
   apiKey: string;
   model: string;
+  reasoningEffort?: ReasoningEffort;
   fetcher: FetchLike;
   instructions: string;
   input: unknown;
@@ -106,6 +123,9 @@ async function requestStructuredOutput<T>(input: {
     },
     body: JSON.stringify({
       model: input.model,
+      ...(input.reasoningEffort
+        ? { reasoning: { effort: input.reasoningEffort } }
+        : {}),
       instructions: input.instructions,
       input: input.input,
       store: false,
