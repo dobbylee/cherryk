@@ -35,6 +35,9 @@ describe("quizRecommendationService", () => {
       async createQuizDrafts() {
         throw new Error("Not used.");
       },
+      async deleteQuizDraft() {
+        throw new Error("Not used.");
+      },
       async updateQuiz() {
         throw new Error("Not used.");
       },
@@ -73,6 +76,9 @@ describe("quizRecommendationService", () => {
       async createQuizDrafts() {
         throw new Error("Not used.");
       },
+      async deleteQuizDraft() {
+        throw new Error("Not used.");
+      },
       async updateQuiz() {
         throw new Error("Not used.");
       },
@@ -105,6 +111,9 @@ describe("quizRecommendationService", () => {
       async createQuizDrafts() {
         throw new Error("Not used.");
       },
+      async deleteQuizDraft() {
+        throw new Error("Not used.");
+      },
       async updateQuiz() {
         throw new Error("Not used.");
       },
@@ -132,6 +141,9 @@ describe("quizRecommendationService", () => {
         throw new Error("Not used.");
       },
       async createQuizDrafts() {
+        throw new Error("Not used.");
+      },
+      async deleteQuizDraft() {
         throw new Error("Not used.");
       },
       async updateQuiz() {

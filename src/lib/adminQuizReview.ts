@@ -1,8 +1,4 @@
-import type {
-  AdminQuizDraft,
-  AdminQuizUpdateRequest,
-  QuizStatus,
-} from "./contracts/quiz";
+import type { AdminQuizDraft, AdminQuizUpdateRequest } from "./contracts/quiz";
 
 export type EditableAdminQuizChoice = {
   text: string;
@@ -11,8 +7,6 @@ export type EditableAdminQuizChoice = {
 
 export type EditableAdminQuizDraft = Omit<AdminQuizDraft, "choices"> & {
   choices: EditableAdminQuizChoice[];
-  reviewNote: string;
-  status: QuizStatus;
 };
 
 export function toEditableAdminQuizDraft(
@@ -21,8 +15,6 @@ export function toEditableAdminQuizDraft(
   return {
     ...draft,
     choices: draft.choices.map((choice) => ({ ...choice })),
-    reviewNote: "",
-    status: "draft",
   };
 }
 
@@ -52,7 +44,5 @@ export function buildAdminQuizUpdateRequest(
     sentenceKo: draft.sentenceKo.trim(),
     choices,
     answerExplanationEn: draft.answerExplanationEn.trim(),
-    status: draft.status,
-    reviewNote: draft.reviewNote.trim(),
   };
 }

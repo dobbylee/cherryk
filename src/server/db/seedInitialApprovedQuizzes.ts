@@ -30,7 +30,6 @@ export async function seedInitialApprovedQuizzes(db: Db) {
         sentenceKo: quiz.sentenceKo,
         answerExplanationEn: quiz.answerExplanationEn,
         source: "seed",
-        reviewNote: "Initial approved v1 seed.",
       });
       await tx.insert(quizChoices).values(
         quiz.choices.map((choice, index) => ({

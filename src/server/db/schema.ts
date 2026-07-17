@@ -99,7 +99,6 @@ export const quizQuestions = pgTable("quiz_questions", {
   sentenceKo: text("sentence_ko").notNull(),
   answerExplanationEn: text("answer_explanation_en").notNull(),
   source: text("source").notNull().default("ai_draft"),
-  reviewNote: text("review_note"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

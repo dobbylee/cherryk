@@ -2,7 +2,7 @@ import { z } from "zod";
 import { UserLevelSchema } from "./common";
 import { GrammarTagSchema, GrammarTags } from "./grammar-tags";
 
-export const QuizStatusSchema = z.enum(["draft", "approved", "rejected"]);
+export const QuizStatusSchema = z.enum(["draft", "approved"]);
 
 export const QuizDraftInputSchema = z.object({
   tag: GrammarTagSchema,
@@ -103,7 +103,6 @@ export const AdminQuizUpdateRequestSchema = z
     choices: z.array(AdminQuizChoiceUpdateSchema).length(4).optional(),
     answerExplanationEn: z.string().trim().min(1).optional(),
     status: QuizStatusSchema.optional(),
-    reviewNote: z.string().trim().max(2000).optional(),
   })
   .superRefine((value, ctx) => {
     if (Object.keys(value).length === 0) {
@@ -156,6 +155,10 @@ export const AdminQuizUpdateResponseSchema = z.object({
   }),
 });
 
+export const AdminQuizDeleteResponseSchema = z.object({
+  deletedQuizId: z.uuid(),
+});
+
 export type QuizStatus = z.infer<typeof QuizStatusSchema>;
 export type QuizDraftInput = z.infer<typeof QuizDraftInputSchema>;
 export type QuizDraftOutput = z.infer<typeof QuizDraftOutputSchema>;
@@ -177,4 +180,7 @@ export type AdminQuizUpdateRequest = z.infer<
 >;
 export type AdminQuizUpdateResponse = z.infer<
   typeof AdminQuizUpdateResponseSchema
+>;
+export type AdminQuizDeleteResponse = z.infer<
+  typeof AdminQuizDeleteResponseSchema
 >;

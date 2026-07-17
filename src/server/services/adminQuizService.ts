@@ -1,7 +1,9 @@
 import {
+  AdminQuizDeleteResponseSchema,
   AdminQuizDraftGenerationResponseSchema,
   AdminQuizUpdateResponseSchema,
   QuizDraftOutputSchema,
+  type AdminQuizDeleteResponse,
   type AdminQuizDraftGenerationResponse,
   type AdminQuizUpdateRequest,
   type AdminQuizUpdateResponse,
@@ -82,6 +84,18 @@ export function createAdminQuizService(
       return AdminQuizUpdateResponseSchema.parse({
         quiz: result,
       });
+    },
+
+    async deleteDraft(id: string): Promise<AdminQuizDeleteResponse> {
+      const deleted = await repository.deleteQuizDraft(id);
+      if (!deleted) {
+        throw new AdminQuizServiceError(
+          "quiz_not_found",
+          "Quiz draft was not found.",
+        );
+      }
+
+      return AdminQuizDeleteResponseSchema.parse({ deletedQuizId: id });
     },
   };
 }

@@ -1,5 +1,6 @@
 import { ADMIN_SECRET_HEADER } from "@/lib/contracts/admin";
 import type {
+  AdminQuizDeleteResponse,
   AdminQuizDraftGenerationResponse,
   AdminQuizUpdateRequest,
   AdminQuizUpdateResponse,
@@ -36,6 +37,18 @@ export function updateAdminQuiz(
         [ADMIN_SECRET_HEADER]: adminSecret,
       },
       body: JSON.stringify(input),
+    },
+  );
+}
+
+export function deleteAdminQuizDraft(adminSecret: string, quizId: string) {
+  return fetchJson<AdminQuizDeleteResponse>(
+    `/api/v1/admin/quizzes/${quizId}`,
+    {
+      method: "DELETE",
+      headers: {
+        [ADMIN_SECRET_HEADER]: adminSecret,
+      },
     },
   );
 }

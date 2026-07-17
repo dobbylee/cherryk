@@ -32,6 +32,9 @@ function createFakeRepository(): QuizRepository & {
     async createQuizDrafts() {
       throw new Error("Not used.");
     },
+    async deleteQuizDraft() {
+      throw new Error("Not used.");
+    },
     async updateQuiz() {
       throw new Error("Not used.");
     },

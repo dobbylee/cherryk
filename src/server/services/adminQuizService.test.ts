@@ -26,15 +26,21 @@ const draftQuestion = {
 
 function createFakeRepository(): QuizRepository & {
   draftInput: CreateQuizDraftsInput | null;
+  deletedQuizId: string | null;
+  deleteResult: boolean;
   updateInput: UpdateQuizInput | null;
   updateResult: Awaited<ReturnType<QuizRepository["updateQuiz"]>>;
 } {
   const repository: QuizRepository & {
     draftInput: CreateQuizDraftsInput | null;
+    deletedQuizId: string | null;
+    deleteResult: boolean;
     updateInput: UpdateQuizInput | null;
     updateResult: Awaited<ReturnType<QuizRepository["updateQuiz"]>>;
   } = {
     draftInput: null,
+    deletedQuizId: null,
+    deleteResult: true,
     updateInput: null,
     updateResult: {
       id: "22222222-2222-4222-8222-222222222222",
@@ -51,6 +57,10 @@ function createFakeRepository(): QuizRepository & {
           ...input.questions[0],
         },
       ];
+    },
+    async deleteQuizDraft(id) {
+      repository.deletedQuizId = id;
+      return repository.deleteResult;
     },
     async updateQuiz(input) {
       repository.updateInput = input;
@@ -195,7 +205,6 @@ describe("adminQuizService", () => {
     await expect(
       service.updateQuiz("22222222-2222-4222-8222-222222222222", {
         status: "approved",
-        reviewNote: "Ready.",
       }),
     ).resolves.toEqual({
       quiz: {
@@ -207,10 +216,39 @@ describe("adminQuizService", () => {
       id: "22222222-2222-4222-8222-222222222222",
       update: {
         status: "approved",
-        reviewNote: "Ready.",
       },
       now,
     });
+  });
+
+  it("deletes a rejected draft through the repository", async () => {
+    const repository = createFakeRepository();
+    const service = createAdminQuizService(
+      repository,
+      createFakeAIProvider({ questions: [] }),
+    );
+
+    await expect(
+      service.deleteDraft("22222222-2222-4222-8222-222222222222"),
+    ).resolves.toEqual({
+      deletedQuizId: "22222222-2222-4222-8222-222222222222",
+    });
+    expect(repository.deletedQuizId).toBe(
+      "22222222-2222-4222-8222-222222222222",
+    );
+  });
+
+  it("raises quiz_not_found when a rejected draft cannot be deleted", async () => {
+    const repository = createFakeRepository();
+    repository.deleteResult = false;
+    const service = createAdminQuizService(
+      repository,
+      createFakeAIProvider({ questions: [] }),
+    );
+
+    await expect(
+      service.deleteDraft("22222222-2222-4222-8222-222222222222"),
+    ).rejects.toMatchObject({ code: "quiz_not_found" });
   });
 
   it("raises quiz_not_found when the repository cannot update the quiz", async () => {

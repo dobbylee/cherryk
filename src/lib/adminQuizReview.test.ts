@@ -17,16 +17,13 @@ const editableDraft: EditableAdminQuizDraft = {
     { text: "이", isCorrect: false },
   ],
   answerExplanationEn: "Use 를 because 사과 is the direct object of 먹어요.",
-  reviewNote: "",
-  status: "approved",
 };
 
 describe("buildAdminQuizUpdateRequest", () => {
-  it("includes empty review notes so operators can clear stale notes", () => {
-    expect(buildAdminQuizUpdateRequest(editableDraft)).toMatchObject({
-      reviewNote: "",
-      status: "approved",
-    });
+  it("builds editable quiz fields without review metadata", () => {
+    expect(buildAdminQuizUpdateRequest(editableDraft)).not.toHaveProperty(
+      "status",
+    );
   });
 
   it("trims quiz fields before update", () => {
@@ -43,7 +40,6 @@ describe("buildAdminQuizUpdateRequest", () => {
         ],
         answerExplanationEn:
           "  Use 를 because 사과 is the direct object of 먹어요.  ",
-        reviewNote: "  Ready.  ",
       }),
     ).toMatchObject({
       questionEn: "Choose the correct particle.",
@@ -55,7 +51,6 @@ describe("buildAdminQuizUpdateRequest", () => {
         { text: "이", isCorrect: false, sortOrder: 3 },
       ],
       answerExplanationEn: "Use 를 because 사과 is the direct object of 먹어요.",
-      reviewNote: "Ready.",
     });
   });
 

@@ -73,6 +73,22 @@ function createFakeDraftDb() {
   return { db, insertedQuestions, insertedChoices };
 }
 
+function createFakeDeleteDraftDb(deletedRows: unknown[] = []) {
+  const returning = vi.fn(async () => deletedRows);
+  const where = vi.fn(() => ({ returning }));
+  const db = {
+    delete: vi.fn((table) => {
+      if (table !== quizQuestions) {
+        throw new Error("Unexpected delete table.");
+      }
+
+      return { where };
+    }),
+  };
+
+  return { db };
+}
+
 function createFakeUpdateDb(
   updatedRows: unknown[] = [],
   attemptedRows: unknown[] = [],
@@ -314,7 +330,6 @@ describe("quizRepository", () => {
         now,
         update: {
           status: "approved",
-          reviewNote: "Ready.",
           choices: [
             { text: "은", isCorrect: false, sortOrder: 0 },
             { text: "를", isCorrect: true, sortOrder: 1 },
@@ -330,7 +345,6 @@ describe("quizRepository", () => {
     expect(updateSet).toEqual([
       {
         status: "approved",
-        reviewNote: "Ready.",
         updatedAt: now,
       },
     ]);
@@ -363,6 +377,18 @@ describe("quizRepository", () => {
         },
       ],
     ]);
+  });
+
+  it("deletes only a matching draft quiz", async () => {
+    const { db } = createFakeDeleteDraftDb([
+      { id: "11111111-1111-4111-8111-111111111111" },
+    ]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.deleteQuizDraft("11111111-1111-4111-8111-111111111111"),
+    ).resolves.toBe(true);
+    expect(eq).toHaveBeenCalledWith(quizQuestions.status, "draft");
   });
 
   it("returns null when a quiz update does not match a quiz", async () => {

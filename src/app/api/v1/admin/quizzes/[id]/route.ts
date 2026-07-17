@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  type AdminQuizDeleteResponse,
   AdminQuizUpdateRequestSchema,
   type AdminQuizUpdateResponse,
 } from "@/lib/contracts/quiz";
@@ -67,6 +68,39 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     return apiError("server_error", "Quiz update is unavailable.", 500);
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const adminResult = getAdminAccess(request);
+  if (adminResult instanceof Response) {
+    return adminResult;
+  }
+
+  const { id } = await context.params;
+  const parsedId = z.uuid().safeParse(id);
+  if (!parsedId.success) {
+    return apiError("invalid_request", "Quiz id is invalid.", 400);
+  }
+
+  try {
+    const service = createAdminQuizService(
+      createQuizRepository(createDb()),
+      mockAIProvider,
+    );
+    const response = await service.deleteDraft(parsedId.data);
+
+    return NextResponse.json<AdminQuizDeleteResponse>(response);
+  } catch (error) {
+    if (error instanceof AdminQuizServiceError) {
+      return apiError(
+        error.code,
+        error.message,
+        error.code === "quiz_not_found" ? 404 : 500,
+      );
+    }
+
+    return apiError("server_error", "Quiz deletion is unavailable.", 500);
   }
 }
 

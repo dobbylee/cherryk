@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ADMIN_SECRET_HEADER } from "@/lib/contracts/admin";
-import { generateAdminQuizDrafts, updateAdminQuiz } from "./adminQuizzes";
+import {
+  deleteAdminQuizDraft,
+  generateAdminQuizDrafts,
+  updateAdminQuiz,
+} from "./adminQuizzes";
 
 describe("admin quiz API helpers", () => {
   afterEach(() => {
@@ -48,7 +52,6 @@ describe("admin quiz API helpers", () => {
         expect(init?.body).toBe(
           JSON.stringify({
             status: "approved",
-            reviewNote: "Ready.",
           }),
         );
         return Response.json({
@@ -68,7 +71,6 @@ describe("admin quiz API helpers", () => {
         "11111111-1111-4111-8111-111111111111",
         {
           status: "approved",
-          reviewNote: "Ready.",
         },
       ),
     ).resolves.toEqual({
@@ -79,33 +81,30 @@ describe("admin quiz API helpers", () => {
     });
   });
 
-  it("submits empty review notes so operators can clear stale notes", async () => {
+  it("deletes a rejected draft with the admin secret header", async () => {
     const fetchMock = vi.fn(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
-        expect(init?.body).toBe(
-          JSON.stringify({
-            status: "approved",
-            reviewNote: "",
-          }),
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers);
+        expect(input).toBe(
+          "/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
         );
+        expect(init?.method).toBe("DELETE");
+        expect(headers.get(ADMIN_SECRET_HEADER)).toBe("test-admin-secret");
         return Response.json({
-          quiz: {
-            id: "11111111-1111-4111-8111-111111111111",
-            status: "approved",
-          },
+          deletedQuizId: "11111111-1111-4111-8111-111111111111",
         });
       },
     );
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await updateAdminQuiz(
-      "test-admin-secret",
-      "11111111-1111-4111-8111-111111111111",
-      {
-        status: "approved",
-        reviewNote: "",
-      },
-    );
+    await expect(
+      deleteAdminQuizDraft(
+        "test-admin-secret",
+        "11111111-1111-4111-8111-111111111111",
+      ),
+    ).resolves.toEqual({
+      deletedQuizId: "11111111-1111-4111-8111-111111111111",
+    });
   });
 });

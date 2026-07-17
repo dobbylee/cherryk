@@ -70,6 +70,12 @@ describe("AdminQuizUpdateRequestSchema", () => {
     expect(AdminQuizUpdateRequestSchema.safeParse({}).success).toBe(false);
   });
 
+  it("does not retain rejected quiz status", () => {
+    expect(
+      AdminQuizUpdateRequestSchema.safeParse({ status: "rejected" }).success,
+    ).toBe(false);
+  });
+
   it("requires exactly one correct choice when choices are updated", () => {
     expect(
       AdminQuizUpdateRequestSchema.safeParse({

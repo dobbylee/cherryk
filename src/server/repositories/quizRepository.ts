@@ -21,6 +21,7 @@ import {
 export type QuizRepository = {
   findApprovedQuizzesByTags(tags: GrammarTag[]): Promise<RecommendedQuiz[]>;
   createQuizDrafts(input: CreateQuizDraftsInput): Promise<AdminQuizDraft[]>;
+  deleteQuizDraft(id: string): Promise<boolean>;
   updateQuiz(
     input: UpdateQuizInput,
   ): Promise<UpdateQuizResult | UpdateQuizConflict | null>;
@@ -63,10 +64,20 @@ export function createQuizRepository(db: Db): QuizRepository {
   return {
     findApprovedQuizzesByTags: (tags) => findApprovedQuizzesByTags(db, tags),
     createQuizDrafts: (input) => createQuizDrafts(db, input),
+    deleteQuizDraft: (id) => deleteQuizDraft(db, id),
     updateQuiz: (input) => updateQuiz(db, input),
     recordQuizAttempt: (input) => recordQuizAttempt(db, input),
     findTopUserTags: (userId) => findTopUserTags(db, userId),
   };
+}
+
+async function deleteQuizDraft(db: Db, id: string) {
+  const [deleted] = await db
+    .delete(quizQuestions)
+    .where(and(eq(quizQuestions.id, id), eq(quizQuestions.status, "draft")))
+    .returning({ id: quizQuestions.id });
+
+  return deleted !== undefined;
 }
 
 async function findTopUserTags(db: Db, userId: string) {
@@ -193,7 +204,6 @@ function toQuizQuestionUpdate(update: AdminQuizUpdateRequest) {
       ? { answerExplanationEn: update.answerExplanationEn }
       : {}),
     ...(update.status !== undefined ? { status: update.status } : {}),
-    ...(update.reviewNote !== undefined ? { reviewNote: update.reviewNote } : {}),
   };
 }
 

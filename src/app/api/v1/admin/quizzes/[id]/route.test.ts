@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ADMIN_SECRET_HEADER } from "@/server/auth/admin";
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 const mocks = vi.hoisted(() => ({
   createDb: vi.fn(() => ({})),
@@ -21,7 +21,7 @@ const routeContext = {
   }),
 };
 
-describe("PATCH /api/v1/admin/quizzes/[id]", () => {
+describe("/api/v1/admin/quizzes/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("ADMIN_SECRET", "test-admin-secret");
@@ -35,13 +35,12 @@ describe("PATCH /api/v1/admin/quizzes/[id]", () => {
     mocks.createQuizRepository.mockReturnValue({
       async updateQuiz(input: {
         id: string;
-        update: { status?: string; reviewNote?: string };
+        update: { status?: string };
       }) {
         expect(input).toMatchObject({
           id: "11111111-1111-4111-8111-111111111111",
           update: {
             status: "approved",
-            reviewNote: "Ready.",
           },
         });
         return {
@@ -68,7 +67,6 @@ describe("PATCH /api/v1/admin/quizzes/[id]", () => {
           },
           body: JSON.stringify({
             status: "approved",
-            reviewNote: "Ready.",
           }),
         },
       ),
@@ -83,6 +81,102 @@ describe("PATCH /api/v1/admin/quizzes/[id]", () => {
         status: "approved",
       },
     });
+  });
+
+  it("deletes a rejected draft for admin users", async () => {
+    mocks.createQuizRepository.mockReturnValue({
+      async deleteQuizDraft(id: string) {
+        expect(id).toBe("11111111-1111-4111-8111-111111111111");
+        return true;
+      },
+    });
+
+    const response = await DELETE(
+      new Request(
+        "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
+        {
+          method: "DELETE",
+          headers: {
+            [ADMIN_SECRET_HEADER]: "test-admin-secret",
+          },
+        },
+      ),
+      routeContext,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      deletedQuizId: "11111111-1111-4111-8111-111111111111",
+    });
+  });
+
+  it("does not delete approved or missing quizzes", async () => {
+    mocks.createQuizRepository.mockReturnValue({
+      async deleteQuizDraft() {
+        return false;
+      },
+    });
+
+    const response = await DELETE(
+      new Request(
+        "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
+        {
+          method: "DELETE",
+          headers: {
+            [ADMIN_SECRET_HEADER]: "test-admin-secret",
+          },
+        },
+      ),
+      routeContext,
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "quiz_not_found",
+        message: "Quiz draft was not found.",
+      },
+    });
+  });
+
+  it("rejects draft deletion without the admin secret", async () => {
+    const response = await DELETE(
+      new Request(
+        "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
+        { method: "DELETE" },
+      ),
+      routeContext,
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "unauthorized",
+        message: "Admin secret is invalid.",
+      },
+    });
+    expect(mocks.createQuizRepository).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid quiz ids before draft deletion", async () => {
+    const response = await DELETE(
+      new Request("http://localhost/api/v1/admin/quizzes/not-a-uuid", {
+        method: "DELETE",
+        headers: {
+          [ADMIN_SECRET_HEADER]: "test-admin-secret",
+        },
+      }),
+      { params: Promise.resolve({ id: "not-a-uuid" }) },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "invalid_request",
+        message: "Quiz id is invalid.",
+      },
+    });
+    expect(mocks.createQuizRepository).not.toHaveBeenCalled();
   });
 
   it("rejects requests without the admin secret before creating the repository", async () => {
