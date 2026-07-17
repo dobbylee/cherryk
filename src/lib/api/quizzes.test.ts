@@ -9,12 +9,16 @@ describe("quiz API helpers", () => {
   it("fetches fallback recommendations when tags are omitted", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       expect(input).toBe("/api/v1/quizzes/recommend");
-      return Response.json({ quizzes: [] });
+      return Response.json({ quizzes: [], availableTags: [], activeTags: [] });
     });
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(fetchQuizRecommendations()).resolves.toEqual({ quizzes: [] });
+    await expect(fetchQuizRecommendations()).resolves.toEqual({
+      quizzes: [],
+      availableTags: [],
+      activeTags: [],
+    });
   });
 
   it("fetches recommendations for explicit tags", async () => {
@@ -22,26 +26,28 @@ describe("quiz API helpers", () => {
       expect(input).toBe(
         "/api/v1/quizzes/recommend?tags=particle_object%2Cspacing",
       );
-      return Response.json({ quizzes: [] });
+      return Response.json({ quizzes: [], availableTags: [], activeTags: [] });
     });
 
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
       fetchQuizRecommendations(["particle_object", "spacing"]),
-    ).resolves.toEqual({ quizzes: [] });
+    ).resolves.toEqual({ quizzes: [], availableTags: [], activeTags: [] });
   });
 
   it("preserves explicit empty tag requests", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       expect(input).toBe("/api/v1/quizzes/recommend?tags=");
-      return Response.json({ quizzes: [] });
+      return Response.json({ quizzes: [], availableTags: [], activeTags: [] });
     });
 
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(fetchQuizRecommendations([])).resolves.toEqual({
       quizzes: [],
+      availableTags: [],
+      activeTags: [],
     });
   });
 

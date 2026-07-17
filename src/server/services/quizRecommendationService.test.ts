@@ -25,7 +25,7 @@ const recommendedQuiz: RecommendedQuiz = {
 };
 
 describe("quizRecommendationService", () => {
-  it("requests approved quizzes by unique tags and returns public quiz fields only", async () => {
+  it("filters approved quizzes by unique requested tags and returns available tags", async () => {
     const requestedTags: string[][] = [];
     const repository: QuizRepository = {
       async findApprovedQuizzesByTags(tags) {
@@ -57,8 +57,10 @@ describe("quizRecommendationService", () => {
       ]),
     ).resolves.toEqual({
       quizzes: [recommendedQuiz],
+      availableTags: ["particle_object"],
+      activeTags: ["particle_object"],
     });
-    expect(requestedTags).toEqual([["particle_object"]]);
+    expect(requestedTags).toEqual([[]]);
     expect(recommendedQuiz.choices[0]).not.toHaveProperty("isCorrect");
     expect(recommendedQuiz).not.toHaveProperty("status");
   });
@@ -125,17 +127,19 @@ describe("quizRecommendationService", () => {
 
     await expect(service.recommendByTags(testUser, null)).resolves.toEqual({
       quizzes: [recommendedQuiz],
+      availableTags: ["particle_object"],
+      activeTags: ["particle_object"],
     });
     expect(requestedUserIds).toEqual([testUser.id]);
-    expect(requestedTags).toEqual([["particle_object", "spacing"]]);
+    expect(requestedTags).toEqual([[]]);
   });
 
-  it("does not fall back when an explicit empty tag list is requested", async () => {
+  it("returns all approved quizzes when an explicit empty tag list is requested", async () => {
     const requestedTags: string[][] = [];
     const repository: QuizRepository = {
       async findApprovedQuizzesByTags(tags) {
         requestedTags.push(tags);
-        return [];
+        return [recommendedQuiz];
       },
       async findTopUserTags() {
         throw new Error("Not used.");
@@ -156,8 +160,42 @@ describe("quizRecommendationService", () => {
     const service = createQuizRecommendationService(repository);
 
     await expect(service.recommendByTags(testUser, [])).resolves.toEqual({
-      quizzes: [],
+      quizzes: [recommendedQuiz],
+      availableTags: ["particle_object"],
+      activeTags: [],
     });
     expect(requestedTags).toEqual([[]]);
+  });
+
+  it("falls back to all approved quizzes when requested tags have no matches", async () => {
+    const repository: QuizRepository = {
+      async findApprovedQuizzesByTags() {
+        return [recommendedQuiz];
+      },
+      async findTopUserTags() {
+        throw new Error("Not used.");
+      },
+      async createQuizDrafts() {
+        throw new Error("Not used.");
+      },
+      async deleteQuizDraft() {
+        throw new Error("Not used.");
+      },
+      async updateQuiz() {
+        throw new Error("Not used.");
+      },
+      async recordQuizAttempt() {
+        throw new Error("Not used.");
+      },
+    };
+    const service = createQuizRecommendationService(repository);
+
+    await expect(
+      service.recommendByTags(testUser, ["spacing"]),
+    ).resolves.toEqual({
+      quizzes: [recommendedQuiz],
+      availableTags: ["particle_object"],
+      activeTags: [],
+    });
   });
 });

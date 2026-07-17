@@ -208,12 +208,13 @@ describe("quizRepository", () => {
     expect(eq).toHaveBeenCalledWith(quizQuestions.status, "approved");
   });
 
-  it("does not query when no tags are requested", async () => {
+  it("returns all approved quizzes when no tags are requested", async () => {
     const { db } = createFakeDb();
     const repository = createQuizRepository(db as never);
 
     await expect(repository.findApprovedQuizzesByTags([])).resolves.toEqual([]);
-    expect(db.select).not.toHaveBeenCalled();
+    expect(db.select).toHaveBeenCalledOnce();
+    expect(eq).toHaveBeenCalledWith(quizQuestions.status, "approved");
   });
 
   it("finds top valid user tags by count and recency", async () => {

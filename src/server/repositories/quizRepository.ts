@@ -249,10 +249,6 @@ async function createQuizDrafts(db: Db, input: CreateQuizDraftsInput) {
 }
 
 async function findApprovedQuizzesByTags(db: Db, tags: GrammarTag[]) {
-  if (tags.length === 0) {
-    return [];
-  }
-
   const rows = await db
     .select({
       quizId: quizQuestions.id,
@@ -266,10 +262,12 @@ async function findApprovedQuizzesByTags(db: Db, tags: GrammarTag[]) {
     .from(quizQuestions)
     .innerJoin(quizChoices, eq(quizChoices.quizQuestionId, quizQuestions.id))
     .where(
-      and(
-        eq(quizQuestions.status, "approved"),
-        inArray(quizQuestions.tag, tags),
-      ),
+      tags.length
+        ? and(
+            eq(quizQuestions.status, "approved"),
+            inArray(quizQuestions.tag, tags),
+          )
+        : eq(quizQuestions.status, "approved"),
     )
     .orderBy(asc(quizQuestions.createdAt), asc(quizChoices.sortOrder));
 

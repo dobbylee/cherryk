@@ -37,7 +37,7 @@ describe("GET /api/v1/quizzes/recommend", () => {
   it("returns recommended quizzes with public fields only", async () => {
     mocks.createQuizRepository.mockReturnValue({
       async findApprovedQuizzesByTags(tags: string[]) {
-        expect(tags).toEqual(["particle_object", "spacing"]);
+        expect(tags).toEqual([]);
         return [
           {
             id: "22222222-2222-4222-8222-222222222222",
@@ -102,6 +102,8 @@ describe("GET /api/v1/quizzes/recommend", () => {
           ],
         },
       ],
+      availableTags: ["particle_object"],
+      activeTags: ["particle_object"],
     });
     expect(JSON.stringify(payload)).not.toContain("isCorrect");
     expect(JSON.stringify(payload)).not.toContain("answerExplanationEn");
@@ -127,7 +129,7 @@ describe("GET /api/v1/quizzes/recommend", () => {
   it("accepts the full v1 grammar tag set", async () => {
     mocks.createQuizRepository.mockReturnValue({
       async findApprovedQuizzesByTags(tags: string[]) {
-        expect(tags).toEqual(GrammarTags);
+        expect(tags).toEqual([]);
         return [];
       },
       async findTopUserTags() {
@@ -151,7 +153,7 @@ describe("GET /api/v1/quizzes/recommend", () => {
         return ["particle_location"];
       },
       async findApprovedQuizzesByTags(tags: string[]) {
-        expect(tags).toEqual(["particle_location"]);
+        expect(tags).toEqual([]);
         return [];
       },
     });
@@ -162,10 +164,14 @@ describe("GET /api/v1/quizzes/recommend", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ quizzes: [] });
+    expect(payload).toEqual({
+      quizzes: [],
+      availableTags: [],
+      activeTags: [],
+    });
   });
 
-  it("does not fall back when tags are explicitly empty", async () => {
+  it("requests all approved quizzes when tags are explicitly empty", async () => {
     mocks.createQuizRepository.mockReturnValue({
       async findTopUserTags() {
         throw new Error("Not used.");
@@ -182,7 +188,11 @@ describe("GET /api/v1/quizzes/recommend", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ quizzes: [] });
+    expect(payload).toEqual({
+      quizzes: [],
+      availableTags: [],
+      activeTags: [],
+    });
   });
 
   it("returns 401 when the user is not authenticated", async () => {

@@ -64,6 +64,8 @@ export const RecommendedQuizSchema = z.object({
 
 export const QuizRecommendationResponseSchema = z.object({
   quizzes: z.array(RecommendedQuizSchema),
+  availableTags: z.array(GrammarTagSchema),
+  activeTags: z.array(GrammarTagSchema),
 });
 
 export const QuizAttemptRequestSchema = z.object({

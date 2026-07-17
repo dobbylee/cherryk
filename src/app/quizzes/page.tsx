@@ -39,6 +39,8 @@ function QuizWorkspace() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
   const [quizzes, setQuizzes] = useState<RecommendedQuiz[]>([]);
+  const [availableTags, setAvailableTags] = useState<GrammarTag[]>([]);
+  const [activeTags, setActiveTags] = useState<GrammarTag[]>([]);
   const [activeQuizIndex, setActiveQuizIndex] = useState(0);
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
   const [quizAttempt, setQuizAttempt] = useState<QuizAttemptResponse | null>(
@@ -83,8 +85,13 @@ function QuizWorkspace() {
     };
   }, [router]);
 
+  const hasExplicitTags = searchParams.has("tags");
   const requestedTags = useMemo(() => {
-    const tags = Array.from(
+    if (!hasExplicitTags) {
+      return undefined;
+    }
+
+    return Array.from(
       new Set(
         (searchParams.get("tags") ?? "")
           .split(",")
@@ -92,10 +99,19 @@ function QuizWorkspace() {
           .filter((tag): tag is GrammarTag => grammarTagSet.has(tag)),
       ),
     );
-    return tags.length ? tags : undefined;
-  }, [searchParams]);
-  const requestedTagsKey = requestedTags?.join(",") ?? "history";
+  }, [hasExplicitTags, searchParams]);
+  const requestedTagsKey =
+    requestedTags === undefined
+      ? "history"
+      : requestedTags.join(",") || "all";
+  const selectedTags = hasExplicitTags
+    ? (requestedTags ?? []).filter((tag) => availableTags.includes(tag))
+    : activeTags;
   const activeQuiz = quizzes[activeQuizIndex] ?? null;
+  const quizControlsBusy =
+    authStatus === "loading" ||
+    quizStatus === "loading" ||
+    quizAttemptStatus === "loading";
 
   const handleLoadRecommendedQuizzes = useCallback(async () => {
     if (
@@ -119,6 +135,8 @@ function QuizWorkspace() {
       const response = await fetchQuizRecommendations(requestedTags);
       if (quizRequestIdRef.current === requestId) {
         setQuizzes(response.quizzes);
+        setAvailableTags(response.availableTags);
+        setActiveTags(response.activeTags);
         setActiveQuizIndex(0);
         setSelectedChoiceId(null);
         setQuizAttempt(null);
@@ -211,50 +229,116 @@ function QuizWorkspace() {
     setMessage(null);
   }
 
+  function updateTagFilter(tags: GrammarTag[] | null) {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+
+    if (tags === null) {
+      nextSearchParams.delete("tags");
+    } else {
+      nextSearchParams.set("tags", tags.join(","));
+    }
+
+    const query = nextSearchParams.toString();
+    router.replace(query ? `/quizzes?${query}` : "/quizzes", {
+      scroll: false,
+    });
+  }
+
+  function handleTagToggle(tag: GrammarTag) {
+    const nextTags = new Set(selectedTags);
+
+    if (nextTags.has(tag)) {
+      nextTags.delete(tag);
+    } else {
+      nextTags.add(tag);
+    }
+
+    updateTagFilter(
+      GrammarTags.filter((candidate) => nextTags.has(candidate)),
+    );
+  }
+
   if (!user) {
     return <LoadingPage />;
   }
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
         <AppHeader
           authBusy={authStatus === "loading"}
           onLogout={handleLogout}
           user={user}
         />
 
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex items-start justify-between gap-3 sm:items-center">
+          <div className="min-w-0">
             <p className="text-sm font-bold text-[var(--accent)]">MCQ</p>
             <h2 className="mt-1 text-2xl font-semibold tracking-normal">
               Practice approved questions
             </h2>
           </div>
           <Link
-            className="text-sm font-semibold text-[var(--accent-strong)]"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] shadow-sm hover:bg-[var(--accent-soft)]"
             href="/"
           >
             All tools
           </Link>
         </div>
 
-        {requestedTags?.length ? (
-          <div className="flex flex-wrap gap-2" aria-label="Recommended tags">
-            {requestedTags.map((tag) => (
-              <span
-                className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--secondary)]"
+        <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_12px_30px_rgb(32_143_202_/_5%)]">
+          <p className="text-sm font-semibold">Question tags</p>
+          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            Recommended uses your correction history and falls back to all
+            approved questions.
+          </p>
+          <div
+            aria-label="Approved question filters"
+            className="mt-3 flex flex-wrap gap-2"
+          >
+            <button
+              aria-pressed={!hasExplicitTags}
+              className={tagFilterClassName(!hasExplicitTags)}
+              disabled={quizControlsBusy}
+              onClick={() => updateTagFilter(null)}
+              type="button"
+            >
+              Recommended
+            </button>
+            <button
+              aria-pressed={hasExplicitTags && selectedTags.length === 0}
+              className={tagFilterClassName(
+                hasExplicitTags && selectedTags.length === 0,
+              )}
+              disabled={quizControlsBusy}
+              onClick={() => updateTagFilter([])}
+              type="button"
+            >
+              All approved
+            </button>
+            {availableTags.map((tag) => (
+              <button
+                aria-pressed={selectedTags.includes(tag)}
+                className={tagFilterClassName(selectedTags.includes(tag))}
+                disabled={quizControlsBusy}
                 key={tag}
+                onClick={() => handleTagToggle(tag)}
+                type="button"
               >
-                {tag}
-              </span>
+                {formatTagLabel(tag)}
+              </button>
             ))}
           </div>
-        ) : (
-          <p className="text-sm text-[var(--muted)]">
-            Questions are selected from your correction history.
+          <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+            {hasExplicitTags
+              ? selectedTags.length
+                ? "Showing approved questions for the selected tags."
+                : "Showing all approved questions."
+              : activeTags.length
+                ? "Showing questions based on your correction history."
+                : "No matching correction tags yet, so all approved questions are shown."}
           </p>
-        )}
+        </section>
 
         {message ? <Message message={message} /> : null}
 
@@ -360,7 +444,7 @@ function QuizWorkspace() {
                   {quizAttemptStatus === "loading" ? "Checking..." : "Check"}
                 </button>
                 <button
-                  className="h-11 rounded-md border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--foreground)] disabled:opacity-60"
+                  className="h-11 min-w-24 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-28"
                   disabled={
                     activeQuizIndex >= quizzes.length - 1 ||
                     authStatus === "loading" ||
@@ -388,7 +472,7 @@ function QuizWorkspace() {
 function LoadingPage() {
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
         <p className="text-sm text-[var(--muted)]" role="status">
           Checking session...
         </p>
@@ -406,4 +490,19 @@ function Message({ message }: { message: string }) {
       {message}
     </div>
   );
+}
+
+function tagFilterClassName(isActive: boolean) {
+  return `rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
+    isActive
+      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+      : "border-[var(--line)] bg-white text-[var(--secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+  }`;
+}
+
+function formatTagLabel(tag: GrammarTag) {
+  return tag
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

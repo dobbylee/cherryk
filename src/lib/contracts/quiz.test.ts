@@ -6,6 +6,7 @@ import {
   AdminQuizUpdateRequestSchema,
   QuizAttemptRequestSchema,
   QuizRecommendationQuerySchema,
+  QuizRecommendationResponseSchema,
 } from "./quiz";
 
 describe("QuizDraftInputSchema", () => {
@@ -51,6 +52,18 @@ describe("QuizRecommendationQuerySchema", () => {
         tags: GrammarTags,
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("QuizRecommendationResponseSchema", () => {
+  it("requires valid approved and active tag lists", () => {
+    expect(
+      QuizRecommendationResponseSchema.safeParse({
+        quizzes: [],
+        availableTags: ["not_allowed"],
+        activeTags: [],
+      }).success,
+    ).toBe(false);
   });
 });
 
