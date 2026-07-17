@@ -596,7 +596,7 @@ export default function AdminQuizzesPage() {
                     >
                       {reviewAction === "approve"
                         ? "Approving..."
-                        : "Approve and next"}
+                        : "Approve"}
                     </button>
                   </div>
                 </div>

@@ -201,15 +201,15 @@ export default function CorrectionPage() {
           user={user}
         />
 
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex items-start justify-between gap-3 sm:items-center">
+          <div className="min-w-0">
             <p className="text-sm font-bold text-[var(--accent)]">Correction</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-normal">
+            <h2 className="mt-1 text-xl font-semibold tracking-normal sm:whitespace-nowrap sm:text-2xl">
               Write or confirm OCR text
             </h2>
           </div>
           <Link
-            className="text-sm font-semibold text-[var(--accent-strong)]"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] shadow-sm hover:bg-[var(--accent-soft)]"
             href="/"
           >
             All tools
@@ -222,15 +222,13 @@ export default function CorrectionPage() {
           className="border border-[var(--line)] bg-[var(--panel)] shadow-[0_18px_44px_rgb(32_143_202_/_7%)]"
           onSubmit={handleCorrection}
         >
-          <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-4">
             <p className="text-sm font-bold text-[var(--accent)]">
               Correction workspace
             </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
-                {inputSource === "image_ocr" ? "OCR input" : "Text input"}
-              </span>
-            </div>
+            <span className="shrink-0 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+              {inputSource === "image_ocr" ? "OCR input" : "Text input"}
+            </span>
           </div>
 
           <div className="grid gap-4 p-4">
@@ -259,10 +257,20 @@ export default function CorrectionPage() {
                   {selectedImageName ?? "No image selected"}
                 </span>
               </div>
-              {ocrStatus === "loading" || ocrNote ? (
-                <p className="mt-2 text-sm text-[var(--muted)]">
-                  {ocrStatus === "loading" ? "Extracting text..." : ocrNote}
-                </p>
+              {ocrStatus === "loading" ? (
+                <div
+                  aria-live="polite"
+                  className="mt-3 flex items-center gap-2 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent-strong)]"
+                  role="status"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+                  />
+                  Extracting text from image...
+                </div>
+              ) : ocrNote ? (
+                <p className="mt-2 text-sm text-[var(--muted)]">{ocrNote}</p>
               ) : null}
             </div>
 
