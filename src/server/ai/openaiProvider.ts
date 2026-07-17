@@ -241,7 +241,8 @@ const ocrInstructions = [
   "Extract Korean text from the image as written.",
   "Do not correct grammar or spelling.",
   "Preserve line breaks where possible.",
-  "Use note only when characters are uncertain.",
+  "Use note only when characters are uncertain, and always write note in English.",
+  "If no Korean text is readable, return an empty extractedText and explain that in note.",
 ].join("\n");
 
 const quizDraftInstructions = [

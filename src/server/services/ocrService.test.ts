@@ -34,9 +34,7 @@ describe("ocrService", () => {
     const image = new File([toArrayBuffer(imageBytes)], "note.jpg", {
       type: "image/png",
     });
-    let sentImage:
-      | { imageBase64: string; imageMimeType: string }
-      | undefined;
+    let sentImage: { imageBase64: string; imageMimeType: string } | undefined;
     const service = createOCRService(
       createFakeAIProvider(
         {
@@ -157,6 +155,80 @@ describe("ocrService", () => {
     await expect(
       service.extractKoreanTextFromImage(image),
     ).rejects.toBeInstanceOf(OCRServiceError);
+  });
+
+  it("replaces Korean OCR notes with an English review message", async () => {
+    const imageBytes = await createTestImage(32, 32, "png");
+    const image = new File([toArrayBuffer(imageBytes)], "note.png", {
+      type: "image/png",
+    });
+    const service = createOCRService(
+      createFakeAIProvider({
+        extractedText: "저는 학교에 공부했어요.",
+        note: "일부 글자를 정확히 알아볼 수 없습니다.",
+      }),
+    );
+
+    await expect(service.extractKoreanTextFromImage(image)).resolves.toEqual({
+      extractedText: "저는 학교에 공부했어요.",
+      note: "Some characters could not be read with confidence. Please review and edit the extracted text.",
+    });
+  });
+
+  it("uses an English manual-entry message when no text is readable", async () => {
+    const imageBytes = await createTestImage(32, 32, "png");
+    const image = new File([toArrayBuffer(imageBytes)], "note.png", {
+      type: "image/png",
+    });
+    const service = createOCRService(
+      createFakeAIProvider({
+        extractedText: "",
+        note: "이미지에서 읽을 수 있는 한국어를 찾지 못했습니다.",
+      }),
+    );
+
+    await expect(service.extractKoreanTextFromImage(image)).resolves.toEqual({
+      extractedText: "",
+      note: "No readable Korean text was found. Please try another image or enter the text manually.",
+    });
+  });
+
+  it("adds an English manual-entry message when empty OCR has no usable note", async () => {
+    const imageBytes = await createTestImage(32, 32, "png");
+    const image = new File([toArrayBuffer(imageBytes)], "note.png", {
+      type: "image/png",
+    });
+
+    for (const note of [undefined, "   "]) {
+      const service = createOCRService(
+        createFakeAIProvider({ extractedText: "", note }),
+      );
+
+      await expect(service.extractKoreanTextFromImage(image)).resolves.toEqual({
+        extractedText: "",
+        note: "No readable Korean text was found. Please try another image or enter the text manually.",
+      });
+    }
+  });
+
+  it("preserves detailed English transcription commentary", async () => {
+    const imageBytes = await createTestImage(32, 32, "png");
+    const image = new File([toArrayBuffer(imageBytes)], "note.png", {
+      type: "image/png",
+    });
+    const note =
+      'The word transcribed as "유연하기도" is unusual in context but appears to be written that way.';
+    const service = createOCRService(
+      createFakeAIProvider({
+        extractedText: "유연하기도",
+        note,
+      }),
+    );
+
+    await expect(service.extractKoreanTextFromImage(image)).resolves.toEqual({
+      extractedText: "유연하기도",
+      note,
+    });
   });
 });
 

@@ -11,6 +11,10 @@ import {
 
 export const OCR_IMAGE_FIELD_NAME = "image";
 export const MAX_OCR_IMAGE_BYTES = 5 * 1024 * 1024;
+const OCR_REVIEW_NOTE =
+  "Some characters could not be read with confidence. Please review and edit the extracted text.";
+const OCR_NO_TEXT_NOTE =
+  "No readable Korean text was found. Please try another image or enter the text manually.";
 
 export type OCRImageFile = {
   arrayBuffer(): Promise<ArrayBuffer>;
@@ -35,7 +39,9 @@ export function createOCRService(aiProvider: AIProvider) {
     ): Promise<OCRExtractResponse> {
       validateImage(image);
       const imageBytes = await image.arrayBuffer();
-      const imageMimeType = getSupportedImageMimeType(new Uint8Array(imageBytes));
+      const imageMimeType = getSupportedImageMimeType(
+        new Uint8Array(imageBytes),
+      );
       if (!imageMimeType) {
         throw new OCRServiceError(
           "invalid_image",
@@ -72,9 +78,43 @@ export function createOCRService(aiProvider: AIProvider) {
         );
       }
 
-      return parsed.data;
+      return normalizeOCRResult(parsed.data);
     },
   };
+}
+
+function normalizeOCRResult(result: OCRExtractResponse): OCRExtractResponse {
+  const note = result.note?.trim();
+  if (!note) {
+    return {
+      extractedText: result.extractedText,
+      ...(result.extractedText.trim() ? {} : { note: OCR_NO_TEXT_NOTE }),
+    };
+  }
+
+  if (!isPredominantlyKorean(note)) {
+    return { extractedText: result.extractedText, note };
+  }
+
+  return {
+    extractedText: result.extractedText,
+    note: result.extractedText.trim() ? OCR_REVIEW_NOTE : OCR_NO_TEXT_NOTE,
+  };
+}
+
+function isPredominantlyKorean(value: string) {
+  let hangulCount = 0;
+  let latinCount = 0;
+
+  for (const character of value) {
+    if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/u.test(character)) {
+      hangulCount += 1;
+    } else if (/[A-Za-z]/u.test(character)) {
+      latinCount += 1;
+    }
+  }
+
+  return hangulCount > 0 && hangulCount >= latinCount;
 }
 
 function validateImage(image: OCRImageFile) {

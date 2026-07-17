@@ -118,6 +118,8 @@ describe("openAIProvider", () => {
       image_url: "data:image/png;base64,aW1hZ2U=",
     });
     expect(body.text.format.name).toBe("korean_ocr");
+    expect(body.instructions).toContain("always write note in English");
+    expect(body.instructions).toContain("return an empty extractedText");
   });
 
   it("requests quiz draft structured output", async () => {
