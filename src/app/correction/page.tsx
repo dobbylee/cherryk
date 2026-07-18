@@ -236,7 +236,7 @@ export default function CorrectionPage() {
               <span className="text-sm font-semibold">Handwriting image</span>
               <input
                 accept="image/*"
-                aria-label="Choose handwriting image"
+                aria-label="Choose handwriting photo"
                 className="hidden"
                 disabled={uploadBusy}
                 id="ocr-image"
@@ -251,7 +251,7 @@ export default function CorrectionPage() {
                   onClick={() => ocrInputRef.current?.click()}
                   type="button"
                 >
-                  Choose image
+                  Choose photo
                 </button>
                 <span className="min-w-0 truncate text-sm text-[var(--muted)]">
                   {selectedImageName ?? "No image selected"}
