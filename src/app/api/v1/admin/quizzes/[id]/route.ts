@@ -61,7 +61,8 @@ export async function PATCH(request: Request, context: RouteContext) {
         error.message,
         error.code === "quiz_not_found"
           ? 404
-          : error.code === "quiz_choices_locked"
+          : error.code === "quiz_choices_locked" ||
+              error.code === "quiz_duplicate"
             ? 409
             : 502,
       );

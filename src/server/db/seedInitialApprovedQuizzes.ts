@@ -2,6 +2,7 @@ import { loadEnvConfig } from "@next/env";
 import { eq } from "drizzle-orm";
 import { createDbConnection, type Db } from "@/server/db";
 import { quizChoices, quizQuestions } from "@/server/db/schema";
+import { createQuizContentFingerprint } from "@/server/quizContentFingerprint";
 import { INITIAL_APPROVED_QUIZZES } from "./initialApprovedQuizzes";
 
 loadEnvConfig(process.cwd());
@@ -21,16 +22,26 @@ export async function seedInitialApprovedQuizzes(db: Db) {
         continue;
       }
 
-      await tx.insert(quizQuestions).values({
-        id: quiz.id,
-        tag: quiz.tag,
-        difficulty: quiz.difficulty,
-        status: "approved",
-        questionEn: quiz.questionEn,
-        sentenceKo: quiz.sentenceKo,
-        answerExplanationEn: quiz.answerExplanationEn,
-        source: "seed",
-      });
+      const [insertedQuiz] = await tx
+        .insert(quizQuestions)
+        .values({
+          id: quiz.id,
+          tag: quiz.tag,
+          difficulty: quiz.difficulty,
+          contentFingerprint: createQuizContentFingerprint(quiz),
+          status: "approved",
+          questionEn: quiz.questionEn,
+          sentenceKo: quiz.sentenceKo,
+          answerExplanationEn: quiz.answerExplanationEn,
+          source: "seed",
+        })
+        .onConflictDoNothing({ target: quizQuestions.contentFingerprint })
+        .returning({ id: quizQuestions.id });
+
+      if (!insertedQuiz) {
+        continue;
+      }
+
       await tx.insert(quizChoices).values(
         quiz.choices.map((choice, index) => ({
           id: choice.id,

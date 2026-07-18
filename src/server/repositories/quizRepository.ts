@@ -17,6 +17,7 @@ import {
   quizQuestions,
   userTagStats,
 } from "@/server/db/schema";
+import { createQuizContentFingerprint } from "@/server/quizContentFingerprint";
 
 export type QuizRepository = {
   findApprovedQuizzesByTags(tags: GrammarTag[]): Promise<RecommendedQuiz[]>;
@@ -47,7 +48,7 @@ export type UpdateQuizResult = {
 };
 
 export type UpdateQuizConflict = {
-  code: "quiz_choices_locked";
+  code: "quiz_choices_locked" | "quiz_duplicate";
 };
 
 export type RecordQuizAttemptInput = {
@@ -143,55 +144,139 @@ async function recordQuizAttempt(db: Db, input: RecordQuizAttemptInput) {
 }
 
 async function updateQuiz(db: Db, input: UpdateQuizInput) {
-  return db.transaction(async (tx) => {
-    if (input.update.choices) {
-      const attempted = await tx
-        .select({ id: quizAttempts.id })
-        .from(quizAttempts)
-        .where(eq(quizAttempts.quizQuestionId, input.id))
-        .limit(1);
+  try {
+    return await db.transaction(async (tx) => {
+      const [lockedQuiz] = await tx
+        .select({ id: quizQuestions.id })
+        .from(quizQuestions)
+        .where(eq(quizQuestions.id, input.id))
+        .for("update");
 
-      if (attempted.length > 0) {
-        return { code: "quiz_choices_locked" } as const;
+      if (!lockedQuiz) {
+        return null;
       }
-    }
 
-    const [updated] = await tx
-      .update(quizQuestions)
-      .set({
-        ...toQuizQuestionUpdate(input.update),
-        updatedAt: input.now,
-      })
-      .where(eq(quizQuestions.id, input.id))
-      .returning({
-        id: quizQuestions.id,
-        status: quizQuestions.status,
-      });
+      if (input.update.choices) {
+        const attempted = await tx
+          .select({ id: quizAttempts.id })
+          .from(quizAttempts)
+          .where(eq(quizAttempts.quizQuestionId, input.id))
+          .limit(1);
 
-    if (!updated) {
-      return null;
-    }
+        if (attempted.length > 0) {
+          return { code: "quiz_choices_locked" } as const;
+        }
+      }
 
-    if (input.update.choices) {
-      await tx
-        .delete(quizChoices)
-        .where(eq(quizChoices.quizQuestionId, input.id));
-      await tx.insert(quizChoices).values(
-        input.update.choices.map((choice) => ({
-          ...(choice.id ? { id: choice.id } : {}),
-          quizQuestionId: input.id,
-          choiceText: choice.text,
-          isCorrect: choice.isCorrect,
-          sortOrder: choice.sortOrder,
-        })),
+      const contentFingerprint = await getUpdatedContentFingerprint(
+        tx,
+        input,
       );
+      if (contentFingerprint === null) {
+        return null;
+      }
+
+      const [updated] = await tx
+        .update(quizQuestions)
+        .set({
+          ...toQuizQuestionUpdate(input.update),
+          ...(contentFingerprint
+            ? { contentFingerprint }
+            : {}),
+          updatedAt: input.now,
+        })
+        .where(eq(quizQuestions.id, input.id))
+        .returning({
+          id: quizQuestions.id,
+          status: quizQuestions.status,
+        });
+
+      if (!updated) {
+        return null;
+      }
+
+      if (input.update.choices) {
+        await tx
+          .delete(quizChoices)
+          .where(eq(quizChoices.quizQuestionId, input.id));
+        await tx.insert(quizChoices).values(
+          input.update.choices.map((choice) => ({
+            ...(choice.id ? { id: choice.id } : {}),
+            quizQuestionId: input.id,
+            choiceText: choice.text,
+            isCorrect: choice.isCorrect,
+            sortOrder: choice.sortOrder,
+          })),
+        );
+      }
+
+      return {
+        id: updated.id,
+        status: QuizStatusSchema.parse(updated.status),
+      };
+    });
+  } catch (error) {
+    if (isUniqueConstraintViolation(error)) {
+      return { code: "quiz_duplicate" } as const;
     }
 
-    return {
-      id: updated.id,
-      status: QuizStatusSchema.parse(updated.status),
-    };
+    throw error;
+  }
+}
+
+async function getUpdatedContentFingerprint(
+  tx: Parameters<Parameters<Db["transaction"]>[0]>[0],
+  input: UpdateQuizInput,
+) {
+  const updatesContent =
+    input.update.tag !== undefined ||
+    input.update.difficulty !== undefined ||
+    input.update.sentenceKo !== undefined ||
+    input.update.choices !== undefined;
+
+  if (!updatesContent) {
+    return undefined;
+  }
+
+  const rows = await tx
+    .select({
+      tag: quizQuestions.tag,
+      difficulty: quizQuestions.difficulty,
+      sentenceKo: quizQuestions.sentenceKo,
+      choiceText: quizChoices.choiceText,
+      isCorrect: quizChoices.isCorrect,
+    })
+    .from(quizQuestions)
+    .innerJoin(quizChoices, eq(quizChoices.quizQuestionId, quizQuestions.id))
+    .where(eq(quizQuestions.id, input.id));
+
+  const current = rows[0];
+  if (!current) {
+    return null;
+  }
+
+  return createQuizContentFingerprint({
+    tag: input.update.tag ?? current.tag,
+    difficulty: input.update.difficulty ?? current.difficulty,
+    sentenceKo: input.update.sentenceKo ?? current.sentenceKo,
+    choices:
+      input.update.choices ??
+      rows.map((row) => ({
+        text: row.choiceText,
+        isCorrect: row.isCorrect,
+      })),
   });
+}
+
+function isUniqueConstraintViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "23505" &&
+    "constraint_name" in error &&
+    error.constraint_name === "quiz_questions_content_fingerprint_unique"
+  );
 }
 
 function toQuizQuestionUpdate(update: AdminQuizUpdateRequest) {
@@ -217,16 +302,18 @@ async function createQuizDrafts(db: Db, input: CreateQuizDraftsInput) {
         .values({
           tag: question.tag,
           difficulty: question.difficulty,
+          contentFingerprint: createQuizContentFingerprint(question),
           status: "draft",
           questionEn: question.questionEn,
           sentenceKo: question.sentenceKo,
           answerExplanationEn: question.answerExplanationEn,
           source: "ai_draft",
         })
+        .onConflictDoNothing({ target: quizQuestions.contentFingerprint })
         .returning({ id: quizQuestions.id });
 
       if (!draft) {
-        throw new Error("Failed to create quiz draft.");
+        continue;
       }
 
       await tx.insert(quizChoices).values(

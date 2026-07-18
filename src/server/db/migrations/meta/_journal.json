@@ -22,6 +22,13 @@
       "when": 1784278494816,
       "tag": "0002_lethal_marvel_apes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784397280603,
+      "tag": "0003_smart_micromax",
+      "breakpoints": true
     }
   ]
 }

@@ -355,4 +355,44 @@ describe("/api/v1/admin/quizzes/[id]", () => {
       },
     });
   });
+
+  it("returns 409 when edited content duplicates another quiz", async () => {
+    mocks.createQuizRepository.mockReturnValue({
+      async updateQuiz() {
+        return { code: "quiz_duplicate" };
+      },
+      async createQuizDrafts() {
+        throw new Error("Not used.");
+      },
+      async findApprovedQuizzesByTags() {
+        throw new Error("Not used.");
+      },
+    });
+
+    const response = await PATCH(
+      new Request(
+        "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
+        {
+          method: "PATCH",
+          headers: {
+            [ADMIN_SECRET_HEADER]: "test-admin-secret",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sentenceKo: "저는 사과( ) 먹어요.",
+          }),
+        },
+      ),
+      routeContext,
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload).toEqual({
+      error: {
+        code: "quiz_duplicate",
+        message: "An identical quiz already exists.",
+      },
+    });
+  });
 });

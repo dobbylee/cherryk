@@ -94,6 +94,7 @@ export const quizQuestions = pgTable("quiz_questions", {
   id: uuid("id").primaryKey().defaultRandom(),
   tag: text("tag").notNull(),
   difficulty: text("difficulty").notNull(),
+  contentFingerprint: text("content_fingerprint").notNull().unique(),
   status: text("status").notNull(),
   questionEn: text("question_en").notNull(),
   sentenceKo: text("sentence_ko").notNull(),

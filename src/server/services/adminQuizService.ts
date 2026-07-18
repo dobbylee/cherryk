@@ -17,7 +17,8 @@ export class AdminQuizServiceError extends Error {
     readonly code:
       | "invalid_ai_output"
       | "quiz_not_found"
-      | "quiz_choices_locked",
+      | "quiz_choices_locked"
+      | "quiz_duplicate",
     message: string,
   ) {
     super(message);
@@ -77,7 +78,9 @@ export function createAdminQuizService(
       if ("code" in result) {
         throw new AdminQuizServiceError(
           result.code,
-          "Quiz choices cannot be replaced after attempts exist.",
+          result.code === "quiz_duplicate"
+            ? "An identical quiz already exists."
+            : "Quiz choices cannot be replaced after attempts exist.",
         );
       }
 

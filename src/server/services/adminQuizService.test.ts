@@ -289,4 +289,22 @@ describe("adminQuizService", () => {
       code: "quiz_choices_locked",
     });
   });
+
+  it("raises quiz_duplicate when edited content matches another quiz", async () => {
+    const repository = createFakeRepository();
+    repository.updateResult = { code: "quiz_duplicate" };
+    const service = createAdminQuizService(
+      repository,
+      createFakeAIProvider({ questions: [] }),
+    );
+
+    await expect(
+      service.updateQuiz("22222222-2222-4222-8222-222222222222", {
+        sentenceKo: "저는 사과( ) 먹어요.",
+      }),
+    ).rejects.toMatchObject({
+      code: "quiz_duplicate",
+      message: "An identical quiz already exists.",
+    });
+  });
 });

@@ -42,18 +42,25 @@ function createFakeTopTagsDb(rows: unknown[] = []) {
   return { db };
 }
 
-function createFakeDraftDb() {
+function createFakeDraftDb(
+  questionRows: unknown[][] = [
+    [{ id: "11111111-1111-4111-8111-111111111111" }],
+  ],
+) {
   const insertedQuestions: unknown[] = [];
   const insertedChoices: unknown[] = [];
+  let questionInsertIndex = 0;
   const tx = {
     insert: vi.fn((table) => ({
       values: vi.fn((values) => {
         if (table === quizQuestions) {
           insertedQuestions.push(values);
           return {
-            returning: vi.fn(async () => [
-              { id: "11111111-1111-4111-8111-111111111111" },
-            ]),
+            onConflictDoNothing: vi.fn(() => ({
+              returning: vi.fn(
+                async () => questionRows[questionInsertIndex++] ?? [],
+              ),
+            })),
           };
         }
 
@@ -92,22 +99,75 @@ function createFakeDeleteDraftDb(deletedRows: unknown[] = []) {
 function createFakeUpdateDb(
   updatedRows: unknown[] = [],
   attemptedRows: unknown[] = [],
+  currentQuizRows: unknown[] = updatedRows.length > 0
+    ? [
+        {
+          tag: "particle_object",
+          difficulty: "beginner",
+          sentenceKo: "저는 사과( ) 먹어요.",
+          choiceText: "은",
+          isCorrect: false,
+        },
+        {
+          tag: "particle_object",
+          difficulty: "beginner",
+          sentenceKo: "저는 사과( ) 먹어요.",
+          choiceText: "를",
+          isCorrect: true,
+        },
+        {
+          tag: "particle_object",
+          difficulty: "beginner",
+          sentenceKo: "저는 사과( ) 먹어요.",
+          choiceText: "에",
+          isCorrect: false,
+        },
+        {
+          tag: "particle_object",
+          difficulty: "beginner",
+          sentenceKo: "저는 사과( ) 먹어요.",
+          choiceText: "이",
+          isCorrect: false,
+        },
+      ]
+    : [],
 ) {
   const updateSet: unknown[] = [];
   const deletedChoices: unknown[] = [];
   const insertedChoices: unknown[] = [];
+  const lockForUpdate = vi.fn(async () =>
+    updatedRows.length > 0
+      ? [{ id: "11111111-1111-4111-8111-111111111111" }]
+      : [],
+  );
   const tx = {
-    select: vi.fn(() => ({
+    select: vi.fn((selection) => ({
       from: vi.fn((table) => {
-        if (table !== quizAttempts) {
-          throw new Error("Unexpected select table.");
+        if (table === quizAttempts) {
+          return {
+            where: vi.fn(() => ({
+              limit: vi.fn(async () => attemptedRows),
+            })),
+          };
         }
 
-        return {
-          where: vi.fn(() => ({
-            limit: vi.fn(async () => attemptedRows),
-          })),
-        };
+        if (table === quizQuestions) {
+          if (Object.keys(selection).length === 1 && "id" in selection) {
+            return {
+              where: vi.fn(() => ({
+                for: lockForUpdate,
+              })),
+            };
+          }
+
+          return {
+            innerJoin: vi.fn(() => ({
+              where: vi.fn(async () => currentQuizRows),
+            })),
+          };
+        }
+
+        throw new Error("Unexpected select table.");
       }),
     })),
     update: vi.fn((table) => {
@@ -155,7 +215,13 @@ function createFakeUpdateDb(
     transaction: vi.fn(async (callback) => callback(tx)),
   };
 
-  return { db, updateSet, deletedChoices, insertedChoices };
+  return {
+    db,
+    updateSet,
+    deletedChoices,
+    insertedChoices,
+    lockForUpdate,
+  };
 }
 
 function createFakeAttemptDb(rows: unknown[] = []) {
@@ -276,6 +342,7 @@ describe("quizRepository", () => {
       {
         tag: "particle_object",
         difficulty: "beginner",
+        contentFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
         status: "draft",
         questionEn: "Choose the correct particle.",
         sentenceKo: "저는 사과( ) 먹어요.",
@@ -314,9 +381,68 @@ describe("quizRepository", () => {
     ]);
   });
 
+  it("skips quiz drafts whose content fingerprint already exists", async () => {
+    const { db, insertedChoices } = createFakeDraftDb([[]]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.createQuizDrafts({
+        questions: [
+          {
+            tag: "particle_object",
+            difficulty: "beginner",
+            questionEn: "Choose the correct particle.",
+            sentenceKo: "저는 사과( ) 먹어요.",
+            choices: [
+              { text: "은", isCorrect: false },
+              { text: "를", isCorrect: true },
+              { text: "에", isCorrect: false },
+              { text: "이", isCorrect: false },
+            ],
+            answerExplanationEn:
+              "Use 를 because 사과 is the direct object of 먹어요.",
+          },
+        ],
+      }),
+    ).resolves.toEqual([]);
+    expect(insertedChoices).toEqual([]);
+  });
+
+  it("stores only one copy of duplicate questions in the same batch", async () => {
+    const question = {
+      tag: "particle_object" as const,
+      difficulty: "beginner" as const,
+      questionEn: "Choose the correct particle.",
+      sentenceKo: "저는 사과( ) 먹어요.",
+      choices: [
+        { text: "은", isCorrect: false },
+        { text: "를", isCorrect: true },
+        { text: "에", isCorrect: false },
+        { text: "이", isCorrect: false },
+      ],
+      answerExplanationEn:
+        "Use 를 because 사과 is the direct object of 먹어요.",
+    };
+    const { db, insertedChoices } = createFakeDraftDb([
+      [{ id: "11111111-1111-4111-8111-111111111111" }],
+      [],
+    ]);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.createQuizDrafts({ questions: [question, question] }),
+    ).resolves.toEqual([
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        ...question,
+      },
+    ]);
+    expect(insertedChoices).toHaveLength(1);
+  });
+
   it("updates quiz review fields and replaces choices", async () => {
     const now = new Date("2026-07-09T00:00:00.000Z");
-    const { db, updateSet, deletedChoices, insertedChoices } =
+    const { db, updateSet, deletedChoices, insertedChoices, lockForUpdate } =
       createFakeUpdateDb([
         {
           id: "11111111-1111-4111-8111-111111111111",
@@ -345,10 +471,12 @@ describe("quizRepository", () => {
     });
     expect(updateSet).toEqual([
       {
+        contentFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
         status: "approved",
         updatedAt: now,
       },
     ]);
+    expect(lockForUpdate).toHaveBeenCalledWith("update");
     expect(deletedChoices).toHaveLength(1);
     expect(insertedChoices).toEqual([
       [
@@ -444,6 +572,26 @@ describe("quizRepository", () => {
     expect(updateSet).toEqual([]);
     expect(deletedChoices).toEqual([]);
     expect(insertedChoices).toEqual([]);
+  });
+
+  it("returns a duplicate conflict for a content fingerprint collision", async () => {
+    const db = {
+      transaction: vi.fn(async () => {
+        throw Object.assign(new Error("duplicate key"), {
+          code: "23505",
+          constraint_name: "quiz_questions_content_fingerprint_unique",
+        });
+      }),
+    };
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.updateQuiz({
+        id: "11111111-1111-4111-8111-111111111111",
+        now: new Date("2026-07-09T00:00:00.000Z"),
+        update: { sentenceKo: "저는 사과( ) 먹어요." },
+      }),
+    ).resolves.toEqual({ code: "quiz_duplicate" });
   });
 
   it("records attempts for approved quizzes and returns the answer", async () => {
