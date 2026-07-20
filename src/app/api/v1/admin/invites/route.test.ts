@@ -5,6 +5,7 @@ import { GET, POST } from "./route";
 const testUser = {
   id: "11111111-1111-4111-8111-111111111111",
   displayName: "Mina",
+  inviteLabel: "Mina invite",
 };
 
 const mocks = vi.hoisted(() => ({

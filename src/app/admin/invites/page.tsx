@@ -63,7 +63,10 @@ export default function AdminInvitesPage() {
     }
 
     await createLink(trimmedSecret, {
-      label: `Recovery: ${user.displayName ?? user.id}`.slice(0, 80),
+      label: `Recovery: ${user.inviteLabel ?? user.displayName ?? user.id}`.slice(
+        0,
+        80,
+      ),
       userId: user.id,
     });
   }
@@ -202,9 +205,15 @@ export default function AdminInvitesPage() {
                   className="flex items-center justify-between gap-3 border border-[var(--line)] bg-white p-3"
                   key={user.id}
                 >
-                  <span className="min-w-0 truncate text-sm font-semibold">
-                    {user.displayName ?? "Unnamed user"} · {user.id.slice(0, 8)}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {user.displayName ?? "Unnamed user"}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-[var(--muted)]">
+                      Label: {user.inviteLabel ?? "No label"} ·{" "}
+                      {user.id.slice(0, 8)}
+                    </p>
+                  </div>
                   <button
                     className="h-9 shrink-0 rounded-md border border-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent-strong)] disabled:opacity-60"
                     disabled={status === "loading"}

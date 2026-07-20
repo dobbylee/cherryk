@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import type { AdminInviteUser } from "@/lib/contracts/invite";
 import type { Db } from "@/server/db";
 import { inviteCodes, users } from "@/server/db/schema";
@@ -11,7 +11,7 @@ export type CreateOneTimeInviteInput = {
 
 export type InviteRepository = {
   createOneTimeInvite(input: CreateOneTimeInviteInput): Promise<void>;
-  findUserById(userId: string): Promise<AdminInviteUser | null>;
+  findUserById(userId: string): Promise<{ id: string } | null>;
   listUsers(): Promise<AdminInviteUser[]>;
 };
 
@@ -31,7 +31,6 @@ export function createInviteRepository(db: Db): InviteRepository {
       const [user] = await db
         .select({
           id: users.id,
-          displayName: users.displayName,
         })
         .from(users)
         .where(eq(users.id, userId))
@@ -40,13 +39,35 @@ export function createInviteRepository(db: Db): InviteRepository {
       return user ?? null;
     },
 
-    listUsers: () =>
-      db
+    async listUsers() {
+      const rows = await db
         .select({
           id: users.id,
           displayName: users.displayName,
+          inviteLabel: inviteCodes.label,
         })
         .from(users)
-        .orderBy(desc(users.createdAt)),
+        .leftJoin(
+          inviteCodes,
+          and(
+            eq(inviteCodes.userId, users.id),
+            lte(inviteCodes.createdAt, users.createdAt),
+          ),
+        )
+        .orderBy(
+          desc(users.createdAt),
+          asc(inviteCodes.createdAt),
+          asc(inviteCodes.id),
+        );
+
+      const usersById = new Map<string, AdminInviteUser>();
+      for (const row of rows) {
+        if (!usersById.has(row.id)) {
+          usersById.set(row.id, row);
+        }
+      }
+
+      return [...usersById.values()];
+    },
   };
 }

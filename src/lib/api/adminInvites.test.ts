@@ -15,12 +15,26 @@ describe("admin invite API helpers", () => {
         expect(new Headers(init?.headers).get(ADMIN_SECRET_HEADER)).toBe(
           "test-admin-secret",
         );
-        return Response.json({ users: [] });
+        return Response.json({
+          users: [
+            {
+              id: "11111111-1111-4111-8111-111111111111",
+              displayName: "Mina",
+              inviteLabel: "Mina invite",
+            },
+          ],
+        });
       }),
     );
 
     await expect(fetchAdminInviteUsers("test-admin-secret")).resolves.toEqual({
-      users: [],
+      users: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          displayName: "Mina",
+          inviteLabel: "Mina invite",
+        },
+      ],
     });
   });
 

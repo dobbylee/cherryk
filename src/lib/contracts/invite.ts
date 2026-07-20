@@ -3,6 +3,7 @@ import { z } from "zod";
 export const AdminInviteUserSchema = z.object({
   id: z.uuid(),
   displayName: z.string().nullable(),
+  inviteLabel: z.string().nullable(),
 });
 
 export const AdminInviteUsersResponseSchema = z.object({

@@ -111,6 +111,16 @@ describeWithDb("authRepository database integration", () => {
       user: { id: onboardingResult.user.id, displayName: "Mina" },
     });
 
+    expect(
+      (await inviteRepository.listUsers()).find(
+        (user) => user.id === onboardingResult.user.id,
+      ),
+    ).toEqual({
+      id: onboardingResult.user.id,
+      displayName: "Mina",
+      inviteLabel: "DB onboarding test",
+    });
+
     await expect(
       connection.db
         .select({ usedCount: inviteCodes.usedCount })
@@ -257,5 +267,38 @@ describeWithDb("authRepository database integration", () => {
         .from(inviteCodes)
         .where(eq(inviteCodes.codeHash, recoveryHash)),
     ).resolves.toEqual([{ usedCount: 1 }]);
+  });
+
+  it("does not present a recovery-only label as an onboarding label", async () => {
+    const inviteRepository = createInviteRepository(connection.db);
+    const recoveryHash = `test-legacy-recovery-${randomUUID()}`;
+    const [existingUser] = await connection.db
+      .insert(users)
+      .values({
+        displayName: `Legacy user ${randomUUID()}`,
+        createdAt: new Date("2000-01-01T00:00:00.000Z"),
+      })
+      .returning({ id: users.id, displayName: users.displayName });
+
+    if (!existingUser) {
+      throw new Error("Expected an existing user.");
+    }
+
+    userIds.push(existingUser.id);
+    codeHashes.push(recoveryHash);
+    await inviteRepository.createOneTimeInvite({
+      codeHash: recoveryHash,
+      label: "Legacy user recovery",
+      userId: existingUser.id,
+    });
+
+    expect(
+      (await inviteRepository.listUsers()).find(
+        (user) => user.id === existingUser.id,
+      ),
+    ).toEqual({
+      ...existingUser,
+      inviteLabel: null,
+    });
   });
 });
