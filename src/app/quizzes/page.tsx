@@ -229,6 +229,13 @@ function QuizWorkspace() {
     setMessage(null);
   }
 
+  function handleRestartPractice() {
+    setActiveQuizIndex(0);
+    setSelectedChoiceId(null);
+    setQuizAttempt(null);
+    setMessage(null);
+  }
+
   function updateTagFilter(tags: GrammarTag[] | null) {
     const nextSearchParams = new URLSearchParams(searchParams.toString());
 
@@ -429,6 +436,19 @@ function QuizWorkspace() {
                   </p>
                 </div>
               ) : null}
+              {quizAttempt && activeQuizIndex >= quizzes.length - 1 ? (
+                <div
+                  className="mt-4 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] p-3"
+                  role="status"
+                >
+                  <p className="text-sm font-semibold text-[var(--accent-strong)]">
+                    Practice complete
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    You finished all {quizzes.length} questions in this set.
+                  </p>
+                </div>
+              ) : null}
               <div className="mt-4 flex gap-2">
                 <button
                   className="h-11 flex-1 rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
@@ -443,19 +463,30 @@ function QuizWorkspace() {
                 >
                   {quizAttemptStatus === "loading" ? "Checking..." : "Check"}
                 </button>
-                <button
-                  className="h-11 min-w-24 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-28"
-                  disabled={
-                    activeQuizIndex >= quizzes.length - 1 ||
-                    authStatus === "loading" ||
-                    quizStatus === "loading" ||
-                    quizAttemptStatus === "loading"
-                  }
-                  onClick={handleNextQuiz}
-                  type="button"
-                >
-                  Next
-                </button>
+                {activeQuizIndex >= quizzes.length - 1 && quizAttempt ? (
+                  <button
+                    className="h-11 min-w-28 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)]"
+                    onClick={handleRestartPractice}
+                    type="button"
+                  >
+                    Practice again
+                  </button>
+                ) : (
+                  <button
+                    className="h-11 min-w-24 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-28"
+                    disabled={
+                      !quizAttempt ||
+                      activeQuizIndex >= quizzes.length - 1 ||
+                      authStatus === "loading" ||
+                      quizStatus === "loading" ||
+                      quizAttemptStatus === "loading"
+                    }
+                    onClick={handleNextQuiz}
+                    type="button"
+                  >
+                    Next
+                  </button>
+                )}
               </div>
             </form>
           ) : quizStatus === "loading" ? (
