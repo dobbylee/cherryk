@@ -1,6 +1,6 @@
 # Agent Operating Rules
 
-This repository is the Korean Correction Coach MVP. Agents must read this file and `local/plan.md` before planning or editing. Stack and version decisions live in `agent-harness/decisions.md`; do not duplicate them here unless they change agent behavior.
+This repository is the CherryK MVP. Agents must read this file and `local/plan.md` before planning or editing. Stack and version decisions live in `agent-harness/decisions.md`; do not duplicate them here unless they change agent behavior.
 
 ## Working Principles
 

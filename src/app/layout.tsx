@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Korean Correction Coach",
+  title: "CherryK",
   description:
     "Mobile-first Korean writing correction and reviewed MCQ practice.",
 };

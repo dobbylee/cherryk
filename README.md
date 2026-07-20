@@ -1,4 +1,4 @@
-# Korean Correction Coach
+# CherryK
 
 Mobile-first web MVP for Korean writing correction, handwriting OCR, reviewed MCQ practice, and corrected-text copy.
 

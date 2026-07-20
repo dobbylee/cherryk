@@ -15,7 +15,7 @@ export function AppHeader({
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
-  const displayName = user?.displayName || "Friend";
+  const displayName = user?.displayName || "Learner";
   const profileInitial =
     Array.from(displayName.trim())[0]?.toUpperCase() ?? "F";
 
@@ -49,18 +49,21 @@ export function AppHeader({
   }, [isUserMenuOpen]);
 
   return (
-    <header className="flex flex-col gap-4 border-b border-[var(--line)] pb-4 sm:flex-row sm:items-center sm:justify-between">
-      <Link href="/">
+    <header className="flex items-center justify-between gap-4 border-b border-[var(--line)] pb-4">
+      <Link className="shrink-0" href="/">
         <h1 className="text-2xl font-semibold tracking-normal text-[var(--foreground)] sm:text-3xl">
           CherryK
         </h1>
       </Link>
       {user ? (
-        <div className="relative flex justify-end" ref={userMenuRef}>
+        <div
+          className="relative flex min-w-0 flex-1 justify-end"
+          ref={userMenuRef}
+        >
           <button
             aria-controls="user-menu"
             aria-expanded={isUserMenuOpen}
-            className="inline-flex h-10 max-w-64 items-center gap-2 rounded-full border border-[var(--line)] bg-white py-1 pr-3 pl-1.5 text-base font-semibold text-[var(--foreground)] shadow-sm hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
+            className="inline-flex h-10 min-w-0 max-w-64 items-center gap-2 rounded-full border border-[var(--line)] bg-white py-1 pr-3 pl-1.5 text-base font-semibold text-[var(--foreground)] shadow-sm hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
             disabled={authBusy}
             onClick={() => setIsUserMenuOpen((isOpen) => !isOpen)}
             type="button"

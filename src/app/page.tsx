@@ -122,7 +122,7 @@ export default function HomePage() {
                     className="mt-2 h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
                     id="invite-code"
                     onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="friend-dev-code"
+                    placeholder="Enter invite code"
                     value={inviteCode}
                   />
                 </div>
@@ -137,7 +137,7 @@ export default function HomePage() {
                     className="mt-2 h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
                     id="display-name"
                     onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Friend"
+                    placeholder="Name or nickname"
                     value={displayName}
                   />
                 </div>
