@@ -29,6 +29,13 @@
       "when": 1784397280603,
       "tag": "0003_smart_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784513763356,
+      "tag": "0004_puzzling_wiccan",
+      "breakpoints": true
     }
   ]
 }

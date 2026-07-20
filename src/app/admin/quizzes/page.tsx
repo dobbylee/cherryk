@@ -259,12 +259,10 @@ export default function AdminQuizzesPage() {
               Quiz review
             </h1>
           </div>
-          <Link
-            className="text-sm font-semibold text-[var(--accent-strong)]"
-            href="/"
-          >
-            Back to app
-          </Link>
+          <div className="flex gap-3 text-sm font-semibold text-[var(--accent-strong)]">
+            <Link href="/admin/invites">User invites</Link>
+            <Link href="/">Back to app</Link>
+          </div>
         </header>
 
         {message ? (

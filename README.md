@@ -17,6 +17,10 @@ pnpm dev
 
 The local database runs through Docker.
 
+Create one-time user invite and recovery links from `/admin/invites` with the
+configured `ADMIN_SECRET`. New users enter a display name once; recovery links
+reconnect an existing user without creating another account.
+
 ## Project Direction
 
 - v1 uses Next.js App Router and API routes for the fastest working MVP.

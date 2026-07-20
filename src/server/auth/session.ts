@@ -1,7 +1,7 @@
 import { createHmac, randomBytes } from "node:crypto";
 
 export const SESSION_COOKIE_NAME = "cherryk_session";
-export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 90;
 
 type CookieSameSite = "lax" | "strict" | "none";
 
@@ -14,6 +14,10 @@ export type SessionCookieOptions = {
 };
 
 export function createSessionToken() {
+  return randomBytes(32).toString("base64url");
+}
+
+export function createInviteCode() {
   return randomBytes(32).toString("base64url");
 }
 

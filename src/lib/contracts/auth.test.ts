@@ -13,7 +13,7 @@ describe("InviteLoginRequestSchema", () => {
   it("rejects unbounded display names", () => {
     expect(
       InviteLoginRequestSchema.safeParse({
-        inviteCode: "friend-dev-code",
+        inviteCode: "local-invite-code",
         displayName: "a".repeat(81),
       }).success,
     ).toBe(false);

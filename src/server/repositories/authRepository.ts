@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { AuthUserSchema, type AuthUser } from "@/lib/contracts/auth";
 import type { Db } from "@/server/db";
 import { inviteCodes, sessions, users } from "@/server/db/schema";
@@ -11,18 +11,22 @@ export type CreateInviteSessionInput = {
   now: Date;
 };
 
+export type CreateInviteSessionResult =
+  | { status: "authenticated"; user: AuthUser }
+  | { status: "display_name_required" }
+  | { status: "invalid" };
+
 export type SeedInviteCodeInput = {
   codeHash: string;
   label: string | null;
   maxUses: number;
   expiresAt: Date | null;
-  resetUsedCount: boolean;
 };
 
 export type AuthRepository = {
   createInviteSession(
     input: CreateInviteSessionInput,
-  ): Promise<AuthUser | null>;
+  ): Promise<CreateInviteSessionResult>;
   findUserBySessionTokenHash(
     tokenHash: string,
     now: Date,
@@ -45,43 +49,71 @@ export function createAuthRepository(db: Db): AuthRepository {
 async function createInviteSession(
   db: Db,
   input: CreateInviteSessionInput,
-): Promise<AuthUser | null> {
+): Promise<CreateInviteSessionResult> {
   return db.transaction(async (tx) => {
-    const [claimedInvite] = await tx
-      .update(inviteCodes)
-      .set({
-        usedCount: sql`${inviteCodes.usedCount} + 1`,
+    const [invite] = await tx
+      .select({
+        id: inviteCodes.id,
+        userId: inviteCodes.userId,
+        maxUses: inviteCodes.maxUses,
+        usedCount: inviteCodes.usedCount,
+        expiresAt: inviteCodes.expiresAt,
       })
-      .where(
-        and(
-          eq(inviteCodes.codeHash, input.inviteCodeHash),
-          sql`${inviteCodes.usedCount} < ${inviteCodes.maxUses}`,
-          or(
-            isNull(inviteCodes.expiresAt),
-            gt(inviteCodes.expiresAt, input.now),
-          ),
-        ),
-      )
-      .returning({ id: inviteCodes.id });
+      .from(inviteCodes)
+      .where(eq(inviteCodes.codeHash, input.inviteCodeHash))
+      .limit(1)
+      .for("update");
 
-    if (!claimedInvite) {
-      return null;
+    if (
+      !invite ||
+      invite.usedCount >= invite.maxUses ||
+      (invite.expiresAt !== null && invite.expiresAt <= input.now)
+    ) {
+      return { status: "invalid" };
     }
 
-    const [user] = await tx
-      .insert(users)
-      .values({
-        displayName: input.displayName,
-      })
-      .returning({
-        id: users.id,
-        displayName: users.displayName,
-        level: users.level,
-      });
+    let user: AuthUser | undefined;
+
+    if (invite.userId) {
+      const [existingUser] = await tx
+        .select({
+          id: users.id,
+          displayName: users.displayName,
+          level: users.level,
+        })
+        .from(users)
+        .where(eq(users.id, invite.userId))
+        .limit(1);
+      user = existingUser ? AuthUserSchema.parse(existingUser) : undefined;
+    } else {
+      if (!input.displayName) {
+        return { status: "display_name_required" };
+      }
+
+      const [createdUser] = await tx
+        .insert(users)
+        .values({
+          displayName: input.displayName,
+        })
+        .returning({
+          id: users.id,
+          displayName: users.displayName,
+          level: users.level,
+        });
+      user = createdUser ? AuthUserSchema.parse(createdUser) : undefined;
+    }
 
     if (!user) {
       throw new Error("Failed to create user.");
     }
+
+    await tx
+      .update(inviteCodes)
+      .set({
+        usedCount: sql`${inviteCodes.usedCount} + 1`,
+        userId: user.id,
+      })
+      .where(eq(inviteCodes.id, invite.id));
 
     await tx.insert(sessions).values({
       userId: user.id,
@@ -89,7 +121,10 @@ async function createInviteSession(
       expiresAt: input.sessionExpiresAt,
     });
 
-    return AuthUserSchema.parse(user);
+    return {
+      status: "authenticated",
+      user,
+    };
   });
 }
 
@@ -132,7 +167,6 @@ async function upsertInviteCode(db: Db, input: SeedInviteCodeInput) {
         label: input.label,
         maxUses: input.maxUses,
         expiresAt: input.expiresAt,
-        ...(input.resetUsedCount ? { usedCount: 0 } : {}),
       },
     });
 }

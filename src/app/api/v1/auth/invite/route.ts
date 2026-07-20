@@ -47,7 +47,11 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     if (error instanceof AuthServiceError) {
-      return apiError(error.code, error.message, 401);
+      return apiError(
+        error.code,
+        error.message,
+        error.code === "display_name_required" ? 400 : 401,
+      );
     }
 
     return apiError("server_error", "Authentication is unavailable.", 500);

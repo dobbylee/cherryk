@@ -36,7 +36,7 @@ function createFakeRepository(
     seedInviteCodeInput: null,
     async createInviteSession(input: CreateInviteSessionInput) {
       repository.inviteSessionInput = input;
-      return testUser;
+      return { status: "authenticated", user: testUser };
     },
     async findUserBySessionTokenHash() {
       return testUser;
@@ -63,14 +63,14 @@ describe("authService", () => {
     });
 
     const result = await service.loginWithInvite({
-      inviteCode: "friend-dev-code",
+      inviteCode: "local-invite-code",
       displayName: "Friend",
     });
 
     expect(result.user).toEqual(testUser);
     expect(result.sessionToken).toBe("raw-session-token");
     expect(repository.inviteSessionInput).toMatchObject({
-      inviteCodeHash: hashInviteCode("friend-dev-code", "test-secret"),
+      inviteCodeHash: hashInviteCode("local-invite-code", "test-secret"),
       displayName: "Friend",
       sessionTokenHash: hashSessionToken("raw-session-token", "test-secret"),
       now: testNow,
@@ -81,7 +81,7 @@ describe("authService", () => {
     const service = createAuthService(
       createFakeRepository({
         async createInviteSession() {
-          return null;
+          return { status: "invalid" };
         },
       }),
       {
@@ -96,6 +96,41 @@ describe("authService", () => {
         inviteCode: "bad-code",
       }),
     ).rejects.toBeInstanceOf(AuthServiceError);
+  });
+
+  it("requires a display name when an unclaimed invite is used", async () => {
+    const service = createAuthService(
+      createFakeRepository({
+        async createInviteSession() {
+          return { status: "display_name_required" };
+        },
+      }),
+      {
+        authSecret: "test-secret",
+        now: () => testNow,
+        createToken: () => "raw-session-token",
+      },
+    );
+
+    await expect(
+      service.loginWithInvite({ inviteCode: "new-user-code" }),
+    ).rejects.toMatchObject({
+      code: "display_name_required",
+    });
+  });
+
+  it("allows recovery invites to authenticate without another display name", async () => {
+    const repository = createFakeRepository();
+    const service = createAuthService(repository, {
+      authSecret: "test-secret",
+      now: () => testNow,
+      createToken: () => "raw-session-token",
+    });
+
+    await expect(
+      service.loginWithInvite({ inviteCode: "recovery-code" }),
+    ).resolves.toMatchObject({ user: testUser });
+    expect(repository.inviteSessionInput?.displayName).toBeNull();
   });
 
   it("reads the current user from a session cookie", async () => {
@@ -167,18 +202,15 @@ describe("authService", () => {
     });
 
     await service.seedInviteCode({
-      inviteCode: " friend-dev-code ",
+      inviteCode: " local-invite-code ",
       label: "Local development",
-      maxUses: 20,
-      resetUsedCount: true,
     });
 
     expect(repository.seedInviteCodeInput).toEqual({
-      codeHash: hashInviteCode("friend-dev-code", "test-secret"),
+      codeHash: hashInviteCode("local-invite-code", "test-secret"),
       label: "Local development",
-      maxUses: 20,
+      maxUses: 1,
       expiresAt: null,
-      resetUsedCount: true,
     });
   });
 
@@ -190,16 +222,6 @@ describe("authService", () => {
     await expect(
       service.seedInviteCode({
         inviteCode: " ",
-        maxUses: 20,
-      }),
-    ).rejects.toMatchObject({
-      code: "invalid_invite_seed",
-    });
-
-    await expect(
-      service.seedInviteCode({
-        inviteCode: "friend-dev-code",
-        maxUses: 0,
       }),
     ).rejects.toMatchObject({
       code: "invalid_invite_seed",

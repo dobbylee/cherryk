@@ -22,7 +22,6 @@ async function main() {
       {
         inviteCode,
         label: "Initial invite",
-        maxUses: 20,
       },
     );
 

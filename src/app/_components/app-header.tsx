@@ -10,7 +10,7 @@ export function AppHeader({
   user,
 }: {
   authBusy: boolean;
-  onLogout: () => void;
+  onLogout?: () => void;
   user: AuthUser | null;
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -55,7 +55,7 @@ export function AppHeader({
           CherryK
         </h1>
       </Link>
-      {user ? (
+      {user && onLogout ? (
         <div
           className="relative flex min-w-0 flex-1 justify-end"
           ref={userMenuRef}

@@ -11,7 +11,11 @@ import type { AuthRepository } from "@/server/repositories/authRepository";
 
 export class AuthServiceError extends Error {
   constructor(
-    readonly code: "invalid_invite" | "invalid_invite_seed" | "unauthorized",
+    readonly code:
+      | "display_name_required"
+      | "invalid_invite"
+      | "invalid_invite_seed"
+      | "unauthorized",
     message: string,
   ) {
     super(message);
@@ -28,9 +32,7 @@ export type LoginWithInviteResult = {
 export type SeedInviteCodeRequest = {
   inviteCode: string;
   label?: string | null;
-  maxUses: number;
   expiresAt?: Date | null;
-  resetUsedCount?: boolean;
 };
 
 export type AuthService = {
@@ -72,7 +74,7 @@ export function createAuthService(
       const authSecret = requireAuthSecret(options.authSecret);
       const sessionToken = createToken();
       const sessionExpiresAt = createSessionExpiresAt(currentTime);
-      const user = await repository.createInviteSession({
+      const loginResult = await repository.createInviteSession({
         inviteCodeHash: hashInviteCode(input.inviteCode, authSecret),
         displayName: input.displayName ?? null,
         sessionTokenHash: hashSessionToken(sessionToken, authSecret),
@@ -80,7 +82,14 @@ export function createAuthService(
         now: currentTime,
       });
 
-      if (!user) {
+      if (loginResult.status === "display_name_required") {
+        throw new AuthServiceError(
+          "display_name_required",
+          "Display name is required for a new invite.",
+        );
+      }
+
+      if (loginResult.status === "invalid") {
         throw new AuthServiceError(
           "invalid_invite",
           "Invite code is invalid, expired, or already used.",
@@ -88,7 +97,7 @@ export function createAuthService(
       }
 
       return {
-        user,
+        user: loginResult.user,
         sessionToken,
         sessionExpiresAt,
       };
@@ -118,14 +127,10 @@ export function createAuthService(
 
     async seedInviteCode(input) {
       const inviteCode = input.inviteCode.trim();
-      if (
-        !inviteCode ||
-        !Number.isInteger(input.maxUses) ||
-        input.maxUses < 1
-      ) {
+      if (!inviteCode) {
         throw new AuthServiceError(
           "invalid_invite_seed",
-          "Invite seed must include a code and a positive maxUses value.",
+          "Invite seed must include a code.",
         );
       }
 
@@ -135,9 +140,8 @@ export function createAuthService(
           requireAuthSecret(options.authSecret),
         ),
         label: input.label ?? null,
-        maxUses: input.maxUses,
+        maxUses: 1,
         expiresAt: input.expiresAt ?? null,
-        resetUsedCount: input.resetUsedCount ?? false,
       });
     },
   };

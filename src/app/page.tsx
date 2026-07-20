@@ -1,17 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/app/_components/app-header";
-import { fetchCurrentUser, loginWithInvite, logout } from "@/lib/api/auth";
+import { fetchCurrentUser, logout } from "@/lib/api/auth";
 import type { AuthUser } from "@/lib/contracts/auth";
 
 type FormStatus = "idle" | "loading";
 
 export default function HomePage() {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [inviteCode, setInviteCode] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
   const [message, setMessage] = useState<string | null>(null);
 
@@ -41,26 +39,6 @@ export default function HomePage() {
       ignore = true;
     };
   }, []);
-
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(null);
-    setAuthStatus("loading");
-
-    try {
-      const response = await loginWithInvite({
-        inviteCode: inviteCode.trim(),
-        displayName: displayName.trim() || undefined,
-      });
-      setUser(response.user);
-      setInviteCode("");
-      setDisplayName("");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Login failed.");
-    } finally {
-      setAuthStatus("idle");
-    }
-  }
 
   async function handleLogout() {
     setMessage(null);
@@ -95,7 +73,7 @@ export default function HomePage() {
                   Correction / OCR / MCQ
                 </p>
                 <h2 className="mt-3 max-w-xl text-3xl leading-tight font-semibold tracking-normal sm:text-4xl">
-                  Focused Korean writing practice.
+                  Korean Practice.
                 </h2>
                 <div className="mt-5 grid gap-2 text-sm text-[var(--muted)] sm:grid-cols-3">
                   <span className="border-t border-[var(--line)] pt-3">
@@ -109,46 +87,18 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
-              <form className="grid gap-3" onSubmit={handleLogin}>
-                <div>
-                  <label
-                    className="text-sm font-semibold"
-                    htmlFor="invite-code"
-                  >
-                    Invite code
-                  </label>
-                  <input
-                    autoComplete="off"
-                    className="mt-2 h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
-                    id="invite-code"
-                    onChange={(event) => setInviteCode(event.target.value)}
-                    placeholder="Enter invite code"
-                    value={inviteCode}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="text-sm font-semibold"
-                    htmlFor="display-name"
-                  >
-                    Display name
-                  </label>
-                  <input
-                    className="mt-2 h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
-                    id="display-name"
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Name or nickname"
-                    value={displayName}
-                  />
-                </div>
-                <button
-                  className="h-11 rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] shadow-[inset_0_0_0_1px_rgb(255_255_255_/_75%)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
-                  disabled={authStatus === "loading" || !inviteCode.trim()}
-                  type="submit"
-                >
-                  {authStatus === "loading" ? "Checking..." : "Login"}
-                </button>
-              </form>
+              <div className="grid content-center gap-3 border border-[var(--line)] bg-white p-4">
+                <p className="text-sm font-bold text-[var(--accent)]">
+                  Personal access
+                </p>
+                <h3 className="text-xl font-semibold tracking-normal">
+                  Open your invite link.
+                </h3>
+                <p className="text-sm leading-6 text-[var(--muted)]">
+                  Use the personal invite or recovery link shared with you. You
+                  only need it when joining or recovering access.
+                </p>
+              </div>
             </div>
           </section>
         ) : (

@@ -23,6 +23,9 @@ export const inviteCodes = pgTable("invite_codes", {
   id: uuid("id").primaryKey().defaultRandom(),
   codeHash: text("code_hash").notNull().unique(),
   label: text("label"),
+  userId: uuid("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
   maxUses: integer("max_uses").notNull().default(1),
   usedCount: integer("used_count").notNull().default(0),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
