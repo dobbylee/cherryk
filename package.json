@@ -13,7 +13,6 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "db:deploy": "pnpm db:migrate && pnpm db:seed:quizzes",
-    "db:deploy:preview": "if [ \"$VERCEL_ENV\" = \"preview\" ]; then pnpm db:deploy; else echo \"Skipping Preview database deployment.\"; fi",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed:quizzes": "tsx src/server/db/seedInitialApprovedQuizzes.ts",
