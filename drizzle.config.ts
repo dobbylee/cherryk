@@ -9,7 +9,8 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url:
-      process.env.DATABASE_URL ??
+      process.env.DATABASE_URL_UNPOOLED ||
+      process.env.DATABASE_URL ||
       "postgres://cherryk:cherryk@localhost:5433/cherryk",
   },
   strict: true,

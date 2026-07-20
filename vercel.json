@@ -1,0 +1,3 @@
+{
+  "buildCommand": "pnpm db:deploy:preview && pnpm run build"
+}
