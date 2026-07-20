@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AIProvider } from "@/server/ai/provider";
 import {
   createOCRService,
@@ -7,6 +7,7 @@ import {
   OCRServiceError,
   type OCRImageFile,
 } from "./ocrService";
+import { UsageLimitError } from "./usageLimitService";
 
 function createFakeAIProvider(
   output: unknown,
@@ -29,6 +30,29 @@ function createFakeAIProvider(
 }
 
 describe("ocrService", () => {
+  it("stops before the AI call when the daily OCR limit is reached", async () => {
+    const imageBytes = await createTestImage(32, 32, "jpeg");
+    const image = new File([toArrayBuffer(imageBytes)], "note.jpg", {
+      type: "image/jpeg",
+    });
+    const aiProvider = createFakeAIProvider({ extractedText: "unused" });
+    const extractKoreanTextFromImage = vi.spyOn(
+      aiProvider,
+      "extractKoreanTextFromImage",
+    );
+    const service = createOCRService(aiProvider, {
+      userId: "11111111-1111-4111-8111-111111111111",
+      usageLimiter: {
+        consume: vi.fn().mockRejectedValue(new UsageLimitError("ocr")),
+      },
+    });
+
+    await expect(
+      service.extractKoreanTextFromImage(image),
+    ).rejects.toMatchObject({ code: "daily_limit_reached" });
+    expect(extractKoreanTextFromImage).not.toHaveBeenCalled();
+  });
+
   it("extracts Korean text from an image without storing the original file", async () => {
     const imageBytes = await createTestImage(4096, 2048, "jpeg");
     const image = new File([toArrayBuffer(imageBytes)], "note.jpg", {

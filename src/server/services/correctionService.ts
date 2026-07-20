@@ -9,6 +9,7 @@ import {
 import type { GrammarTag } from "@/lib/contracts/grammar-tags";
 import type { AIProvider } from "@/server/ai/provider";
 import type { CorrectionRepository } from "@/server/repositories/correctionRepository";
+import type { UsageLimiter } from "@/server/services/usageLimitService";
 
 export class CorrectionServiceError extends Error {
   constructor(
@@ -22,6 +23,7 @@ export class CorrectionServiceError extends Error {
 
 type CorrectionServiceOptions = {
   now?: () => Date;
+  usageLimiter?: UsageLimiter;
 };
 
 export function createCorrectionService(
@@ -36,6 +38,7 @@ export function createCorrectionService(
       user: AuthUser,
       input: CorrectionInput,
     ): Promise<CorrectionResponse> {
+      await options.usageLimiter?.consume(user.id, "correction", now());
       const aiResult = await aiProvider.correctKorean(input);
       const parsed = CorrectionAIOutputSchema.safeParse(aiResult);
 

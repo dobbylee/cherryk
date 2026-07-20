@@ -4,14 +4,21 @@ import {
   type CorrectionResponse,
 } from "@/lib/contracts/correction";
 import { createAIProvider } from "@/server/ai/configuredProvider";
-import { requireCurrentUser } from "@/server/auth/currentUser";
+import {
+  AuthenticationError,
+  requireCurrentUser,
+} from "@/server/auth/currentUser";
 import { createDb } from "@/server/db";
 import { createCorrectionRepository } from "@/server/repositories/correctionRepository";
+import { createUsageRepository } from "@/server/repositories/usageRepository";
 import {
   CorrectionServiceError,
   createCorrectionService,
 } from "@/server/services/correctionService";
-import { AuthServiceError } from "@/server/services/authService";
+import {
+  createUsageLimitService,
+  UsageLimitError,
+} from "@/server/services/usageLimitService";
 import { apiError } from "../_responses";
 
 export const runtime = "nodejs";
@@ -36,9 +43,13 @@ export async function POST(request: Request) {
   }
 
   try {
+    const db = createDb();
     const service = createCorrectionService(
-      createCorrectionRepository(createDb()),
+      createCorrectionRepository(db),
       createAIProvider(),
+      {
+        usageLimiter: createUsageLimitService(createUsageRepository(db)),
+      },
     );
     const response = await service.correctKorean(userResult, parsed.data);
 
@@ -46,6 +57,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof CorrectionServiceError) {
       return apiError(error.code, error.message, 502);
+    }
+
+    if (error instanceof UsageLimitError) {
+      return apiError(error.code, error.message, 429);
     }
 
     return apiError("server_error", "Correction is unavailable.", 500);
@@ -56,7 +71,7 @@ async function getAuthenticatedUser(request: Request) {
   try {
     return await requireCurrentUser(request);
   } catch (error) {
-    if (error instanceof AuthServiceError && error.code === "unauthorized") {
+    if (error instanceof AuthenticationError) {
       return apiError(error.code, error.message, 401);
     }
 

@@ -7,19 +7,25 @@ Mobile-first web MVP for Korean writing correction, handwriting OCR, reviewed MC
 ```bash
 pnpm install
 cp .env.example .env.local
-# Set AUTH_SECRET in .env.local before seeding.
+# Set the Google OAuth and Better Auth values in .env.local.
 docker compose up -d postgres
 pnpm db:migrate
-pnpm db:seed:invite
 pnpm db:seed:quizzes
 pnpm dev
 ```
 
 The local database runs through Docker.
 
-Create one-time user invite and recovery links from `/admin/invites` with the
-configured `ADMIN_SECRET`. New users enter a display name once; recovery links
-reconnect an existing user without creating another account.
+Users sign up or sign in with Google. Configure this authorized redirect URI in
+Google Cloud for local development:
+
+```text
+http://localhost:3000/api/auth/callback/google
+```
+
+`DAILY_CORRECTION_LIMIT` and `DAILY_OCR_LIMIT` control the per-user UTC daily
+AI usage limits. They default to 20 corrections and 10 photo OCR requests.
+`ADMIN_SECRET` continues to protect the quiz review workflow.
 
 ## Project Direction
 
@@ -36,7 +42,6 @@ pnpm test:unit
 pnpm build
 pnpm db:generate
 pnpm db:migrate
-pnpm db:seed:invite
 pnpm db:seed:quizzes
 pnpm db:psql
 ```

@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import type { OCRExtractResponse } from "@/lib/contracts/ocr";
 import { createAIProvider } from "@/server/ai/configuredProvider";
-import { requireCurrentUser } from "@/server/auth/currentUser";
-import { AuthServiceError } from "@/server/services/authService";
+import {
+  AuthenticationError,
+  requireCurrentUser,
+} from "@/server/auth/currentUser";
+import { createDb } from "@/server/db";
+import { createUsageRepository } from "@/server/repositories/usageRepository";
 import {
   createOCRService,
   OCR_IMAGE_FIELD_NAME,
   OCRServiceError,
 } from "@/server/services/ocrService";
+import {
+  createUsageLimitService,
+  UsageLimitError,
+} from "@/server/services/usageLimitService";
 import { apiError } from "../../_responses";
 
 export const runtime = "nodejs";
@@ -32,7 +40,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const service = createOCRService(createAIProvider());
+    const db = createDb();
+    const service = createOCRService(createAIProvider(), {
+      usageLimiter: createUsageLimitService(createUsageRepository(db)),
+      userId: userResult.id,
+    });
     const response = await service.extractKoreanTextFromImage(image);
 
     return NextResponse.json<OCRExtractResponse>(response);
@@ -45,6 +57,10 @@ export async function POST(request: Request) {
       );
     }
 
+    if (error instanceof UsageLimitError) {
+      return apiError(error.code, error.message, 429);
+    }
+
     return apiError("server_error", "OCR is unavailable.", 500);
   }
 }
@@ -53,7 +69,7 @@ async function getAuthenticatedUser(request: Request) {
   try {
     return await requireCurrentUser(request);
   } catch (error) {
-    if (error instanceof AuthServiceError && error.code === "unauthorized") {
+    if (error instanceof AuthenticationError) {
       return apiError(error.code, error.message, 401);
     }
 

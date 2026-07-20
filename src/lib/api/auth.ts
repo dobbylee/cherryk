@@ -1,26 +1,25 @@
-import type {
-  InviteLoginResponse,
-  LogoutResponse,
-  MeResponse,
-} from "@/lib/contracts/auth";
+import { authClient } from "@/lib/auth-client";
+import type { MeResponse } from "@/lib/contracts/auth";
 import { fetchJson } from "./client";
 
 export function fetchCurrentUser() {
   return fetchJson<MeResponse>("/api/v1/auth/me");
 }
 
-export function loginWithInvite(input: {
-  inviteCode: string;
-  displayName?: string;
-}) {
-  return fetchJson<InviteLoginResponse>("/api/v1/auth/invite", {
-    method: "POST",
-    body: JSON.stringify(input),
+export async function loginWithGoogle() {
+  const { error } = await authClient.signIn.social({
+    provider: "google",
+    callbackURL: "/",
   });
+
+  if (error) {
+    throw new Error(error.message ?? "Google sign-in failed.");
+  }
 }
 
-export function logout() {
-  return fetchJson<LogoutResponse>("/api/v1/auth/logout", {
-    method: "POST",
-  });
+export async function logout() {
+  const { error } = await authClient.signOut();
+  if (error) {
+    throw new Error(error.message ?? "Logout failed.");
+  }
 }

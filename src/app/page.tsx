@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/app/_components/app-header";
-import { fetchCurrentUser, logout } from "@/lib/api/auth";
+import { fetchCurrentUser, loginWithGoogle, logout } from "@/lib/api/auth";
 import type { AuthUser } from "@/lib/contracts/auth";
 
 type FormStatus = "idle" | "loading";
@@ -39,6 +39,20 @@ export default function HomePage() {
       ignore = true;
     };
   }, []);
+
+  async function handleGoogleLogin() {
+    setMessage(null);
+    setAuthStatus("loading");
+
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Google sign-in failed.",
+      );
+      setAuthStatus("idle");
+    }
+  }
 
   async function handleLogout() {
     setMessage(null);
@@ -87,17 +101,27 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
-              <div className="grid content-center gap-3 border border-[var(--line)] bg-white p-4">
+              <div className="grid content-center gap-4 border border-[var(--line)] bg-white p-4">
                 <p className="text-sm font-bold text-[var(--accent)]">
-                  Personal access
+                  Your account
                 </p>
                 <h3 className="text-xl font-semibold tracking-normal">
-                  Open your invite link.
+                  Continue with Google.
                 </h3>
                 <p className="text-sm leading-6 text-[var(--muted)]">
-                  Use the personal invite or recovery link shared with you. You
-                  only need it when joining or recovering access.
+                  Sign in on any browser or device and keep your practice
+                  history connected to the same account.
                 </p>
+                <button
+                  className="flex h-11 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:cursor-wait disabled:opacity-60"
+                  disabled={authStatus === "loading"}
+                  onClick={handleGoogleLogin}
+                  type="button"
+                >
+                  {authStatus === "loading"
+                    ? "Checking account..."
+                    : "Continue with Google"}
+                </button>
               </div>
             </div>
           </section>

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthUser } from "@/lib/contracts/auth";
-import { AuthServiceError } from "@/server/services/authService";
+import { AuthenticationError } from "@/server/auth/currentUser";
 import { POST } from "./route";
 
 const mocks = vi.hoisted(() => ({
@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/server/auth/currentUser", () => ({
+  AuthenticationError: class AuthenticationError extends Error {
+    readonly code = "unauthorized";
+  },
   requireCurrentUser: mocks.requireCurrentUser,
 }));
 
@@ -111,7 +114,7 @@ describe("POST /api/v1/quizzes/attempt", () => {
 
   it("returns 401 when the user is not authenticated", async () => {
     mocks.requireCurrentUser.mockRejectedValue(
-      new AuthServiceError("unauthorized", "Authentication required."),
+      new AuthenticationError("Authentication required."),
     );
 
     const response = await POST(

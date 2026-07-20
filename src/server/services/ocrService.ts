@@ -8,6 +8,7 @@ import {
   normalizeOCRImage,
   type SupportedOCRImageMimeType,
 } from "@/server/services/ocrImageNormalizer";
+import type { UsageLimiter } from "@/server/services/usageLimitService";
 
 export const OCR_IMAGE_FIELD_NAME = "image";
 export const MAX_OCR_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -32,7 +33,15 @@ export class OCRServiceError extends Error {
   }
 }
 
-export function createOCRService(aiProvider: AIProvider) {
+type OCRServiceOptions = {
+  usageLimiter?: UsageLimiter;
+  userId?: string;
+};
+
+export function createOCRService(
+  aiProvider: AIProvider,
+  options: OCRServiceOptions = {},
+) {
   return {
     async extractKoreanTextFromImage(
       image: OCRImageFile,
@@ -60,6 +69,10 @@ export function createOCRService(aiProvider: AIProvider) {
           "invalid_image",
           "Image could not be processed.",
         );
+      }
+
+      if (options.usageLimiter && options.userId) {
+        await options.usageLimiter.consume(options.userId, "ocr");
       }
 
       const imageBase64 = Buffer.from(normalizedImage.imageBytes).toString(

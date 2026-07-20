@@ -3,10 +3,12 @@ import {
   QuizAttemptRequestSchema,
   type QuizAttemptResponse,
 } from "@/lib/contracts/quiz";
-import { requireCurrentUser } from "@/server/auth/currentUser";
+import {
+  AuthenticationError,
+  requireCurrentUser,
+} from "@/server/auth/currentUser";
 import { createDb } from "@/server/db";
 import { createQuizRepository } from "@/server/repositories/quizRepository";
-import { AuthServiceError } from "@/server/services/authService";
 import {
   createQuizAttemptService,
   QuizAttemptServiceError,
@@ -56,7 +58,7 @@ async function getAuthenticatedUser(request: Request) {
   try {
     return await requireCurrentUser(request);
   } catch (error) {
-    if (error instanceof AuthServiceError && error.code === "unauthorized") {
+    if (error instanceof AuthenticationError) {
       return apiError(error.code, error.message, 401);
     }
 

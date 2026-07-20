@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AuthUser } from "@/lib/contracts/auth";
 import type { CorrectionAIOutput } from "@/lib/contracts/correction";
 import type { AIProvider } from "@/server/ai/provider";
@@ -10,6 +10,7 @@ import {
   CorrectionServiceError,
   createCorrectionService,
 } from "./correctionService";
+import { UsageLimitError } from "./usageLimitService";
 
 const testNow = new Date("2026-07-08T00:00:00.000Z");
 const testUser: AuthUser = {
@@ -66,6 +67,31 @@ function createFakeAIProvider(output: unknown): AIProvider {
 }
 
 describe("correctionService", () => {
+  it("stops before the AI call when the daily correction limit is reached", async () => {
+    const aiProvider = createFakeAIProvider(correctionOutput);
+    const correctKorean = vi.spyOn(aiProvider, "correctKorean");
+    const service = createCorrectionService(
+      createFakeRepository(),
+      aiProvider,
+      {
+        now: () => testNow,
+        usageLimiter: {
+          consume: vi.fn().mockRejectedValue(new UsageLimitError("correction")),
+        },
+      },
+    );
+
+    await expect(
+      service.correctKorean(testUser, {
+        text: "저는 학교에 공부했어요.",
+        inputType: "text",
+        level: "beginner",
+        correctionStyle: "minimal",
+      }),
+    ).rejects.toMatchObject({ code: "daily_limit_reached" });
+    expect(correctKorean).not.toHaveBeenCalled();
+  });
+
   it("corrects Korean text, stores the result, and returns unique recommended tags", async () => {
     const repository = createFakeRepository();
     const service = createCorrectionService(
@@ -134,8 +160,7 @@ describe("correctionService", () => {
     const service = createCorrectionService(
       repository,
       createFakeAIProvider({
-        correctedText:
-          "오늘은 서쪽 지방을 중심으로 공기가 무척 탁하겠습니다.",
+        correctedText: "오늘은 서쪽 지방을 중심으로 공기가 무척 탁하겠습니다.",
         explanationEn:
           "Only the line break in the middle of the sentence was removed.",
         mistakes: [
@@ -143,8 +168,7 @@ describe("correctionService", () => {
             tag: "spacing",
             originalPart: "무척\n탁하겠습니다",
             correctedPart: "무척 탁하겠습니다",
-            explanationEn:
-              "A line break was changed to a regular space.",
+            explanationEn: "A line break was changed to a regular space.",
             severity: "minor",
           },
         ],
