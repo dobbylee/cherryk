@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ADMIN_SECRET_HEADER } from "@/lib/contracts/admin";
 import {
   deleteAdminQuizDraft,
   generateAdminQuizDrafts,
@@ -11,13 +10,13 @@ describe("admin quiz API helpers", () => {
     vi.unstubAllGlobals();
   });
 
-  it("generates quiz drafts with the admin secret header", async () => {
+  it("generates quiz drafts with the current account session", async () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const headers = new Headers(init?.headers);
         expect(input).toBe("/api/v1/admin/quizzes/generate-drafts");
         expect(init?.method).toBe("POST");
-        expect(headers.get(ADMIN_SECRET_HEADER)).toBe("test-admin-secret");
+        expect([...headers.keys()]).toEqual(["content-type"]);
         expect(init?.body).toBe(
           JSON.stringify({
             tag: "particle_object",
@@ -32,7 +31,7 @@ describe("admin quiz API helpers", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      generateAdminQuizDrafts("test-admin-secret", {
+      generateAdminQuizDrafts({
         tag: "particle_object",
         difficulty: "beginner",
         count: 2,
@@ -40,7 +39,7 @@ describe("admin quiz API helpers", () => {
     ).resolves.toEqual({ drafts: [] });
   });
 
-  it("updates a quiz with the admin secret header", async () => {
+  it("updates a quiz with the current account session", async () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const headers = new Headers(init?.headers);
@@ -48,7 +47,7 @@ describe("admin quiz API helpers", () => {
           "/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
         );
         expect(init?.method).toBe("PATCH");
-        expect(headers.get(ADMIN_SECRET_HEADER)).toBe("test-admin-secret");
+        expect([...headers.keys()]).toEqual(["content-type"]);
         expect(init?.body).toBe(
           JSON.stringify({
             status: "approved",
@@ -66,13 +65,9 @@ describe("admin quiz API helpers", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      updateAdminQuiz(
-        "test-admin-secret",
-        "11111111-1111-4111-8111-111111111111",
-        {
-          status: "approved",
-        },
-      ),
+      updateAdminQuiz("11111111-1111-4111-8111-111111111111", {
+        status: "approved",
+      }),
     ).resolves.toEqual({
       quiz: {
         id: "11111111-1111-4111-8111-111111111111",
@@ -81,7 +76,7 @@ describe("admin quiz API helpers", () => {
     });
   });
 
-  it("deletes a rejected draft with the admin secret header", async () => {
+  it("deletes a rejected draft with the current account session", async () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const headers = new Headers(init?.headers);
@@ -89,7 +84,7 @@ describe("admin quiz API helpers", () => {
           "/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
         );
         expect(init?.method).toBe("DELETE");
-        expect(headers.get(ADMIN_SECRET_HEADER)).toBe("test-admin-secret");
+        expect([...headers.keys()]).toEqual([]);
         return Response.json({
           deletedQuizId: "11111111-1111-4111-8111-111111111111",
         });
@@ -99,10 +94,7 @@ describe("admin quiz API helpers", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      deleteAdminQuizDraft(
-        "test-admin-secret",
-        "11111111-1111-4111-8111-111111111111",
-      ),
+      deleteAdminQuizDraft("11111111-1111-4111-8111-111111111111"),
     ).resolves.toEqual({
       deletedQuizId: "11111111-1111-4111-8111-111111111111",
     });

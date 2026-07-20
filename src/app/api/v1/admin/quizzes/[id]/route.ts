@@ -6,7 +6,7 @@ import {
   type AdminQuizUpdateResponse,
 } from "@/lib/contracts/quiz";
 import { mockAIProvider } from "@/server/ai/mockAIProvider";
-import { AdminAuthError, requireAdminSecret } from "@/server/auth/admin";
+import { AdminAuthError, requireAdminAccount } from "@/server/auth/admin";
 import { createDb } from "@/server/db";
 import { createQuizRepository } from "@/server/repositories/quizRepository";
 import {
@@ -22,7 +22,7 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const adminResult = getAdminAccess(request);
+  const adminResult = await getAdminAccess(request);
   if (adminResult instanceof Response) {
     return adminResult;
   }
@@ -73,7 +73,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const adminResult = getAdminAccess(request);
+  const adminResult = await getAdminAccess(request);
   if (adminResult instanceof Response) {
     return adminResult;
   }
@@ -105,18 +105,26 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 }
 
-function getAdminAccess(request: Request) {
+async function getAdminAccess(request: Request) {
   try {
-    requireAdminSecret(request);
+    await requireAdminAccount(request);
   } catch (error) {
     if (error instanceof AdminAuthError) {
       return apiError(
         error.code,
         error.message,
-        error.code === "unauthorized" ? 401 : 500,
+        error.code === "unauthorized"
+          ? 401
+          : error.code === "forbidden"
+            ? 403
+            : 500,
       );
     }
 
-    return apiError("server_error", "Admin authentication is unavailable.", 500);
+    return apiError(
+      "server_error",
+      "Admin authentication is unavailable.",
+      500,
+    );
   }
 }

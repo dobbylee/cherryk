@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ADMIN_SECRET_HEADER } from "@/server/auth/admin";
 import { DELETE, PATCH } from "./route";
 
 const mocks = vi.hoisted(() => ({
   createDb: vi.fn(() => ({})),
   createQuizRepository: vi.fn(),
+  getSession: vi.fn(),
+}));
+
+vi.mock("@/server/auth/auth", () => ({
+  auth: {
+    api: {
+      getSession: mocks.getSession,
+    },
+  },
 }));
 
 vi.mock("@/server/db", () => ({
@@ -24,7 +32,13 @@ const routeContext = {
 describe("/api/v1/admin/quizzes/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("ADMIN_SECRET", "test-admin-secret");
+    vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
+    mocks.getSession.mockResolvedValue({
+      user: {
+        email: "admin@example.com",
+        emailVerified: true,
+      },
+    });
   });
 
   afterEach(() => {
@@ -33,10 +47,7 @@ describe("/api/v1/admin/quizzes/[id]", () => {
 
   it("updates quiz review status for admin users", async () => {
     mocks.createQuizRepository.mockReturnValue({
-      async updateQuiz(input: {
-        id: string;
-        update: { status?: string };
-      }) {
+      async updateQuiz(input: { id: string; update: { status?: string } }) {
         expect(input).toMatchObject({
           id: "11111111-1111-4111-8111-111111111111",
           update: {
@@ -62,7 +73,6 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         {
           method: "PATCH",
           headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -96,9 +106,7 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
         {
           method: "DELETE",
-          headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
-          },
+          headers: {},
         },
       ),
       routeContext,
@@ -122,9 +130,7 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
         {
           method: "DELETE",
-          headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
-          },
+          headers: {},
         },
       ),
       routeContext,
@@ -139,7 +145,9 @@ describe("/api/v1/admin/quizzes/[id]", () => {
     });
   });
 
-  it("rejects draft deletion without the admin secret", async () => {
+  it("rejects draft deletion without an authenticated account", async () => {
+    mocks.getSession.mockResolvedValue(null);
+
     const response = await DELETE(
       new Request(
         "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
@@ -152,7 +160,7 @@ describe("/api/v1/admin/quizzes/[id]", () => {
     await expect(response.json()).resolves.toEqual({
       error: {
         code: "unauthorized",
-        message: "Admin secret is invalid.",
+        message: "Authentication required.",
       },
     });
     expect(mocks.createQuizRepository).not.toHaveBeenCalled();
@@ -162,9 +170,7 @@ describe("/api/v1/admin/quizzes/[id]", () => {
     const response = await DELETE(
       new Request("http://localhost/api/v1/admin/quizzes/not-a-uuid", {
         method: "DELETE",
-        headers: {
-          [ADMIN_SECRET_HEADER]: "test-admin-secret",
-        },
+        headers: {},
       }),
       { params: Promise.resolve({ id: "not-a-uuid" }) },
     );
@@ -179,7 +185,9 @@ describe("/api/v1/admin/quizzes/[id]", () => {
     expect(mocks.createQuizRepository).not.toHaveBeenCalled();
   });
 
-  it("rejects requests without the admin secret before creating the repository", async () => {
+  it("rejects unauthenticated requests before creating the repository", async () => {
+    mocks.getSession.mockResolvedValue(null);
+
     const response = await PATCH(
       new Request(
         "http://localhost/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
@@ -201,7 +209,7 @@ describe("/api/v1/admin/quizzes/[id]", () => {
     expect(payload).toEqual({
       error: {
         code: "unauthorized",
-        message: "Admin secret is invalid.",
+        message: "Authentication required.",
       },
     });
     expect(mocks.createQuizRepository).not.toHaveBeenCalled();
@@ -214,7 +222,6 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         {
           method: "PATCH",
           headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -246,7 +253,6 @@ describe("/api/v1/admin/quizzes/[id]", () => {
       new Request("http://localhost/api/v1/admin/quizzes/not-a-uuid", {
         method: "PATCH",
         headers: {
-          [ADMIN_SECRET_HEADER]: "test-admin-secret",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -290,7 +296,6 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         {
           method: "PATCH",
           headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -330,7 +335,6 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         {
           method: "PATCH",
           headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -375,7 +379,6 @@ describe("/api/v1/admin/quizzes/[id]", () => {
         {
           method: "PATCH",
           headers: {
-            [ADMIN_SECRET_HEADER]: "test-admin-secret",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

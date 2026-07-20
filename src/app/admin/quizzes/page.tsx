@@ -21,7 +21,6 @@ type ReviewAction = "save" | "approve" | "reject" | null;
 type MessageTone = "neutral" | "save" | "approve" | "reject" | "error";
 
 export default function AdminQuizzesPage() {
-  const [adminSecret, setAdminSecret] = useState("");
   const [tag, setTag] = useState<GrammarTag>("particle_object");
   const [difficulty, setDifficulty] = useState<UserLevel>("beginner");
   const [count, setCount] = useState(3);
@@ -41,9 +40,7 @@ export default function AdminQuizzesPage() {
 
   async function handleGenerateDrafts(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmedSecret = adminSecret.trim();
     if (
-      !trimmedSecret ||
       !isValidDraftCount(count) ||
       draftStatus === "loading" ||
       reviewAction !== null
@@ -56,7 +53,7 @@ export default function AdminQuizzesPage() {
 
     try {
       const trimmedInstruction = instruction.trim();
-      const response = await generateAdminQuizDrafts(trimmedSecret, {
+      const response = await generateAdminQuizDrafts({
         tag,
         difficulty,
         count,
@@ -84,13 +81,7 @@ export default function AdminQuizzesPage() {
 
   async function handleSaveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmedSecret = adminSecret.trim();
-    if (
-      !isEditing ||
-      !trimmedSecret ||
-      !activeDraft ||
-      reviewAction !== null
-    ) {
+    if (!isEditing || !activeDraft || reviewAction !== null) {
       return;
     }
 
@@ -107,7 +98,7 @@ export default function AdminQuizzesPage() {
     setReviewAction("save");
 
     try {
-      await updateAdminQuiz(trimmedSecret, activeDraft.id, update);
+      await updateAdminQuiz(activeDraft.id, update);
       setIsEditing(false);
       showMessage("Changes saved.", "save");
     } catch (error) {
@@ -121,8 +112,7 @@ export default function AdminQuizzesPage() {
   }
 
   async function handleApproveDraft() {
-    const trimmedSecret = adminSecret.trim();
-    if (!trimmedSecret || !activeDraft || reviewAction !== null) {
+    if (!activeDraft || reviewAction !== null) {
       return;
     }
 
@@ -139,7 +129,7 @@ export default function AdminQuizzesPage() {
     setReviewAction("approve");
 
     try {
-      await updateAdminQuiz(trimmedSecret, activeDraft.id, {
+      await updateAdminQuiz(activeDraft.id, {
         ...update,
         status: "approved",
       });
@@ -156,8 +146,7 @@ export default function AdminQuizzesPage() {
   }
 
   async function handleRejectDraft() {
-    const trimmedSecret = adminSecret.trim();
-    if (!trimmedSecret || !activeDraft || reviewAction !== null) {
+    if (!activeDraft || reviewAction !== null) {
       return;
     }
 
@@ -165,7 +154,7 @@ export default function AdminQuizzesPage() {
     setReviewAction("reject");
 
     try {
-      await deleteAdminQuizDraft(trimmedSecret, activeDraft.id);
+      await deleteAdminQuizDraft(activeDraft.id);
       removeDraftFromQueue(activeDraft.id);
       showMessage("Draft rejected and deleted.", "reject");
     } catch (error) {
@@ -286,17 +275,6 @@ export default function AdminQuizzesPage() {
             </div>
 
             <div className="mt-4 grid gap-3">
-              <Field label="Admin secret" htmlFor="admin-secret">
-                <input
-                  autoComplete="off"
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
-                  id="admin-secret"
-                  onChange={(event) => setAdminSecret(event.target.value)}
-                  type="password"
-                  value={adminSecret}
-                />
-              </Field>
-
               <Field label="Tag" htmlFor="quiz-tag">
                 <select
                   className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
@@ -353,7 +331,6 @@ export default function AdminQuizzesPage() {
               <button
                 className="h-11 rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
                 disabled={
-                  !adminSecret.trim() ||
                   !isValidDraftCount(count) ||
                   draftStatus === "loading" ||
                   reviewAction !== null
@@ -542,7 +519,6 @@ export default function AdminQuizzesPage() {
                       className="h-11 rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
                       disabled={
                         !isEditing ||
-                        !adminSecret.trim() ||
                         draftStatus === "loading" ||
                         reviewAction !== null
                       }
@@ -555,7 +531,6 @@ export default function AdminQuizzesPage() {
                       className="h-11 rounded-md border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
                       disabled={
                         isEditing ||
-                        !adminSecret.trim() ||
                         draftStatus === "loading" ||
                         reviewAction !== null
                       }
@@ -572,9 +547,7 @@ export default function AdminQuizzesPage() {
                     <button
                       className="h-11 rounded-md border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                       disabled={
-                        !adminSecret.trim() ||
-                        draftStatus === "loading" ||
-                        reviewAction !== null
+                        draftStatus === "loading" || reviewAction !== null
                       }
                       onClick={handleRejectDraft}
                       type="button"
@@ -584,16 +557,12 @@ export default function AdminQuizzesPage() {
                     <button
                       className="h-11 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:opacity-60"
                       disabled={
-                        !adminSecret.trim() ||
-                        draftStatus === "loading" ||
-                        reviewAction !== null
+                        draftStatus === "loading" || reviewAction !== null
                       }
                       onClick={handleApproveDraft}
                       type="button"
                     >
-                      {reviewAction === "approve"
-                        ? "Approving..."
-                        : "Approve"}
+                      {reviewAction === "approve" ? "Approving..." : "Approve"}
                     </button>
                   </div>
                 </div>

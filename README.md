@@ -25,7 +25,8 @@ http://localhost:3000/api/auth/callback/google
 
 `DAILY_CORRECTION_LIMIT` and `DAILY_OCR_LIMIT` control the per-user UTC daily
 AI usage limits. They default to 20 corrections and 10 photo OCR requests.
-`ADMIN_SECRET` continues to protect the quiz review workflow.
+`ADMIN_EMAILS` is a comma-separated allowlist of Google account email addresses
+that can access the quiz review workflow.
 
 ## Project Direction
 

@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ADMIN_SECRET_HEADER } from "@/server/auth/admin";
 import { mockAIProvider } from "@/server/ai/mockAIProvider";
 import { POST } from "./route";
 
@@ -7,6 +6,15 @@ const mocks = vi.hoisted(() => ({
   createDb: vi.fn(() => ({})),
   createQuizRepository: vi.fn(),
   createAIProvider: vi.fn(() => mockAIProvider),
+  getSession: vi.fn(),
+}));
+
+vi.mock("@/server/auth/auth", () => ({
+  auth: {
+    api: {
+      getSession: mocks.getSession,
+    },
+  },
 }));
 
 vi.mock("@/server/ai/configuredProvider", () => ({
@@ -24,7 +32,13 @@ vi.mock("@/server/repositories/quizRepository", () => ({
 describe("POST /api/v1/admin/quizzes/generate-drafts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("ADMIN_SECRET", "test-admin-secret");
+    vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
+    mocks.getSession.mockResolvedValue({
+      user: {
+        email: "admin@example.com",
+        emailVerified: true,
+      },
+    });
   });
 
   afterEach(() => {
@@ -62,7 +76,6 @@ describe("POST /api/v1/admin/quizzes/generate-drafts", () => {
       new Request("http://localhost/api/v1/admin/quizzes/generate-drafts", {
         method: "POST",
         headers: {
-          [ADMIN_SECRET_HEADER]: "test-admin-secret",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -91,7 +104,9 @@ describe("POST /api/v1/admin/quizzes/generate-drafts", () => {
     ]);
   });
 
-  it("rejects requests without the admin secret before creating the repository", async () => {
+  it("rejects requests without an authenticated account before creating the repository", async () => {
+    mocks.getSession.mockResolvedValue(null);
+
     const response = await POST(
       new Request("http://localhost/api/v1/admin/quizzes/generate-drafts", {
         method: "POST",
@@ -111,7 +126,39 @@ describe("POST /api/v1/admin/quizzes/generate-drafts", () => {
     expect(payload).toEqual({
       error: {
         code: "unauthorized",
-        message: "Admin secret is invalid.",
+        message: "Authentication required.",
+      },
+    });
+    expect(mocks.createQuizRepository).not.toHaveBeenCalled();
+  });
+
+  it("rejects authenticated accounts outside the admin allowlist", async () => {
+    mocks.getSession.mockResolvedValue({
+      user: {
+        email: "learner@example.com",
+        emailVerified: true,
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/v1/admin/quizzes/generate-drafts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tag: "particle_object",
+          difficulty: "beginner",
+          count: 1,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "forbidden",
+        message: "Admin access is not allowed.",
       },
     });
     expect(mocks.createQuizRepository).not.toHaveBeenCalled();
@@ -122,7 +169,6 @@ describe("POST /api/v1/admin/quizzes/generate-drafts", () => {
       new Request("http://localhost/api/v1/admin/quizzes/generate-drafts", {
         method: "POST",
         headers: {
-          [ADMIN_SECRET_HEADER]: "test-admin-secret",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

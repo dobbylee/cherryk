@@ -4,7 +4,7 @@ import {
   type AdminQuizDraftGenerationResponse,
 } from "@/lib/contracts/quiz";
 import { createAIProvider } from "@/server/ai/configuredProvider";
-import { AdminAuthError, requireAdminSecret } from "@/server/auth/admin";
+import { AdminAuthError, requireAdminAccount } from "@/server/auth/admin";
 import { createDb } from "@/server/db";
 import { createQuizRepository } from "@/server/repositories/quizRepository";
 import {
@@ -16,7 +16,7 @@ import { apiError } from "../../../_responses";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const adminResult = getAdminAccess(request);
+  const adminResult = await getAdminAccess(request);
   if (adminResult instanceof Response) {
     return adminResult;
   }
@@ -47,22 +47,34 @@ export async function POST(request: Request) {
       return apiError(error.code, error.message, 502);
     }
 
-    return apiError("server_error", "Quiz draft generation is unavailable.", 500);
+    return apiError(
+      "server_error",
+      "Quiz draft generation is unavailable.",
+      500,
+    );
   }
 }
 
-function getAdminAccess(request: Request) {
+async function getAdminAccess(request: Request) {
   try {
-    requireAdminSecret(request);
+    await requireAdminAccount(request);
   } catch (error) {
     if (error instanceof AdminAuthError) {
       return apiError(
         error.code,
         error.message,
-        error.code === "unauthorized" ? 401 : 500,
+        error.code === "unauthorized"
+          ? 401
+          : error.code === "forbidden"
+            ? 403
+            : 500,
       );
     }
 
-    return apiError("server_error", "Admin authentication is unavailable.", 500);
+    return apiError(
+      "server_error",
+      "Admin authentication is unavailable.",
+      500,
+    );
   }
 }

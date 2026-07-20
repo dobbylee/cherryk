@@ -1,49 +1,80 @@
-import { describe, expect, it } from "vitest";
-import {
-  ADMIN_SECRET_HEADER,
-  AdminAuthError,
-  requireAdminSecret,
-} from "./admin";
+import { describe, expect, it, vi } from "vitest";
+import { requireAdminAccount } from "./admin";
+
+vi.mock("@/server/auth/auth", () => ({
+  auth: {
+    api: {
+      getSession: vi.fn(),
+    },
+  },
+}));
+
+const request = new Request("http://localhost/api/v1/admin/quizzes");
 
 describe("admin auth helper", () => {
-  it("accepts the configured admin secret header", () => {
-    const request = new Request("http://localhost/api/v1/admin/quizzes", {
-      headers: {
-        [ADMIN_SECRET_HEADER]: "test-admin-secret",
+  it("accepts a verified Google account on the configured email allowlist", async () => {
+    const resolveSession = vi.fn(async () => ({
+      user: {
+        email: " Owner@Example.com ",
+        emailVerified: true,
       },
-    });
+    }));
 
-    expect(() => requireAdminSecret(request, "test-admin-secret")).not.toThrow();
+    await expect(
+      requireAdminAccount(
+        request,
+        "admin@example.com, owner@example.com",
+        resolveSession,
+      ),
+    ).resolves.toBeUndefined();
+    expect(resolveSession).toHaveBeenCalledWith(request.headers);
   });
 
-  it("rejects missing or invalid admin secrets", () => {
-    const request = new Request("http://localhost/api/v1/admin/quizzes");
+  it("rejects requests without an authenticated account", async () => {
+    await expect(
+      requireAdminAccount(request, "owner@example.com", async () => null),
+    ).rejects.toMatchObject({
+      code: "unauthorized",
+      message: "Authentication required.",
+    });
+  });
 
-    expect(() => requireAdminSecret(request, "test-admin-secret")).toThrow(
-      AdminAuthError,
-    );
-
-    const wrongSecretRequest = new Request(
-      "http://localhost/api/v1/admin/quizzes",
-      {
-        headers: {
-          [ADMIN_SECRET_HEADER]: "wrong-secret",
+  it("rejects accounts outside the allowlist or without verified email", async () => {
+    await expect(
+      requireAdminAccount(request, "owner@example.com", async () => ({
+        user: {
+          email: "someone@example.com",
+          emailVerified: true,
         },
-      },
-    );
-
-    expect(() =>
-      requireAdminSecret(wrongSecretRequest, "test-admin-secret"),
-    ).toThrow(AdminAuthError);
-  });
-
-  it("does not silently allow admin routes when ADMIN_SECRET is absent", () => {
-    const request = new Request("http://localhost/api/v1/admin/quizzes", {
-      headers: {
-        [ADMIN_SECRET_HEADER]: "test-admin-secret",
-      },
+      })),
+    ).rejects.toMatchObject({
+      code: "forbidden",
+      message: "Admin access is not allowed.",
     });
 
-    expect(() => requireAdminSecret(request, "")).toThrow(AdminAuthError);
+    await expect(
+      requireAdminAccount(request, "owner@example.com", async () => ({
+        user: {
+          email: "owner@example.com",
+          emailVerified: false,
+        },
+      })),
+    ).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+
+  it("does not allow admin routes when ADMIN_EMAILS is empty", async () => {
+    await expect(
+      requireAdminAccount(request, "  , ", async () => ({
+        user: {
+          email: "owner@example.com",
+          emailVerified: true,
+        },
+      })),
+    ).rejects.toMatchObject({
+      code: "admin_not_configured",
+      message: "Admin access is not configured.",
+    });
   });
 });
