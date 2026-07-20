@@ -34,6 +34,12 @@ Do not make business or product decisions silently.
 - Do not expose AI quiz drafts to users; user-facing quiz content must be approved.
 - Keep local-only planning and handoff notes under `local/`; that directory is intentionally ignored.
 
+## Branch and Deployment Workflow
+
+- Do implementation work and deployment verification on the `preview` branch. Choose the verification scope from the behavior changed by the current task rather than a fixed feature checklist.
+- After Preview verification passes, fast-forward the verified `preview` commit into `main` and push `main` to trigger the Production deployment.
+- Do not use Vercel's Promote to Production flow or otherwise bypass the `preview` to `main` branch flow.
+
 ## Required Review Loop
 
 Every implementation change must run a subagent review loop before final delivery. Use the project `reviewer` agent, configured at `xhigh` reasoning effort in `.codex/agents/reviewer.toml`; do not pin a model name so it inherits the current model.
