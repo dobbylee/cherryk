@@ -28,6 +28,7 @@ const migrationFiles = [
   "0004_puzzling_wiccan.sql",
   "0005_tan_medusa.sql",
   "0006_overrated_master_chief.sql",
+  "0007_skinny_leper_queen.sql",
 ];
 
 describe("Better Auth Drizzle integration", () => {

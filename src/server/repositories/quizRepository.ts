@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { UserLevelSchema } from "@/lib/contracts/common";
 import { GrammarTagSchema, type GrammarTag } from "@/lib/contracts/grammar-tags";
 import { QuizStatusSchema } from "@/lib/contracts/quiz";
@@ -29,6 +29,7 @@ export type QuizRepository = {
   recordQuizAttempt(
     input: RecordQuizAttemptInput,
   ): Promise<QuizAttemptResponse | RecordQuizAttemptConflict | null>;
+  findQuizAttemptSummaries(userId: string): Promise<QuizAttemptSummary[]>;
   findTopUserTags(userId: string): Promise<GrammarTag[]>;
 };
 
@@ -61,6 +62,14 @@ export type RecordQuizAttemptConflict = {
   code: "invalid_choice";
 };
 
+export type QuizAttemptSummary = {
+  quizId: string;
+  attemptCount: number;
+  correctCount: number;
+  lastAttemptCorrect: boolean;
+  lastAttemptedAt: Date;
+};
+
 export function createQuizRepository(db: Db): QuizRepository {
   return {
     findApprovedQuizzesByTags: (tags) => findApprovedQuizzesByTags(db, tags),
@@ -68,8 +77,25 @@ export function createQuizRepository(db: Db): QuizRepository {
     deleteQuizDraft: (id) => deleteQuizDraft(db, id),
     updateQuiz: (input) => updateQuiz(db, input),
     recordQuizAttempt: (input) => recordQuizAttempt(db, input),
+    findQuizAttemptSummaries: (userId) => findQuizAttemptSummaries(db, userId),
     findTopUserTags: (userId) => findTopUserTags(db, userId),
   };
+}
+
+async function findQuizAttemptSummaries(db: Db, userId: string) {
+  return db
+    .select({
+      quizId: quizAttempts.quizQuestionId,
+      attemptCount: sql<number>`count(*)::int`,
+      correctCount: sql<number>`count(*) filter (where ${quizAttempts.isCorrect})::int`,
+      lastAttemptCorrect: sql<boolean>`(array_agg(${quizAttempts.isCorrect} order by ${quizAttempts.createdAt} desc, ${quizAttempts.id} desc))[1]`,
+      lastAttemptedAt: sql<Date>`max(${quizAttempts.createdAt})`.mapWith(
+        quizAttempts.createdAt,
+      ),
+    })
+    .from(quizAttempts)
+    .where(eq(quizAttempts.userId, userId))
+    .groupBy(quizAttempts.quizQuestionId);
 }
 
 async function deleteQuizDraft(db: Db, id: string) {

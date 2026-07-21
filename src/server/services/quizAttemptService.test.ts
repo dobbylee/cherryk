@@ -42,6 +42,9 @@ function createFakeRepository(): QuizRepository & {
       repository.attemptInput = input;
       return repository.attemptResult;
     },
+    async findQuizAttemptSummaries() {
+      throw new Error("Not used.");
+    },
     async findTopUserTags() {
       throw new Error("Not used.");
     },

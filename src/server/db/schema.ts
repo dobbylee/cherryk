@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  index,
   integer,
   pgTable,
   primaryKey,
@@ -185,17 +186,27 @@ export const quizChoices = pgTable("quiz_choices", {
   sortOrder: integer("sort_order").notNull(),
 });
 
-export const quizAttempts = pgTable("quiz_attempts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  quizQuestionId: uuid("quiz_question_id")
-    .notNull()
-    .references(() => quizQuestions.id, { onDelete: "cascade" }),
-  selectedChoiceId: uuid("selected_choice_id").references(() => quizChoices.id),
-  isCorrect: boolean("is_correct").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const quizAttempts = pgTable(
+  "quiz_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    quizQuestionId: uuid("quiz_question_id")
+      .notNull()
+      .references(() => quizQuestions.id, { onDelete: "cascade" }),
+    selectedChoiceId: uuid("selected_choice_id").references(
+      () => quizChoices.id,
+    ),
+    isCorrect: boolean("is_correct").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userQuestionCreatedIndex: index(
+      "quiz_attempts_user_question_created_idx",
+    ).on(table.userId, table.quizQuestionId, table.createdAt),
+  }),
+);

@@ -79,6 +79,18 @@ describe("GET /api/v1/quizzes/recommend", () => {
       async findTopUserTags() {
         throw new Error("Not used.");
       },
+      async findQuizAttemptSummaries(userId: string) {
+        expect(userId).toBe(testUser.id);
+        return [
+          {
+            quizId: "22222222-2222-4222-8222-222222222222",
+            attemptCount: 2,
+            correctCount: 1,
+            lastAttemptCorrect: false,
+            lastAttemptedAt: new Date("2026-07-20T00:00:00.000Z"),
+          },
+        ];
+      },
     });
 
     const response = await GET(
@@ -97,6 +109,7 @@ describe("GET /api/v1/quizzes/recommend", () => {
           difficulty: "beginner",
           questionEn: "Choose the correct particle.",
           sentenceKo: "저는 사과( ) 먹어요.",
+          attemptCount: 2,
           choices: [
             { id: "33333333-3333-4333-8333-333333333333", text: "은" },
             { id: "44444444-4444-4444-8444-444444444444", text: "를" },
@@ -107,6 +120,12 @@ describe("GET /api/v1/quizzes/recommend", () => {
       ],
       availableTags: ["particle_object"],
       activeTags: ["particle_object"],
+      progress: {
+        solvedCount: 1,
+        totalCount: 1,
+        attemptCount: 2,
+        correctCount: 1,
+      },
     });
     expect(JSON.stringify(payload)).not.toContain("isCorrect");
     expect(JSON.stringify(payload)).not.toContain("answerExplanationEn");
@@ -138,6 +157,9 @@ describe("GET /api/v1/quizzes/recommend", () => {
       async findTopUserTags() {
         throw new Error("Not used.");
       },
+      async findQuizAttemptSummaries() {
+        return [];
+      },
     });
 
     const response = await GET(
@@ -159,6 +181,9 @@ describe("GET /api/v1/quizzes/recommend", () => {
         expect(tags).toEqual([]);
         return [];
       },
+      async findQuizAttemptSummaries() {
+        return [];
+      },
     });
 
     const response = await GET(
@@ -171,6 +196,12 @@ describe("GET /api/v1/quizzes/recommend", () => {
       quizzes: [],
       availableTags: [],
       activeTags: [],
+      progress: {
+        solvedCount: 0,
+        totalCount: 0,
+        attemptCount: 0,
+        correctCount: 0,
+      },
     });
   });
 
@@ -181,6 +212,9 @@ describe("GET /api/v1/quizzes/recommend", () => {
       },
       async findApprovedQuizzesByTags(tags: string[]) {
         expect(tags).toEqual([]);
+        return [];
+      },
+      async findQuizAttemptSummaries() {
         return [];
       },
     });
@@ -195,6 +229,12 @@ describe("GET /api/v1/quizzes/recommend", () => {
       quizzes: [],
       availableTags: [],
       activeTags: [],
+      progress: {
+        solvedCount: 0,
+        totalCount: 0,
+        attemptCount: 0,
+        correctCount: 0,
+      },
     });
   });
 

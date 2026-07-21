@@ -62,10 +62,40 @@ export const RecommendedQuizSchema = z.object({
   choices: z.array(RecommendedQuizChoiceSchema).length(4),
 });
 
+export const QuizPracticeItemSchema = RecommendedQuizSchema.extend({
+  attemptCount: z.number().int().nonnegative(),
+});
+
+export const QuizProgressSchema = z
+  .object({
+    solvedCount: z.number().int().nonnegative(),
+    totalCount: z.number().int().nonnegative(),
+    attemptCount: z.number().int().nonnegative(),
+    correctCount: z.number().int().nonnegative(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.solvedCount > value.totalCount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["solvedCount"],
+        message: "Solved quiz count cannot exceed the approved quiz count.",
+      });
+    }
+
+    if (value.correctCount > value.attemptCount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["correctCount"],
+        message: "Correct attempt count cannot exceed the attempt count.",
+      });
+    }
+  });
+
 export const QuizRecommendationResponseSchema = z.object({
-  quizzes: z.array(RecommendedQuizSchema),
+  quizzes: z.array(QuizPracticeItemSchema).max(5),
   availableTags: z.array(GrammarTagSchema),
   activeTags: z.array(GrammarTagSchema),
+  progress: QuizProgressSchema,
 });
 
 export const QuizAttemptRequestSchema = z.object({
@@ -168,6 +198,8 @@ export type QuizRecommendationQuery = z.infer<
   typeof QuizRecommendationQuerySchema
 >;
 export type RecommendedQuiz = z.infer<typeof RecommendedQuizSchema>;
+export type QuizPracticeItem = z.infer<typeof QuizPracticeItemSchema>;
+export type QuizProgress = z.infer<typeof QuizProgressSchema>;
 export type QuizRecommendationResponse = z.infer<
   typeof QuizRecommendationResponseSchema
 >;

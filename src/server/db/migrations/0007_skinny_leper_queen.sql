@@ -1,0 +1,1 @@
+CREATE INDEX "quiz_attempts_user_question_created_idx" ON "quiz_attempts" USING btree ("user_id","quiz_question_id","created_at");

@@ -18,7 +18,8 @@ import type { AuthUser } from "@/lib/contracts/auth";
 import { GrammarTags, type GrammarTag } from "@/lib/contracts/grammar-tags";
 import type {
   QuizAttemptResponse,
-  RecommendedQuiz,
+  QuizPracticeItem,
+  QuizProgress,
 } from "@/lib/contracts/quiz";
 
 type FormStatus = "idle" | "loading";
@@ -38,9 +39,15 @@ function QuizWorkspace() {
   const searchParams = useSearchParams();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
-  const [quizzes, setQuizzes] = useState<RecommendedQuiz[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizPracticeItem[]>([]);
   const [availableTags, setAvailableTags] = useState<GrammarTag[]>([]);
   const [activeTags, setActiveTags] = useState<GrammarTag[]>([]);
+  const [progress, setProgress] = useState<QuizProgress>({
+    solvedCount: 0,
+    totalCount: 0,
+    attemptCount: 0,
+    correctCount: 0,
+  });
   const [activeQuizIndex, setActiveQuizIndex] = useState(0);
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
   const [quizAttempt, setQuizAttempt] = useState<QuizAttemptResponse | null>(
@@ -137,6 +144,7 @@ function QuizWorkspace() {
         setQuizzes(response.quizzes);
         setAvailableTags(response.availableTags);
         setActiveTags(response.activeTags);
+        setProgress(response.progress);
         setActiveQuizIndex(0);
         setSelectedChoiceId(null);
         setQuizAttempt(null);
@@ -206,6 +214,22 @@ function QuizWorkspace() {
       });
       if (quizRequestIdRef.current === requestId) {
         setQuizAttempt(response);
+        setProgress((currentProgress) => ({
+          ...currentProgress,
+          solvedCount:
+            currentProgress.solvedCount +
+            (activeQuiz.attemptCount === 0 ? 1 : 0),
+          attemptCount: currentProgress.attemptCount + 1,
+          correctCount:
+            currentProgress.correctCount + (response.isCorrect ? 1 : 0),
+        }));
+        setQuizzes((currentQuizzes) =>
+          currentQuizzes.map((quiz) =>
+            quiz.id === activeQuiz.id
+              ? { ...quiz, attemptCount: quiz.attemptCount + 1 }
+              : quiz,
+          ),
+        );
       }
     } catch (error) {
       if (quizRequestIdRef.current === requestId) {
@@ -224,13 +248,6 @@ function QuizWorkspace() {
     setActiveQuizIndex((currentIndex) =>
       Math.min(currentIndex + 1, quizzes.length - 1),
     );
-    setSelectedChoiceId(null);
-    setQuizAttempt(null);
-    setMessage(null);
-  }
-
-  function handleRestartPractice() {
-    setActiveQuizIndex(0);
     setSelectedChoiceId(null);
     setQuizAttempt(null);
     setMessage(null);
@@ -369,8 +386,23 @@ function QuizWorkspace() {
               onClick={handleLoadRecommendedQuizzes}
               type="button"
             >
-              {quizStatus === "loading" ? "Loading..." : "Reload"}
+              {quizStatus === "loading" ? "Loading..." : "New set"}
             </button>
+          </div>
+
+          <div
+            className="mt-4 grid grid-cols-3 gap-2"
+            aria-label="Quiz progress"
+          >
+            <ProgressStat
+              label="Solved"
+              value={`${progress.solvedCount} / ${progress.totalCount}`}
+            />
+            <ProgressStat
+              label="Attempts"
+              value={String(progress.attemptCount)}
+            />
+            <ProgressStat label="Accuracy" value={formatAccuracy(progress)} />
           </div>
 
           {activeQuiz ? (
@@ -465,11 +497,12 @@ function QuizWorkspace() {
                 </button>
                 {activeQuizIndex >= quizzes.length - 1 && quizAttempt ? (
                   <button
-                    className="h-11 min-w-28 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)]"
-                    onClick={handleRestartPractice}
+                    className="h-11 min-w-28 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] disabled:opacity-60"
+                    disabled={quizStatus === "loading"}
+                    onClick={handleLoadRecommendedQuizzes}
                     type="button"
                   >
-                    Practice again
+                    {quizStatus === "loading" ? "Loading..." : "Practice again"}
                   </button>
                 ) : (
                   <button
@@ -521,6 +554,25 @@ function Message({ message }: { message: string }) {
       {message}
     </div>
   );
+}
+
+function ProgressStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-[var(--line)] bg-white px-2 py-3 text-center">
+      <p className="text-xs font-semibold text-[var(--muted)]">{label}</p>
+      <p className="mt-1 text-base font-semibold text-[var(--foreground)]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function formatAccuracy(progress: QuizProgress) {
+  if (progress.attemptCount === 0) {
+    return "—";
+  }
+
+  return `${Math.round((progress.correctCount / progress.attemptCount) * 100)}%`;
 }
 
 function tagFilterClassName(isActive: boolean) {

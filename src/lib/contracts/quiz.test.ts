@@ -62,6 +62,28 @@ describe("QuizRecommendationResponseSchema", () => {
         quizzes: [],
         availableTags: ["not_allowed"],
         activeTags: [],
+        progress: {
+          solvedCount: 0,
+          totalCount: 0,
+          attemptCount: 0,
+          correctCount: 0,
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects impossible progress counts", () => {
+    expect(
+      QuizRecommendationResponseSchema.safeParse({
+        quizzes: [],
+        availableTags: [],
+        activeTags: [],
+        progress: {
+          solvedCount: 2,
+          totalCount: 1,
+          attemptCount: 1,
+          correctCount: 2,
+        },
       }).success,
     ).toBe(false);
   });

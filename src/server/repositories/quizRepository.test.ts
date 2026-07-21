@@ -13,6 +13,10 @@ vi.mock("drizzle-orm", () => ({
     left,
     right,
   })),
+  sql: vi.fn(() => ({
+    type: "sql",
+    mapWith: vi.fn(() => ({ type: "mappedSql" })),
+  })),
 }));
 
 function createFakeDb(rows: unknown[] = []) {
@@ -40,6 +44,19 @@ function createFakeTopTagsDb(rows: unknown[] = []) {
   };
 
   return { db };
+}
+
+function createFakeAttemptSummariesDb(rows: unknown[] = []) {
+  const query = {
+    from: vi.fn(() => query),
+    where: vi.fn(() => query),
+    groupBy: vi.fn(async () => rows),
+  };
+  const db = {
+    select: vi.fn(() => query),
+  };
+
+  return { db, query };
 }
 
 function createFakeDraftDb(
@@ -296,6 +313,31 @@ describe("quizRepository", () => {
     ).resolves.toEqual(["particle_object", "spacing"]);
     expect(eq).toHaveBeenCalled();
     expect(desc).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns per-question attempt summaries for the current user", async () => {
+    const rows = [
+      {
+        quizId: "11111111-1111-4111-8111-111111111111",
+        attemptCount: 3,
+        correctCount: 2,
+        lastAttemptCorrect: true,
+        lastAttemptedAt: new Date("2026-07-21T00:00:00.000Z"),
+      },
+    ];
+    const { db, query } = createFakeAttemptSummariesDb(rows);
+    const repository = createQuizRepository(db as never);
+
+    await expect(
+      repository.findQuizAttemptSummaries(
+        "44444444-4444-4444-8444-444444444444",
+      ),
+    ).resolves.toEqual(rows);
+    expect(eq).toHaveBeenCalledWith(
+      quizAttempts.userId,
+      "44444444-4444-4444-8444-444444444444",
+    );
+    expect(query.groupBy).toHaveBeenCalledWith(quizAttempts.quizQuestionId);
   });
 
   it("creates quiz drafts with draft status and sorted choices", async () => {
