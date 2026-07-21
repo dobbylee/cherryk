@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "CherryK",
   description:
-    "Mobile-first Korean writing correction and reviewed MCQ practice.",
+    "A Korean learning app for writing correction, handwriting OCR, and reviewed MCQ practice.",
 };
 
 export default function RootLayout({

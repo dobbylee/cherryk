@@ -1,6 +1,6 @@
 # CherryK
 
-Mobile-first web MVP for Korean writing correction, handwriting OCR, reviewed MCQ practice, and corrected-text copy.
+A Korean learning app for writing correction, handwriting OCR, and reviewed MCQ practice.
 
 ## Local Setup
 
