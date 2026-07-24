@@ -52,16 +52,28 @@ while converting entity primary and foreign keys from UUID to PostgreSQL
 domain columns, and Spring Session keeps its own string identifiers.
 
 V4 is intentionally not compatible with the current UUID-based Next.js/Drizzle
-backend. Do not apply it to a database that Next.js can still write. At Preview and
-Production cutover:
+backend. Do not apply it to a database that Next.js can still write.
 
-1. Stop writes and create a restorable Neon branch or restore point.
-2. Confirm the intended database and preserved row counts.
-3. Apply V3 and V4 with the Spring deployment.
-4. Route traffic to Spring and run the auth/data smoke checks.
+For Preview rehearsal:
+
+1. Use an isolated Neon branch and capture a restorable pre-V4 point.
+2. Record row counts, stop Next writes, and run schema/null/orphan preflight.
+3. Apply the intended Flyway sequence and route Preview API/auth paths to Spring.
+4. Verify Google login, CSRF/cookies/forwarded headers, restart-persistent sessions,
+   OCR/correction, quiz attempts, and admin approval.
+5. Rehearse rollback before Production.
+
+For Production, preserve all three existing users and their application data:
+
+1. Start a maintenance window, stop writes, and create a named Neon restore point.
+2. Record row counts and rerun the verified preflight.
+3. Apply migrations through V4, deploy Spring, and verify health.
+4. Route Vercel API/auth paths to Spring, run the same smoke checks, then reopen writes.
 
 After V4, rollback requires restoring the pre-V4 Neon state in addition to routing
-traffic back to Next.js. A Vercel rewrite change alone is not sufficient.
+traffic back to the matching Next.js deployment. Keep writes stopped until legacy
+login and preserved row counts are verified. A Vercel rewrite change alone is not
+sufficient.
 
 ## Spring Security and Google OIDC
 

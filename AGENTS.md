@@ -1,58 +1,42 @@
 # Agent Operating Rules
 
-This repository is the CherryK MVP and its active Kotlin/Spring backend migration. Agents must read this file and `local/plan.md` before planning or editing. Stack and version decisions live in `agent-harness/decisions.md`; do not duplicate them here unless they change agent behavior.
+This repository is the CherryK MVP and its active Kotlin/Spring migration.
 
-## Working Principles
+Before planning or editing, read this file and `local/plan.md`. The plan is a
+router: read only the linked detail document needed for the active task.
+Durable choices belong in `agent-harness/decisions.md`; resolved versions and
+structure should be read from manifests and code.
 
-- Resolve ambiguity before coding only when it can change correctness or product behavior; otherwise state the reasonable assumption and proceed.
-- Use the smallest implementation that solves the request. Avoid speculative features, one-off abstractions, and backend layers beyond the approved Spring migration slice.
-- Keep changes surgical: do not refactor, reformat, or clean up unrelated code. Remove only artifacts made unused by the current change.
-- Turn the request into verifiable success criteria. Reproduce bugs with a test or concrete check, test invalid inputs for validation work, and verify refactors before and after when feasible.
-- Use `pnpm` for app commands. `pnpm test` is the default local quality gate and runs frontend lint, typecheck, and unit tests plus backend tests. Backend integration tests require Docker.
-- Report any verification command that cannot run and its blocker.
+## Execution
 
-## Harness Evolution
+- Resolve ambiguity only when it can change correctness, product behavior, privacy, operations, or rollout. Record durable choices in `agent-harness/decisions.md` and task-local rollout detail in the routed plan.
+- Implement the smallest coherent slice. Do not refactor, reformat, or add future layers outside it.
+- Define checkable success criteria. Add focused checks for bugs, validation, and behavior-preserving refactors.
+- Use `pnpm` for app commands. `pnpm test` is the default full gate; backend integration tests require Docker.
+- Report verification that could not run and its blocker.
 
-Improve the harness only for concrete, repeatable failures. Score candidates with `agent-harness/workflow.md`; when one qualifies, add the smallest safeguard and verify that it catches or prevents the failure. Prefer executable checks, and merge or remove duplicate prose rules. Keep durable workflow rules in `AGENTS.md` or `agent-harness/`; keep product plans and handoff notes in `local/`.
+## Project Boundaries
 
-## Decision Ownership
+- Keep contracts in `src/lib/contracts`, frontend API helpers in `src/lib/api`, server-only AI in `src/server/ai`, and DB access behind repositories/services.
+- Keep Next route handlers and Spring controllers thin. Put Spring transactions in application services and never serialize JPA entities as API responses.
+- Flyway alone owns new schema changes; Hibernate stays on `ddl-auto=validate`. Use JPA for aggregate writes/simple CRUD and SQL projections for query-heavy reads.
+- Keep OCR and language-model providers separate. Never persist OCR image originals or expose unapproved AI quiz drafts.
+- Keep ignored plans and handoffs under `local/`.
 
-Do not make business or product decisions silently.
+## Delivery
 
-- If implementation depends on a product, learning, privacy, operations, or rollout decision that is not already decided, pause and present a recommended option with tradeoffs.
-- Separate confirmed decisions from assumptions and recommendations.
-- Record user-confirmed project decisions in the appropriate planning document instead of burying them in code comments or final-message prose.
+- Implement and verify on `preview`.
+- After real Preview verification, fast-forward that commit to `main` and push `main` for Production.
+- Do not use Vercel Promote to Production.
 
-## Project-Specific Guardrails
+## Required Review
 
-- Keep API contracts under `src/lib/contracts`.
-- Keep frontend fetch helpers under `src/lib/api`.
-- Keep server-only AI code under `src/server/ai`.
-- Keep DB access behind server-side repository/service boundaries.
-- Keep route handlers thin: validation, service call, response formatting.
-- In `backend/`, keep Spring controllers thin, keep transaction boundaries in application services, and never serialize JPA entities as API responses.
-- Flyway exclusively owns new schema changes. Keep Hibernate on `ddl-auto=validate`; do not enable automatic Production baselining.
-- Use JPA for aggregate writes/simple CRUD and JdbcTemplate/native SQL for query-heavy read models.
-- Keep OCR and language-model providers behind separate backend interfaces.
-- Do not store OCR image originals.
-- Do not expose AI quiz drafts to users; user-facing quiz content must be approved.
-- Keep local-only planning and handoff notes under `local/`; that directory is intentionally ignored.
+Every implementation or harness change must:
 
-## Branch and Deployment Workflow
+1. Run relevant verification.
+2. Use the project `reviewer` with `agent-harness/prompts/implementation-review.md`, limited to changed files.
+3. Fix findings and repeat verification/review until the result is exactly `No Findings`.
+4. Report verification commands and the final review result.
 
-- Do implementation work and deployment verification on the `preview` branch. Choose the verification scope from the behavior changed by the current task rather than a fixed feature checklist.
-- After Preview verification passes, fast-forward the verified `preview` commit into `main` and push `main` to trigger the Production deployment.
-- Do not use Vercel's Promote to Production flow or otherwise bypass the `preview` to `main` branch flow.
-
-## Required Review Loop
-
-Every implementation change must run a subagent review loop before final delivery. Use the project `reviewer` agent, configured at `xhigh` reasoning effort in `.codex/agents/reviewer.toml`; do not pin a model name so it inherits the current model.
-
-1. Finish the local implementation and run relevant verification.
-2. Spawn the `reviewer` subagent using `agent-harness/prompts/implementation-review.md`.
-3. The subagent must review only the changed files for the implementation.
-4. If the subagent returns findings, fix them and run verification again.
-5. Repeat the review-improvement loop until the subagent's final result is exactly `No Findings`.
-6. Final responses must mention the review loop result and the verification commands run.
-
-Do not broaden the reviewed file set unless the implementation touched shared behavior outside the original scope.
+Add harness weight only for a concrete, repeatable failure that qualifies under
+`agent-harness/workflow.md`.

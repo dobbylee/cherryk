@@ -30,10 +30,12 @@ that can access the quiz review workflow.
 
 ## Project Direction
 
-- v1 uses Next.js App Router and API routes for the fastest working MVP.
-- Postgres is the source of truth for corrections, tags, quiz review state, and attempts.
-- Drizzle is the v1 TypeScript database layer only; if a separate Kotlin/Spring backend becomes necessary, migrate behind the `/api/v1` contract.
-- AI quiz drafts must be reviewed by a Korean operator before users can see them.
+- The frontend remains Next.js on Vercel while `/api/v1` behavior moves from
+  Next.js routes to the Kotlin/Spring backend.
+- Neon Postgres remains the source of truth.
+- AI quiz drafts require operator approval before users can see them.
+- Backend migration and database-operation commands are documented in
+  [`backend/README.md`](backend/README.md).
 
 ## Useful Commands
 
