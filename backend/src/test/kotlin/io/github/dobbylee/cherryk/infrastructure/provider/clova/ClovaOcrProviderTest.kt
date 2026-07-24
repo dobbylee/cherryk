@@ -2,6 +2,7 @@ package io.github.dobbylee.cherryk.infrastructure.provider.clova
 
 import io.github.dobbylee.cherryk.application.ocr.OcrImage
 import io.github.dobbylee.cherryk.application.ocr.OcrImageFormat
+import io.github.dobbylee.cherryk.application.ocr.OcrProviderException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
@@ -129,7 +130,7 @@ class ClovaOcrProviderTest {
             .andRespond(withStatus(HttpStatus.BAD_REQUEST))
 
         val exception =
-            assertFailsWith<ClovaOcrProviderException> {
+            assertFailsWith<OcrProviderException> {
                 provider.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
             }
 
@@ -152,7 +153,7 @@ class ClovaOcrProviderTest {
         }
 
         val exception =
-            assertFailsWith<ClovaOcrProviderException> {
+            assertFailsWith<OcrProviderException> {
                 provider.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
             }
 
@@ -177,7 +178,7 @@ class ClovaOcrProviderTest {
             )
 
         val exception =
-            assertFailsWith<ClovaOcrProviderException> {
+            assertFailsWith<OcrProviderException> {
                 provider.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
             }
 
@@ -206,7 +207,7 @@ class ClovaOcrProviderTest {
 
         repeat(2) {
             val exception =
-                assertFailsWith<ClovaOcrProviderException> {
+                assertFailsWith<OcrProviderException> {
                     provider.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
                 }
             assertEquals("empty_result", exception.code)
@@ -242,7 +243,7 @@ class ClovaOcrProviderTest {
 
         repeat(2) {
             val exception =
-                assertFailsWith<ClovaOcrProviderException> {
+                assertFailsWith<OcrProviderException> {
                     provider.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
                 }
             assertEquals("invalid_response", exception.code)
@@ -261,7 +262,7 @@ class ClovaOcrProviderTest {
             )
 
         val exception =
-            assertFailsWith<ClovaOcrProviderException> {
+            assertFailsWith<OcrProviderException> {
                 unconfigured.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
             }
 
@@ -279,7 +280,7 @@ class ClovaOcrProviderTest {
                 )
 
             val exception =
-                assertFailsWith<ClovaOcrProviderException> {
+                assertFailsWith<OcrProviderException> {
                     invalid.extract(OcrImage("image".toByteArray(), OcrImageFormat.JPEG))
                 }
             assertEquals("not_configured", exception.code)

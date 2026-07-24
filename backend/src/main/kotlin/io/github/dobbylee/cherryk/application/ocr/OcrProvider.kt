@@ -20,3 +20,9 @@ data class OcrResult(
 fun interface OcrProvider {
     fun extract(image: OcrImage): OcrResult
 }
+
+class OcrProviderException(
+    val code: String,
+    message: String,
+    internal val retryable: Boolean = false,
+) : RuntimeException(message)

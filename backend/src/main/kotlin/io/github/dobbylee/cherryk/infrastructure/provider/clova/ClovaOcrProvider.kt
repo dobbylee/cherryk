@@ -2,6 +2,7 @@ package io.github.dobbylee.cherryk.infrastructure.provider.clova
 
 import io.github.dobbylee.cherryk.application.ocr.OcrImage
 import io.github.dobbylee.cherryk.application.ocr.OcrProvider
+import io.github.dobbylee.cherryk.application.ocr.OcrProviderException
 import io.github.dobbylee.cherryk.application.ocr.OcrResult
 import org.springframework.http.MediaType
 import org.springframework.web.client.ResourceAccessException
@@ -43,7 +44,7 @@ class ClovaOcrProvider internal constructor(
         repeat(properties.maxAttempts) { attempt ->
             try {
                 return execute(invokeUri, request, requestId)
-            } catch (exception: ClovaOcrProviderException) {
+            } catch (exception: OcrProviderException) {
                 if (!exception.retryable || attempt == properties.maxAttempts - 1) {
                     throw exception
                 }
@@ -72,14 +73,14 @@ class ClovaOcrProvider internal constructor(
                 val retryable =
                     exception.statusCode.is5xxServerError ||
                         exception.statusCode.value() == 429
-                throw ClovaOcrProviderException(
+                throw OcrProviderException(
                     code = "request_failed",
                     message = "CLOVA OCR request failed with status ${exception.statusCode.value()}.",
                     retryable = retryable,
                 )
             } catch (exception: ResourceAccessException) {
                 val timedOut = exception.hasTimeoutCause()
-                throw ClovaOcrProviderException(
+                throw OcrProviderException(
                     code = if (timedOut) "timeout" else "request_failed",
                     message =
                         if (timedOut) {
@@ -90,7 +91,7 @@ class ClovaOcrProvider internal constructor(
                     retryable = true,
                 )
             } catch (exception: RestClientException) {
-                throw ClovaOcrProviderException(
+                throw OcrProviderException(
                     code = "invalid_response",
                     message = "CLOVA OCR response could not be parsed.",
                 )
@@ -103,13 +104,13 @@ class ClovaOcrProvider internal constructor(
             response.requestId != expectedRequestId ||
             image == null
         ) {
-            throw ClovaOcrProviderException(
+            throw OcrProviderException(
                 code = "invalid_response",
                 message = "CLOVA OCR response did not match the request.",
             )
         }
         if (image.inferResult != CLOVA_SUCCESS) {
-            throw ClovaOcrProviderException(
+            throw OcrProviderException(
                 code = "request_failed",
                 message = "CLOVA OCR did not complete image recognition.",
             )
@@ -117,7 +118,7 @@ class ClovaOcrProvider internal constructor(
 
         val extractedText = image.fields.toExtractedText()
         if (extractedText.isBlank()) {
-            throw ClovaOcrProviderException(
+            throw OcrProviderException(
                 code = "empty_result",
                 message = "CLOVA OCR did not find readable text.",
             )
@@ -127,7 +128,7 @@ class ClovaOcrProvider internal constructor(
 
     private fun configuredInvokeUri(): URI {
         if (properties.invokeUrl.isBlank() || properties.secret.isBlank()) {
-            throw ClovaOcrProviderException(
+            throw OcrProviderException(
                 code = "not_configured",
                 message = "CLOVA OCR is not configured.",
             )
@@ -150,17 +151,11 @@ class ClovaOcrProvider internal constructor(
     }
 
     private fun invalidConfiguration() =
-        ClovaOcrProviderException(
+        OcrProviderException(
             code = "not_configured",
             message = "CLOVA OCR invoke URL must be an absolute HTTPS URL.",
         )
 }
-
-class ClovaOcrProviderException(
-    val code: String,
-    message: String,
-    internal val retryable: Boolean = false,
-) : RuntimeException(message)
 
 private data class ClovaOcrRequest(
     val version: String = CLOVA_VERSION,
@@ -213,7 +208,7 @@ private fun waitBeforeRetry(delay: Duration) {
         Thread.sleep(delay)
     } catch (exception: InterruptedException) {
         Thread.currentThread().interrupt()
-        throw ClovaOcrProviderException(
+        throw OcrProviderException(
             code = "request_failed",
             message = "CLOVA OCR retry was interrupted.",
         )
