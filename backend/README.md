@@ -43,3 +43,42 @@ SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
 
 The command is pinned to target version `2`; later migrations are never applied by this
 initial-adoption command.
+
+## Spring Security and Google OIDC
+
+The Spring backend uses Google OIDC with PostgreSQL-backed Spring Session. Configure
+the backend process with JDBC database credentials plus:
+
+```text
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+ADMIN_EMAILS
+SESSION_COOKIE_SECURE
+```
+
+`SESSION_COOKIE_SECURE` defaults to `true`. Set it to `false` only for local HTTP
+development. The local Google authorized redirect URI is:
+
+```text
+http://localhost:8080/api/auth/callback/google
+```
+
+The backend authentication endpoints are:
+
+```text
+GET  /api/auth/login/google
+GET  /api/auth/callback/google
+GET  /api/v1/auth/me
+POST /api/auth/logout
+```
+
+`GET /api/v1/auth/me` also issues the readable `XSRF-TOKEN` cookie. State-changing
+requests send its value in the `X-XSRF-TOKEN` header; the session cookie remains
+`HttpOnly`, `SameSite=Lax`, and `Secure` outside local HTTP development. Both the
+server-side session timeout and persistent cookie lifetime are 90 days.
+
+On the first Spring OIDC login, the verified Google issuer and subject are linked to
+an existing Better Auth `accounts` row with `provider_id = 'google'` and the same
+`account_id`. That preserves the existing application `user_id`. Email alone is never
+used to merge users. The V3 migration adds the new identity and Spring Session tables
+without deleting the legacy Better Auth tables or any application data.

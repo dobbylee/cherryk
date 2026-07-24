@@ -12,6 +12,13 @@ abstract class PostgreSqlIntegrationTest {
             registry.add("spring.datasource.url", SharedPostgresContainer.instance::getJdbcUrl)
             registry.add("spring.datasource.username", SharedPostgresContainer.instance::getUsername)
             registry.add("spring.datasource.password", SharedPostgresContainer.instance::getPassword)
+            registry.add("spring.security.oauth2.client.registration.google.client-id") {
+                "test-google-client"
+            }
+            registry.add("spring.security.oauth2.client.registration.google.client-secret") {
+                "test-google-secret"
+            }
+            registry.add("cherryk.security.secure-cookies") { "false" }
         }
     }
 }
@@ -32,6 +39,13 @@ abstract class DrizzleBaselineIntegrationTest {
             )
             registry.add("spring.flyway.target") { "1" }
             registry.add("spring.jpa.hibernate.ddl-auto") { "none" }
+            registry.add("spring.security.oauth2.client.registration.google.client-id") {
+                "test-google-client"
+            }
+            registry.add("spring.security.oauth2.client.registration.google.client-secret") {
+                "test-google-secret"
+            }
+            registry.add("cherryk.security.secure-cookies") { "false" }
         }
     }
 }

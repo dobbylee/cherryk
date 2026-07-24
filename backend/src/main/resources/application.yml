@@ -17,11 +17,37 @@ spring:
       ddl-auto: validate
     open-in-view: false
   session:
+    timeout: 90d
     jdbc:
       initialize-schema: never
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/api/auth/callback/{registrationId}"
+            scope:
+              - openid
+              - profile
+              - email
 
 server:
   forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        name: CHERRYK_SESSION
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+        max-age: 90d
+
+cherryk:
+  security:
+    admin-emails: ${ADMIN_EMAILS:}
+    secure-cookies: ${SESSION_COOKIE_SECURE:true}
 
 management:
   endpoints:

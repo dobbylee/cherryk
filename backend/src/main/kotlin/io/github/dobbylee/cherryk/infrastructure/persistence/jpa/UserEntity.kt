@@ -64,4 +64,21 @@ class UserEntity(
     @field:Column(name = "last_seen_at")
     var lastSeenAt: Instant? = lastSeenAt
         protected set
+
+    fun refreshOidcProfile(
+        displayName: String?,
+        email: String?,
+        emailVerified: Boolean,
+        image: String?,
+        now: Instant,
+    ) {
+        displayName?.takeIf(String::isNotBlank)?.let { this.displayName = it }
+        image?.takeIf(String::isNotBlank)?.let { this.image = it }
+        if (email != null) {
+            this.email = email
+            this.emailVerified = emailVerified
+        }
+        updatedAt = now
+        lastSeenAt = now
+    }
 }
