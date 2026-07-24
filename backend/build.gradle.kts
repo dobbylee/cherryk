@@ -86,3 +86,11 @@ tasks.register<JavaExec>("schemaPreflight") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass = "io.github.dobbylee.cherryk.preflight.SchemaPreflightKt"
 }
+
+tasks.register<JavaExec>("adoptExistingDatabase") {
+    group = "database"
+    description = "Explicitly baseline a verified Drizzle database at version 1 and migrate to V2."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.dobbylee.cherryk.preflight.ExistingDatabaseAdoptionKt"
+}

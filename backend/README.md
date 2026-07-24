@@ -28,3 +28,18 @@ For an existing Drizzle-managed database:
 Never enable `baseline-on-migrate` for this transition. The automated
 `ExistingDatabaseAdoptionTest` reproduces the preflight, explicit version-1 baseline,
 V2 migration, and data-preservation sequence against PostgreSQL 18.
+
+The repository provides a guarded one-time command that performs steps 2 through 4 and
+refuses databases that already have Flyway history:
+
+```bash
+FLYWAY_ADOPTION_CONFIRM=BASELINE_DRIZZLE_AND_MIGRATE_TO_V2 \
+FLYWAY_ADOPTION_EXPECTED_HOST=host \
+SCHEMA_PREFLIGHT_DATABASE_URL=jdbc:postgresql://host/database \
+SCHEMA_PREFLIGHT_DATABASE_USERNAME=user \
+SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
+./backend/gradlew -p backend adoptExistingDatabase
+```
+
+The command is pinned to target version `2`; later migrations are never applied by this
+initial-adoption command.

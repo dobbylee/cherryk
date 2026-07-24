@@ -1,6 +1,8 @@
 package io.github.dobbylee.cherryk
 
 import io.github.dobbylee.cherryk.preflight.SchemaPreflight
+import io.github.dobbylee.cherryk.preflight.ExistingDatabaseAdoption
+import io.github.dobbylee.cherryk.preflight.ExistingDatabaseAdoptionCommand
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.MigrationVersion
 import org.junit.jupiter.api.Test
@@ -9,6 +11,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils
 import org.testcontainers.postgresql.PostgreSQLContainer
 import java.sql.Connection
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ExistingDatabaseAdoptionTest {
@@ -29,18 +32,15 @@ class ExistingDatabaseAdoptionTest {
                 assertEquals(0L, report.quizReadiness.totalViolations)
             }
 
-            val flyway =
-                Flyway
-                    .configure()
-                    .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-                    .baselineVersion(MigrationVersion.fromVersion("1"))
-                    .baselineDescription("Drizzle schema baseline")
-                    .load()
+            val result =
+                ExistingDatabaseAdoption.run(
+                    url = postgres.jdbcUrl,
+                    username = postgres.username,
+                    password = postgres.password,
+                )
 
-            flyway.baseline()
-            val migrationResult = flyway.migrate()
-
-            assertEquals("2", migrationResult.targetSchemaVersion)
+            assertEquals("1", result.baselineVersion)
+            assertEquals("2", result.migrationVersion)
             postgres.createConnection("").use { connection ->
                 assertRowCount(
                     connection,
@@ -92,6 +92,59 @@ class ExistingDatabaseAdoptionTest {
                     }
                 }
             }
+        } finally {
+            postgres.stop()
+        }
+    }
+
+    @Test
+    fun `adoption safety guards refuse mutation before V2`() {
+        val postgres = PostgreSQLContainer("postgres:18")
+        postgres.start()
+        try {
+            postgres.createConnection("").use { connection ->
+                ScriptUtils.executeSqlScript(
+                    connection,
+                    ClassPathResource("db/migration/B1__drizzle_baseline.sql"),
+                )
+            }
+
+            assertFailsWith<IllegalArgumentException> {
+                adoptionCommand(postgres, confirmation = "WRONG").execute()
+            }
+            assertAdoptionNotStarted(postgres)
+
+            assertFailsWith<IllegalArgumentException> {
+                adoptionCommand(postgres, expectedHost = "wrong.example.com").execute()
+            }
+            assertAdoptionNotStarted(postgres)
+
+            postgres.createConnection("").use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("CREATE SCHEMA other")
+                }
+            }
+            assertFailsWith<IllegalStateException> {
+                val separator = if ("?" in postgres.jdbcUrl) "&" else "?"
+                adoptionCommand(
+                    postgres,
+                    url = "${postgres.jdbcUrl}${separator}currentSchema=other",
+                ).execute()
+            }
+            assertAdoptionNotStarted(postgres)
+
+            Flyway
+                .configure()
+                .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .baselineVersion(MigrationVersion.fromVersion("1"))
+                .baselineDescription("Existing history")
+                .load()
+                .baseline()
+
+            assertFailsWith<IllegalStateException> {
+                adoptionCommand(postgres).execute()
+            }
+            assertV2NotApplied(postgres)
         } finally {
             postgres.stop()
         }
@@ -227,5 +280,52 @@ class ExistingDatabaseAdoptionTest {
                     assertEquals(expected, resultSet.getInt(1))
                 }
             }
+    }
+
+    private fun adoptionCommand(
+        postgres: PostgreSQLContainer,
+        url: String = postgres.jdbcUrl,
+        confirmation: String = "BASELINE_DRIZZLE_AND_MIGRATE_TO_V2",
+        expectedHost: String = java.net.URI(postgres.jdbcUrl.removePrefix("jdbc:")).host,
+    ): ExistingDatabaseAdoptionCommand =
+        ExistingDatabaseAdoptionCommand(
+            url = url,
+            username = postgres.username,
+            password = postgres.password,
+            confirmation = confirmation,
+            expectedHost = expectedHost,
+        )
+
+    private fun assertAdoptionNotStarted(postgres: PostgreSQLContainer) {
+        postgres.createConnection("").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery(
+                    "SELECT to_regclass('public.flyway_schema_history') IS NULL",
+                ).use { resultSet ->
+                    resultSet.next()
+                    assertTrue(resultSet.getBoolean(1))
+                }
+            }
+        }
+        assertV2NotApplied(postgres)
+    }
+
+    private fun assertV2NotApplied(postgres: PostgreSQLContainer) {
+        postgres.createConnection("").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery(
+                    """
+                    SELECT count(*) = 0
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'quiz_questions'
+                      AND column_name = 'supersedes_quiz_id'
+                    """.trimIndent(),
+                ).use { resultSet ->
+                    resultSet.next()
+                    assertTrue(resultSet.getBoolean(1))
+                }
+            }
+        }
     }
 }
