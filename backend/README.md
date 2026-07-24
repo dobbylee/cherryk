@@ -113,3 +113,19 @@ an existing Better Auth `accounts` row with `provider_id = 'google'` and the sam
 `account_id`. That preserves the existing application `user_id`. Email alone is never
 used to merge users. The V3 migration adds the new identity and Spring Session tables
 without deleting the legacy Better Auth tables or any application data.
+
+## CLOVA OCR
+
+Configure the General OCR V2 adapter with:
+
+```text
+CLOVA_OCR_INVOKE_URL
+CLOVA_OCR_SECRET
+CLOVA_OCR_TIMEOUT
+CLOVA_OCR_MAX_ATTEMPTS
+CLOVA_OCR_RETRY_DELAY
+```
+
+The timeout defaults to `10s`. At most three total attempts are accepted by
+configuration; the default is two attempts with a `200ms` delay. The adapter sends
+image bytes only in memory, never includes them in errors, and does not persist them.

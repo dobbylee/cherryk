@@ -48,6 +48,13 @@ cherryk:
   security:
     admin-emails: ${ADMIN_EMAILS:}
     secure-cookies: ${SESSION_COOKIE_SECURE:true}
+  ocr:
+    clova:
+      invoke-url: ${CLOVA_OCR_INVOKE_URL:}
+      secret: ${CLOVA_OCR_SECRET:}
+      timeout: ${CLOVA_OCR_TIMEOUT:10s}
+      max-attempts: ${CLOVA_OCR_MAX_ATTEMPTS:2}
+      retry-delay: ${CLOVA_OCR_RETRY_DELAY:200ms}
 
 management:
   endpoints:
