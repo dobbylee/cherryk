@@ -1,6 +1,9 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { UserLevelSchema } from "@/lib/contracts/common";
-import { GrammarTagSchema, type GrammarTag } from "@/lib/contracts/grammar-tags";
+import {
+  GrammarTagSchema,
+  type GrammarTag,
+} from "@/lib/contracts/grammar-tags";
 import { QuizStatusSchema } from "@/lib/contracts/quiz";
 import type {
   AdminQuizDraft,
@@ -194,10 +197,7 @@ async function updateQuiz(db: Db, input: UpdateQuizInput) {
         }
       }
 
-      const contentFingerprint = await getUpdatedContentFingerprint(
-        tx,
-        input,
-      );
+      const contentFingerprint = await getUpdatedContentFingerprint(tx, input);
       if (contentFingerprint === null) {
         return null;
       }
@@ -206,9 +206,7 @@ async function updateQuiz(db: Db, input: UpdateQuizInput) {
         .update(quizQuestions)
         .set({
           ...toQuizQuestionUpdate(input.update),
-          ...(contentFingerprint
-            ? { contentFingerprint }
-            : {}),
+          ...(contentFingerprint ? { contentFingerprint } : {}),
           updatedAt: input.now,
         })
         .where(eq(quizQuestions.id, input.id))
@@ -295,22 +293,35 @@ async function getUpdatedContentFingerprint(
 }
 
 function isUniqueConstraintViolation(error: unknown) {
+  const duplicateQuizConstraints = new Set([
+    "quiz_questions_content_fingerprint_unique",
+    "quiz_questions_active_fingerprint_unique",
+    "quiz_questions_revision_target_unique",
+  ]);
+
   return (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
     error.code === "23505" &&
     "constraint_name" in error &&
-    error.constraint_name === "quiz_questions_content_fingerprint_unique"
+    typeof error.constraint_name === "string" &&
+    duplicateQuizConstraints.has(error.constraint_name)
   );
 }
 
 function toQuizQuestionUpdate(update: AdminQuizUpdateRequest) {
   return {
     ...(update.tag !== undefined ? { tag: update.tag } : {}),
-    ...(update.difficulty !== undefined ? { difficulty: update.difficulty } : {}),
-    ...(update.questionEn !== undefined ? { questionEn: update.questionEn } : {}),
-    ...(update.sentenceKo !== undefined ? { sentenceKo: update.sentenceKo } : {}),
+    ...(update.difficulty !== undefined
+      ? { difficulty: update.difficulty }
+      : {}),
+    ...(update.questionEn !== undefined
+      ? { questionEn: update.questionEn }
+      : {}),
+    ...(update.sentenceKo !== undefined
+      ? { sentenceKo: update.sentenceKo }
+      : {}),
     ...(update.answerExplanationEn !== undefined
       ? { answerExplanationEn: update.answerExplanationEn }
       : {}),
@@ -335,7 +346,7 @@ async function createQuizDrafts(db: Db, input: CreateQuizDraftsInput) {
           answerExplanationEn: question.answerExplanationEn,
           source: "ai_draft",
         })
-        .onConflictDoNothing({ target: quizQuestions.contentFingerprint })
+        .onConflictDoNothing()
         .returning({ id: quizQuestions.id });
 
       if (!draft) {
@@ -387,16 +398,14 @@ async function findApprovedQuizzesByTags(db: Db, tags: GrammarTag[]) {
   const quizzes = new Map<string, RecommendedQuiz>();
 
   for (const row of rows) {
-    const quiz =
-      quizzes.get(row.quizId) ??
-      {
-        id: row.quizId,
-        tag: GrammarTagSchema.parse(row.tag),
-        difficulty: UserLevelSchema.parse(row.difficulty),
-        questionEn: row.questionEn,
-        sentenceKo: row.sentenceKo,
-        choices: [],
-      };
+    const quiz = quizzes.get(row.quizId) ?? {
+      id: row.quizId,
+      tag: GrammarTagSchema.parse(row.tag),
+      difficulty: UserLevelSchema.parse(row.difficulty),
+      questionEn: row.questionEn,
+      sentenceKo: row.sentenceKo,
+      choices: [],
+    };
 
     quiz.choices.push({
       id: row.choiceId,

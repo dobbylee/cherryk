@@ -1,6 +1,6 @@
 package io.github.dobbylee.cherryk.preflight
 
-import io.github.dobbylee.cherryk.PostgreSqlIntegrationTest
+import io.github.dobbylee.cherryk.DrizzleBaselineIntegrationTest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 @SpringBootTest
 class SchemaPreflightTest(
     @Autowired private val dataSource: DataSource,
-) : PostgreSqlIntegrationTest() {
+) : DrizzleBaselineIntegrationTest() {
     @Test
     fun `rejects same-named definition drift and unexpected indexes`() {
         withRollback { connection ->

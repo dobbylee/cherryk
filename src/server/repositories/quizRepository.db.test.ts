@@ -32,7 +32,7 @@ describe("quizRepository attempt summary integration", () => {
           id uuid PRIMARY KEY,
           user_id uuid NOT NULL,
           quiz_question_id uuid NOT NULL,
-          selected_choice_id uuid,
+          selected_choice_id uuid NOT NULL,
           is_correct boolean NOT NULL,
           created_at timestamptz NOT NULL
         );
@@ -41,6 +41,7 @@ describe("quizRepository attempt summary integration", () => {
           id,
           user_id,
           quiz_question_id,
+          selected_choice_id,
           is_correct,
           created_at
         ) VALUES
@@ -48,6 +49,7 @@ describe("quizRepository attempt summary integration", () => {
             '33333333-3333-4333-8333-333333333333',
             '${userId}',
             '${quizId}',
+            '55555555-5555-4555-8555-555555555555',
             false,
             '2026-07-20T00:00:00.000Z'
           ),
@@ -55,6 +57,7 @@ describe("quizRepository attempt summary integration", () => {
             '44444444-4444-4444-8444-444444444444',
             '${userId}',
             '${quizId}',
+            '66666666-6666-4666-8666-666666666666',
             true,
             '2026-07-21T00:00:00.000Z'
           );
@@ -90,6 +93,8 @@ describeWithDatabase("quizRepository database concurrency", () => {
     const marker = randomUUID();
     const userId = randomUUID();
     const quizId = randomUUID();
+    const incorrectChoiceId = randomUUID();
+    const correctChoiceId = randomUUID();
 
     try {
       await connection.db.insert(users).values({
@@ -107,16 +112,46 @@ describeWithDatabase("quizRepository database concurrency", () => {
         sentenceKo: `집계 테스트 ${marker}`,
         answerExplanationEn: "Database attempt summary test.",
       });
+      await connection.db.insert(quizChoices).values([
+        {
+          id: incorrectChoiceId,
+          quizQuestionId: quizId,
+          choiceText: "은",
+          isCorrect: false,
+          sortOrder: 0,
+        },
+        {
+          id: correctChoiceId,
+          quizQuestionId: quizId,
+          choiceText: "를",
+          isCorrect: true,
+          sortOrder: 1,
+        },
+        {
+          quizQuestionId: quizId,
+          choiceText: "에",
+          isCorrect: false,
+          sortOrder: 2,
+        },
+        {
+          quizQuestionId: quizId,
+          choiceText: "이",
+          isCorrect: false,
+          sortOrder: 3,
+        },
+      ]);
       await connection.db.insert(quizAttempts).values([
         {
           userId,
           quizQuestionId: quizId,
+          selectedChoiceId: incorrectChoiceId,
           isCorrect: false,
           createdAt: new Date("2026-07-20T00:00:00.000Z"),
         },
         {
           userId,
           quizQuestionId: quizId,
+          selectedChoiceId: correctChoiceId,
           isCorrect: true,
           createdAt: new Date("2026-07-21T00:00:00.000Z"),
         },

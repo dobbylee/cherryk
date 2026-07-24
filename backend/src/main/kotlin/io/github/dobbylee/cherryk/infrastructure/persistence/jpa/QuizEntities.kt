@@ -24,6 +24,7 @@ class QuizEntity(
     tag: GrammarTag,
     difficulty: UserLevel,
     contentFingerprint: String,
+    supersedesQuizId: UUID? = null,
     status: QuizStatus,
     questionEn: String,
     sentenceKo: String,
@@ -50,10 +51,13 @@ class QuizEntity(
     @field:Column(
         name = "content_fingerprint",
         nullable = false,
-        unique = true,
         columnDefinition = "text",
     )
     var contentFingerprint: String = contentFingerprint
+        protected set
+
+    @field:Column(name = "supersedes_quiz_id")
+    var supersedesQuizId: UUID? = supersedesQuizId
         protected set
 
     @field:Convert(converter = QuizStatusConverter::class)
@@ -160,7 +164,7 @@ class QuizAttemptEntity(
     id: UUID = UUID.randomUUID(),
     userId: UUID,
     quizQuestionId: UUID,
-    selectedChoiceId: UUID?,
+    selectedChoiceId: UUID,
     correct: Boolean,
     createdAt: Instant = Instant.now(),
 ) {
@@ -177,8 +181,8 @@ class QuizAttemptEntity(
     var quizQuestionId: UUID = quizQuestionId
         protected set
 
-    @field:Column(name = "selected_choice_id", updatable = false)
-    var selectedChoiceId: UUID? = selectedChoiceId
+    @field:Column(name = "selected_choice_id", nullable = false, updatable = false)
+    var selectedChoiceId: UUID = selectedChoiceId
         protected set
 
     @field:Column(name = "is_correct", nullable = false, updatable = false)

@@ -1,15 +1,19 @@
 import {
   boolean,
   date,
+  foreignKey,
   index,
   integer,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -158,33 +162,62 @@ export const userTagStats = pgTable(
   }),
 );
 
-export const quizQuestions = pgTable("quiz_questions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tag: text("tag").notNull(),
-  difficulty: text("difficulty").notNull(),
-  contentFingerprint: text("content_fingerprint").notNull().unique(),
-  status: text("status").notNull(),
-  questionEn: text("question_en").notNull(),
-  sentenceKo: text("sentence_ko").notNull(),
-  answerExplanationEn: text("answer_explanation_en").notNull(),
-  source: text("source").notNull().default("ai_draft"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const quizQuestions = pgTable(
+  "quiz_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tag: text("tag").notNull(),
+    difficulty: text("difficulty").notNull(),
+    contentFingerprint: text("content_fingerprint").notNull(),
+    supersedesQuizId: uuid("supersedes_quiz_id").references(
+      (): AnyPgColumn => quizQuestions.id,
+    ),
+    status: text("status").notNull(),
+    questionEn: text("question_en").notNull(),
+    sentenceKo: text("sentence_ko").notNull(),
+    answerExplanationEn: text("answer_explanation_en").notNull(),
+    source: text("source").notNull().default("ai_draft"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    activeFingerprintUnique: uniqueIndex(
+      "quiz_questions_active_fingerprint_unique",
+    )
+      .on(table.contentFingerprint)
+      .where(
+        sql`${table.status} = 'approved' OR (${table.status} = 'draft' AND ${table.supersedesQuizId} IS NULL)`,
+      ),
+    revisionTargetUnique: uniqueIndex("quiz_questions_revision_target_unique")
+      .on(table.supersedesQuizId)
+      .where(
+        sql`${table.status} = 'draft' AND ${table.supersedesQuizId} IS NOT NULL`,
+      ),
+  }),
+);
 
-export const quizChoices = pgTable("quiz_choices", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  quizQuestionId: uuid("quiz_question_id")
-    .notNull()
-    .references(() => quizQuestions.id, { onDelete: "cascade" }),
-  choiceText: text("choice_text").notNull(),
-  isCorrect: boolean("is_correct").notNull().default(false),
-  sortOrder: integer("sort_order").notNull(),
-});
+export const quizChoices = pgTable(
+  "quiz_choices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    quizQuestionId: uuid("quiz_question_id")
+      .notNull()
+      .references(() => quizQuestions.id, { onDelete: "cascade" }),
+    choiceText: text("choice_text").notNull(),
+    isCorrect: boolean("is_correct").notNull().default(false),
+    sortOrder: integer("sort_order").notNull(),
+  },
+  (table) => ({
+    questionIdIdUnique: unique("quiz_choices_question_id_id_unique").on(
+      table.quizQuestionId,
+      table.id,
+    ),
+  }),
+);
 
 export const quizAttempts = pgTable(
   "quiz_attempts",
@@ -196,15 +229,18 @@ export const quizAttempts = pgTable(
     quizQuestionId: uuid("quiz_question_id")
       .notNull()
       .references(() => quizQuestions.id, { onDelete: "cascade" }),
-    selectedChoiceId: uuid("selected_choice_id").references(
-      () => quizChoices.id,
-    ),
+    selectedChoiceId: uuid("selected_choice_id").notNull(),
     isCorrect: boolean("is_correct").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => ({
+    selectedChoiceOwnership: foreignKey({
+      name: "quiz_attempts_question_selected_choice_fk",
+      columns: [table.quizQuestionId, table.selectedChoiceId],
+      foreignColumns: [quizChoices.quizQuestionId, quizChoices.id],
+    }),
     userQuestionCreatedIndex: index(
       "quiz_attempts_user_question_created_idx",
     ).on(table.userId, table.quizQuestionId, table.createdAt),

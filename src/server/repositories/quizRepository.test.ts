@@ -621,7 +621,7 @@ describe("quizRepository", () => {
       transaction: vi.fn(async () => {
         throw Object.assign(new Error("duplicate key"), {
           code: "23505",
-          constraint_name: "quiz_questions_content_fingerprint_unique",
+          constraint_name: "quiz_questions_active_fingerprint_unique",
         });
       }),
     };

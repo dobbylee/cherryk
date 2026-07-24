@@ -14,3 +14,17 @@ SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
 The command does not start Spring or Flyway. It opens a read-only transaction, compares the database with the frozen final Drizzle snapshot, checks the data required by the planned quiz constraints, and rolls the transaction back.
 
 Do not run Flyway baseline unless this command succeeds against the intended database.
+
+## Existing database adoption
+
+For an existing Drizzle-managed database:
+
+1. Create or confirm a restorable database backup.
+2. Run `schemaPreflight` against the exact target database.
+3. Explicitly baseline Flyway at version `1` with description `Drizzle schema baseline`.
+4. Start the Spring migration process so Flyway applies `V2__quiz_lifecycle_constraints.sql`.
+5. Verify the preserved correction, tag, quiz, choice, and attempt row counts.
+
+Never enable `baseline-on-migrate` for this transition. The automated
+`ExistingDatabaseAdoptionTest` reproduces the preflight, explicit version-1 baseline,
+V2 migration, and data-preservation sequence against PostgreSQL 18.

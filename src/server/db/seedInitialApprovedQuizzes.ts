@@ -35,7 +35,7 @@ export async function seedInitialApprovedQuizzes(db: Db) {
           answerExplanationEn: quiz.answerExplanationEn,
           source: "seed",
         })
-        .onConflictDoNothing({ target: quizQuestions.contentFingerprint })
+        .onConflictDoNothing()
         .returning({ id: quizQuestions.id });
 
       if (!insertedQuiz) {

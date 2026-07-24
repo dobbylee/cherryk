@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class BaselineMigrationTest(
     @Autowired private val jdbcClient: JdbcClient,
     @Autowired private val dataSource: DataSource,
-) : PostgreSqlIntegrationTest() {
+) : DrizzleBaselineIntegrationTest() {
 
     @Test
     fun `baseline recreates the final Drizzle schema`() {
