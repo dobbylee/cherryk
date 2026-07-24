@@ -7,7 +7,6 @@ import org.springframework.security.web.csrf.CsrfToken
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -32,7 +31,7 @@ class AuthController(
             user =
                 user?.let {
                     AuthUserResponse(
-                        id = it.id,
+                        id = it.id.toString(),
                         displayName = it.displayName,
                         level = it.level.databaseValue,
                     )
@@ -46,7 +45,7 @@ data class MeResponse(
 )
 
 data class AuthUserResponse(
-    val id: UUID,
+    val id: String,
     val displayName: String?,
     val level: String,
 )

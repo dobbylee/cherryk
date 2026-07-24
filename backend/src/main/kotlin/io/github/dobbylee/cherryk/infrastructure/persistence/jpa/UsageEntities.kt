@@ -10,12 +10,11 @@ import jakarta.persistence.Table
 import java.io.Serializable
 import java.time.Instant
 import java.time.LocalDate
-import java.util.UUID
 
 @Embeddable
 data class DailyUsageId(
     @field:Column(name = "user_id", nullable = false)
-    var userId: UUID = UUID(0, 0),
+    var userId: Long = 0,
     @field:Column(name = "usage_date", nullable = false)
     var usageDate: LocalDate = LocalDate.ofEpochDay(0),
 ) : Serializable
@@ -48,7 +47,7 @@ class DailyUsageEntity(
 @Embeddable
 data class UserTagStatId(
     @field:Column(name = "user_id", nullable = false)
-    var userId: UUID = UUID(0, 0),
+    var userId: Long = 0,
     @field:Convert(converter = GrammarTagConverter::class)
     @field:Column(name = "tag", nullable = false, columnDefinition = "text")
     var tag: GrammarTag = GrammarTag.PARTICLE_SUBJECT,

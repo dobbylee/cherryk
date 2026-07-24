@@ -29,7 +29,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
 
 @WebMvcTest(
     controllers = [SecurityProbeController::class, AuthController::class],
@@ -210,4 +209,4 @@ class SecurityProbeController {
     fun adminProtected() = "admin"
 }
 
-private val TEST_USER_ID = UUID.fromString("10000000-0000-4000-8000-000000000001")
+private const val TEST_USER_ID = 1L

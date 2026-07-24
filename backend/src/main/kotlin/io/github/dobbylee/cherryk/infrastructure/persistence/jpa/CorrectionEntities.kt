@@ -8,19 +8,19 @@ import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 @Entity
 @Table(name = "corrections")
 class CorrectionEntity(
-    id: UUID = UUID.randomUUID(),
-    userId: UUID,
+    userId: Long,
     inputType: CorrectionInputType,
     originalText: String,
     correctedText: String,
@@ -29,12 +29,13 @@ class CorrectionEntity(
     createdAt: Instant = Instant.now(),
 ) {
     @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     @field:Column(nullable = false, updatable = false)
-    var id: UUID = id
+    var id: Long = 0
         protected set
 
     @field:Column(name = "user_id", nullable = false, updatable = false)
-    var userId: UUID = userId
+    var userId: Long = userId
         protected set
 
     @field:Convert(converter = CorrectionInputTypeConverter::class)
@@ -74,12 +75,10 @@ class CorrectionEntity(
         correctedPart: String?,
         explanationEn: String?,
         severity: MistakeSeverity,
-        id: UUID = UUID.randomUUID(),
         createdAt: Instant = Instant.now(),
     ) {
         mistakeEntities +=
             CorrectionMistakeEntity(
-                id = id,
                 correction = this,
                 tag = tag,
                 originalPart = originalPart,
@@ -94,7 +93,6 @@ class CorrectionEntity(
 @Entity
 @Table(name = "correction_mistakes")
 class CorrectionMistakeEntity(
-    id: UUID = UUID.randomUUID(),
     correction: CorrectionEntity,
     tag: GrammarTag,
     originalPart: String? = null,
@@ -104,8 +102,9 @@ class CorrectionMistakeEntity(
     createdAt: Instant = Instant.now(),
 ) {
     @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     @field:Column(nullable = false, updatable = false)
-    var id: UUID = id
+    var id: Long = 0
         protected set
 
     @field:ManyToOne(fetch = FetchType.LAZY, optional = false)

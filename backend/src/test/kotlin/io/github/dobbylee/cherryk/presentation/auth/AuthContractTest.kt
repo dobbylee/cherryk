@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.core.io.ClassPathResource
 import tools.jackson.databind.JsonNode
 import tools.jackson.module.kotlin.jacksonObjectMapper
-import java.util.UUID
 import kotlin.test.assertEquals
 
 class AuthContractTest {
@@ -20,7 +19,7 @@ class AuthContractTest {
                 MeResponse(
                     user =
                         AuthUserResponse(
-                            id = UUID.fromString("10000000-0000-4000-8000-000000000001"),
+                            id = "1",
                             displayName = "Cherry",
                             level = "beginner",
                         ),

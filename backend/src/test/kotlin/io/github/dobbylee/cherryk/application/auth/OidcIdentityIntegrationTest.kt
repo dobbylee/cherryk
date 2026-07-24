@@ -31,11 +31,10 @@ class OidcIdentityIntegrationTest(
         jdbcClient
             .sql(
                 """
-                INSERT INTO accounts (id, account_id, provider_id, user_id)
-                VALUES (:id, :subject, 'google', :userId)
+                INSERT INTO accounts (account_id, provider_id, user_id)
+                VALUES (:subject, 'google', :userId)
                 """.trimIndent(),
-            ).param("id", UUID.randomUUID())
-            .param("subject", subject)
+            ).param("subject", subject)
             .param("userId", existing.id)
             .update()
         val userCountBefore = userRepository.count()
@@ -66,7 +65,7 @@ class OidcIdentityIntegrationTest(
                     """.trimIndent(),
                 ).param("issuer", GOOGLE_ISSUER)
                 .param("subject", subject)
-                .query(UUID::class.java)
+                .query(Long::class.java)
                 .single(),
         )
     }

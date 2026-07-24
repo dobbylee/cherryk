@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
@@ -106,9 +105,10 @@ class OidcIdentityServiceTest {
 }
 
 private class FakeOidcIdentityStore : OidcIdentityStore {
-    val identities = mutableMapOf<Pair<String, String>, UUID>()
-    val legacyGoogleUsers = mutableMapOf<String, UUID>()
-    private val users = mutableMapOf<UUID, FakeUser>()
+    val identities = mutableMapOf<Pair<String, String>, Long>()
+    val legacyGoogleUsers = mutableMapOf<String, Long>()
+    private val users = mutableMapOf<Long, FakeUser>()
+    private var nextId = 1L
     var createdUserCount = 0
         private set
     var createdIdentityCount = 0
@@ -117,7 +117,7 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
     fun addUser(email: String?): AuthenticatedUser {
         val user =
             FakeUser(
-                id = UUID.randomUUID(),
+                id = nextId++,
                 displayName = "Existing learner",
                 email = email,
                 level = UserLevel.BEGINNER,
@@ -131,11 +131,11 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
         subject: String,
     ): AuthenticatedUser? = identities[issuer to subject]?.let(users::get)?.authenticated()
 
-    override fun findLegacyGoogleUserId(subject: String): UUID? = legacyGoogleUsers[subject]
+    override fun findLegacyGoogleUserId(subject: String): Long? = legacyGoogleUsers[subject]
 
-    override fun findUserById(userId: UUID): AuthenticatedUser? = users[userId]?.authenticated()
+    override fun findUserById(userId: Long): AuthenticatedUser? = users[userId]?.authenticated()
 
-    override fun findUserIdByEmail(email: String): UUID? =
+    override fun findUserIdByEmail(email: String): Long? =
         users.values
             .firstOrNull { it.email?.equals(email, ignoreCase = true) == true }
             ?.id
@@ -147,7 +147,7 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
         createdUserCount += 1
         val user =
             FakeUser(
-                id = UUID.randomUUID(),
+                id = nextId++,
                 displayName = profile.displayName,
                 email = profile.email,
                 level = UserLevel.BEGINNER,
@@ -157,7 +157,7 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
     }
 
     override fun refreshUser(
-        userId: UUID,
+        userId: Long,
         profile: OidcIdentityProfile,
         now: Instant,
     ): AuthenticatedUser {
@@ -174,7 +174,7 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
     override fun createIdentity(
         issuer: String,
         subject: String,
-        userId: UUID,
+        userId: Long,
         now: Instant,
     ) {
         createdIdentityCount += 1
@@ -183,7 +183,7 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
     }
 
     private data class FakeUser(
-        val id: UUID,
+        val id: Long,
         val displayName: String?,
         val email: String?,
         val level: UserLevel,

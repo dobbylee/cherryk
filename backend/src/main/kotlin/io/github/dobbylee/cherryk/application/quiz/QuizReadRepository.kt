@@ -3,18 +3,17 @@ package io.github.dobbylee.cherryk.application.quiz
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import java.time.Instant
-import java.util.UUID
 
 interface QuizReadRepository {
     fun findApprovedQuizzesByTags(tags: Set<GrammarTag>): List<RecommendedQuiz>
 
-    fun findAttemptSummaries(userId: UUID): List<QuizAttemptSummary>
+    fun findAttemptSummaries(userId: Long): List<QuizAttemptSummary>
 
-    fun findTopUserTags(userId: UUID): List<GrammarTag>
+    fun findTopUserTags(userId: Long): List<GrammarTag>
 }
 
 data class RecommendedQuiz(
-    val id: UUID,
+    val id: Long,
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val questionEn: String,
@@ -23,12 +22,12 @@ data class RecommendedQuiz(
 )
 
 data class RecommendedQuizChoice(
-    val id: UUID,
+    val id: Long,
     val text: String,
 )
 
 data class QuizAttemptSummary(
-    val quizId: UUID,
+    val quizId: Long,
     val attemptCount: Int,
     val correctCount: Int,
     val lastAttemptCorrect: Boolean,

@@ -71,13 +71,12 @@ class QuizLifecycleMigrationTest(
                 .sql(
                     """
                     INSERT INTO quiz_attempts (
-                        id, user_id, quiz_question_id, selected_choice_id, is_correct
+                        user_id, quiz_question_id, selected_choice_id, is_correct
                     ) VALUES (
-                        :id, :userId, :quizId, :choiceId, false
+                        :userId, :quizId, :choiceId, false
                     )
                     """.trimIndent(),
-                ).param("id", UUID.randomUUID())
-                .param("userId", userId)
+                ).param("userId", userId)
                 .param("quizId", attemptedQuizId)
                 .param("choiceId", otherChoiceId)
                 .update()
@@ -195,32 +194,29 @@ class QuizLifecycleMigrationTest(
         }
     }
 
-    private fun insertUser(): UUID {
-        val id = UUID.randomUUID()
+    private fun insertUser(): Long =
         jdbcClient
-            .sql("INSERT INTO users (id, display_name) VALUES (:id, 'Migration user')")
-            .param("id", id)
-            .update()
-        return id
-    }
+            .sql("INSERT INTO users (display_name) VALUES ('Migration user') RETURNING id")
+            .query(Long::class.java)
+            .single()
 
     private fun insertQuiz(
         status: String = "draft",
         fingerprint: String = "migration-${UUID.randomUUID()}",
-        supersedesQuizId: UUID? = null,
-    ): UUID {
-        val id = UUID.randomUUID()
+        supersedesQuizId: Long? = null,
+    ): Long {
         val query =
             if (supersedesQuizId == null) {
                 jdbcClient.sql(
                     """
                     INSERT INTO quiz_questions (
-                        id, tag, difficulty, content_fingerprint, status,
+                        tag, difficulty, content_fingerprint, status,
                         question_en, sentence_ko, answer_explanation_en
                     ) VALUES (
-                        :id, 'particle_object', 'beginner', :fingerprint, :status,
+                        'particle_object', 'beginner', :fingerprint, :status,
                         'Choose.', '문장', 'Explanation.'
                     )
+                    RETURNING id
                     """.trimIndent(),
                 )
             } else {
@@ -228,44 +224,42 @@ class QuizLifecycleMigrationTest(
                     .sql(
                         """
                         INSERT INTO quiz_questions (
-                            id, tag, difficulty, content_fingerprint, supersedes_quiz_id,
+                            tag, difficulty, content_fingerprint, supersedes_quiz_id,
                             status, question_en, sentence_ko, answer_explanation_en
                         ) VALUES (
-                            :id, 'particle_object', 'beginner', :fingerprint, :supersedesQuizId,
+                            'particle_object', 'beginner', :fingerprint, :supersedesQuizId,
                             :status, 'Choose.', '문장', 'Explanation.'
                         )
+                        RETURNING id
                         """.trimIndent(),
                     ).param("supersedesQuizId", supersedesQuizId)
             }
 
-        query
-            .param("id", id)
+        return query
             .param("fingerprint", fingerprint)
             .param("status", status)
-            .update()
-        return id
+            .query(Long::class.java)
+            .single()
     }
 
     private fun insertChoice(
-        quizId: UUID,
+        quizId: Long,
         correct: Boolean,
         sortOrder: Int,
-    ): UUID {
-        val id = UUID.randomUUID()
+    ): Long =
         jdbcClient
             .sql(
                 """
                 INSERT INTO quiz_choices (
-                    id, quiz_question_id, choice_text, is_correct, sort_order
+                    quiz_question_id, choice_text, is_correct, sort_order
                 ) VALUES (
-                    :id, :quizId, 'Choice', :correct, :sortOrder
+                    :quizId, 'Choice', :correct, :sortOrder
                 )
+                RETURNING id
                 """.trimIndent(),
-            ).param("id", id)
-            .param("quizId", quizId)
+            ).param("quizId", quizId)
             .param("correct", correct)
             .param("sortOrder", sortOrder)
-            .update()
-        return id
-    }
+            .query(Long::class.java)
+            .single()
 }

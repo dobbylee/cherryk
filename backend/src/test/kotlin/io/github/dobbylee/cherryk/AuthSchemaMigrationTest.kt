@@ -29,6 +29,7 @@ class AuthSchemaMigrationTest {
             Flyway
                 .configure()
                 .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .target(MigrationVersion.fromVersion("3"))
                 .load()
                 .migrate()
 

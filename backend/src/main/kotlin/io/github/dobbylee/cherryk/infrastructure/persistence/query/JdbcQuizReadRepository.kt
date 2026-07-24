@@ -10,7 +10,6 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
-import java.util.UUID
 
 @Repository
 class JdbcQuizReadRepository(
@@ -49,12 +48,12 @@ class JdbcQuizReadRepository(
                 parameters,
             ) { resultSet, _ ->
                 ApprovedQuizRow(
-                    quizId = resultSet.getObject("quiz_id", UUID::class.java),
+                    quizId = resultSet.getLong("quiz_id"),
                     tag = GrammarTag.fromDatabase(resultSet.getString("tag")),
                     difficulty = UserLevel.fromDatabase(resultSet.getString("difficulty")),
                     questionEn = resultSet.getString("question_en"),
                     sentenceKo = resultSet.getString("sentence_ko"),
-                    choiceId = resultSet.getObject("choice_id", UUID::class.java),
+                    choiceId = resultSet.getLong("choice_id"),
                     choiceText = resultSet.getString("choice_text"),
                 )
             }
@@ -81,7 +80,7 @@ class JdbcQuizReadRepository(
             }
     }
 
-    override fun findAttemptSummaries(userId: UUID): List<QuizAttemptSummary> =
+    override fun findAttemptSummaries(userId: Long): List<QuizAttemptSummary> =
         jdbcTemplate.query(
             """
             SELECT
@@ -97,7 +96,7 @@ class JdbcQuizReadRepository(
             mapOf("userId" to userId),
         ) { resultSet, _ ->
             QuizAttemptSummary(
-                quizId = resultSet.getObject("quiz_question_id", UUID::class.java),
+                quizId = resultSet.getLong("quiz_question_id"),
                 attemptCount = resultSet.getInt("attempt_count"),
                 correctCount = resultSet.getInt("correct_count"),
                 lastAttemptCorrect = resultSet.getBoolean("last_attempt_correct"),
@@ -108,7 +107,7 @@ class JdbcQuizReadRepository(
             )
         }
 
-    override fun findTopUserTags(userId: UUID): List<GrammarTag> =
+    override fun findTopUserTags(userId: Long): List<GrammarTag> =
         jdbcTemplate
             .query(
                 """
@@ -124,11 +123,11 @@ class JdbcQuizReadRepository(
 }
 
 private data class ApprovedQuizRow(
-    val quizId: UUID,
+    val quizId: Long,
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val questionEn: String,
     val sentenceKo: String,
-    val choiceId: UUID,
+    val choiceId: Long,
     val choiceText: String,
 )

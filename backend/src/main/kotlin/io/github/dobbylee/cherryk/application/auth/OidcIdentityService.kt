@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
-import java.util.UUID
 
 const val GOOGLE_ISSUER = "https://accounts.google.com"
 
@@ -19,7 +18,7 @@ data class OidcIdentityProfile(
 )
 
 data class AuthenticatedUser(
-    val id: UUID,
+    val id: Long,
     val displayName: String?,
     val level: UserLevel,
 )
@@ -30,11 +29,11 @@ interface OidcIdentityStore {
         subject: String,
     ): AuthenticatedUser?
 
-    fun findLegacyGoogleUserId(subject: String): UUID?
+    fun findLegacyGoogleUserId(subject: String): Long?
 
-    fun findUserById(userId: UUID): AuthenticatedUser?
+    fun findUserById(userId: Long): AuthenticatedUser?
 
-    fun findUserIdByEmail(email: String): UUID?
+    fun findUserIdByEmail(email: String): Long?
 
     fun createUser(
         profile: OidcIdentityProfile,
@@ -42,7 +41,7 @@ interface OidcIdentityStore {
     ): AuthenticatedUser
 
     fun refreshUser(
-        userId: UUID,
+        userId: Long,
         profile: OidcIdentityProfile,
         now: Instant,
     ): AuthenticatedUser
@@ -50,7 +49,7 @@ interface OidcIdentityStore {
     fun createIdentity(
         issuer: String,
         subject: String,
-        userId: UUID,
+        userId: Long,
         now: Instant,
     )
 }

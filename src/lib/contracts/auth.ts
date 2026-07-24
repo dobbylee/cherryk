@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { UserLevelSchema } from "./common";
+import { EntityIdSchema, UserLevelSchema } from "./common";
 
 export const AuthUserSchema = z.object({
-  id: z.string().uuid(),
+  id: EntityIdSchema,
   displayName: z.string().nullable(),
   level: UserLevelSchema,
 });

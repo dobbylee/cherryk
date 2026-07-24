@@ -92,7 +92,6 @@ class JdbcQuizReadRepositoryIntegrationTest(
     ): QuizEntity {
         val marker = UUID.randomUUID()
         return QuizEntity(
-            id = marker,
             tag = GrammarTag.PARTICLE_OBJECT,
             difficulty = UserLevel.BEGINNER,
             contentFingerprint = "read-model-$marker",
@@ -114,7 +113,7 @@ class JdbcQuizReadRepositoryIntegrationTest(
     }
 
     private fun insertTagStat(
-        userId: UUID,
+        userId: Long,
         tag: String,
         count: Int,
         lastSeenAt: String,

@@ -4,15 +4,15 @@ import io.github.dobbylee.cherryk.domain.user.UserLevel
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 @Entity
 @Table(name = "users")
 class UserEntity(
-    id: UUID = UUID.randomUUID(),
     displayName: String? = null,
     email: String? = null,
     emailVerified: Boolean = false,
@@ -24,8 +24,9 @@ class UserEntity(
     lastSeenAt: Instant? = null,
 ) {
     @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     @field:Column(nullable = false, updatable = false)
-    var id: UUID = id
+    var id: Long = 0
         protected set
 
     @field:Column(name = "display_name", columnDefinition = "text")

@@ -6,7 +6,6 @@ import io.github.dobbylee.cherryk.application.auth.OidcIdentityStore
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.time.Instant
-import java.util.UUID
 
 @Repository
 class JpaOidcIdentityStore(
@@ -22,7 +21,7 @@ class JpaOidcIdentityStore(
         return userRepository.findById(identity.userId).orElse(null)?.toAuthenticatedUser()
     }
 
-    override fun findLegacyGoogleUserId(subject: String): UUID? =
+    override fun findLegacyGoogleUserId(subject: String): Long? =
         jdbcClient
             .sql(
                 """
@@ -32,14 +31,14 @@ class JpaOidcIdentityStore(
                   AND account_id = :subject
                 """.trimIndent(),
             ).param("subject", subject)
-            .query(UUID::class.java)
+            .query(Long::class.java)
             .optional()
             .orElse(null)
 
-    override fun findUserById(userId: UUID): AuthenticatedUser? =
+    override fun findUserById(userId: Long): AuthenticatedUser? =
         userRepository.findById(userId).orElse(null)?.toAuthenticatedUser()
 
-    override fun findUserIdByEmail(email: String): UUID? =
+    override fun findUserIdByEmail(email: String): Long? =
         userRepository.findFirstByEmailIgnoreCase(email)?.id
 
     override fun createUser(
@@ -60,7 +59,7 @@ class JpaOidcIdentityStore(
             ).toAuthenticatedUser()
 
     override fun refreshUser(
-        userId: UUID,
+        userId: Long,
         profile: OidcIdentityProfile,
         now: Instant,
     ): AuthenticatedUser {
@@ -82,7 +81,7 @@ class JpaOidcIdentityStore(
     override fun createIdentity(
         issuer: String,
         subject: String,
-        userId: UUID,
+        userId: Long,
         now: Instant,
     ) {
         identityRepository.save(

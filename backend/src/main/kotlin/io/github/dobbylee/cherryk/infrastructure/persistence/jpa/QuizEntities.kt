@@ -9,22 +9,22 @@ import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 @Entity
 @Table(name = "quiz_questions")
 class QuizEntity(
-    id: UUID = UUID.randomUUID(),
     tag: GrammarTag,
     difficulty: UserLevel,
     contentFingerprint: String,
-    supersedesQuizId: UUID? = null,
+    supersedesQuizId: Long? = null,
     status: QuizStatus,
     questionEn: String,
     sentenceKo: String,
@@ -34,8 +34,9 @@ class QuizEntity(
     updatedAt: Instant = createdAt,
 ) {
     @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     @field:Column(nullable = false, updatable = false)
-    var id: UUID = id
+    var id: Long = 0
         protected set
 
     @field:Convert(converter = GrammarTagConverter::class)
@@ -57,7 +58,7 @@ class QuizEntity(
         protected set
 
     @field:Column(name = "supersedes_quiz_id")
-    var supersedesQuizId: UUID? = supersedesQuizId
+    var supersedesQuizId: Long? = supersedesQuizId
         protected set
 
     @field:Convert(converter = QuizStatusConverter::class)
@@ -100,7 +101,6 @@ class QuizEntity(
         text: String,
         correct: Boolean,
         sortOrder: Int,
-        id: UUID = UUID.randomUUID(),
     ) {
         require(choiceEntities.none { it.sortOrder == sortOrder }) {
             "Quiz choice sortOrder must be unique."
@@ -113,7 +113,6 @@ class QuizEntity(
         }
         choiceEntities +=
             QuizChoiceEntity(
-                id = id,
                 quiz = this,
                 text = text,
                 correct = correct,
@@ -125,15 +124,15 @@ class QuizEntity(
 @Entity
 @Table(name = "quiz_choices")
 class QuizChoiceEntity(
-    id: UUID = UUID.randomUUID(),
     quiz: QuizEntity,
     text: String,
     correct: Boolean,
     sortOrder: Int,
 ) {
     @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     @field:Column(nullable = false, updatable = false)
-    var id: UUID = id
+    var id: Long = 0
         protected set
 
     @field:ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -161,28 +160,28 @@ class QuizChoiceEntity(
 @Entity
 @Table(name = "quiz_attempts")
 class QuizAttemptEntity(
-    id: UUID = UUID.randomUUID(),
-    userId: UUID,
-    quizQuestionId: UUID,
-    selectedChoiceId: UUID,
+    userId: Long,
+    quizQuestionId: Long,
+    selectedChoiceId: Long,
     correct: Boolean,
     createdAt: Instant = Instant.now(),
 ) {
     @field:Id
+    @field:GeneratedValue(strategy = GenerationType.IDENTITY)
     @field:Column(nullable = false, updatable = false)
-    var id: UUID = id
+    var id: Long = 0
         protected set
 
     @field:Column(name = "user_id", nullable = false, updatable = false)
-    var userId: UUID = userId
+    var userId: Long = userId
         protected set
 
     @field:Column(name = "quiz_question_id", nullable = false, updatable = false)
-    var quizQuestionId: UUID = quizQuestionId
+    var quizQuestionId: Long = quizQuestionId
         protected set
 
     @field:Column(name = "selected_choice_id", nullable = false, updatable = false)
-    var selectedChoiceId: UUID = selectedChoiceId
+    var selectedChoiceId: Long = selectedChoiceId
         protected set
 
     @field:Column(name = "is_correct", nullable = false, updatable = false)
