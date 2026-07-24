@@ -17,5 +17,37 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    profiles: ["backend"]
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://backend-postgres:5432/cherryk
+      DATABASE_USERNAME: cherryk
+      DATABASE_PASSWORD: cherryk
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend-postgres:
+        condition: service_healthy
+
+  # Keep the Flyway baseline smoke isolated from the existing Drizzle-owned
+  # development database until the production migration cutover.
+  backend-postgres:
+    profiles: ["backend"]
+    image: postgres:18
+    environment:
+      POSTGRES_DB: cherryk
+      POSTGRES_USER: cherryk
+      POSTGRES_PASSWORD: cherryk
+    volumes:
+      - backend_postgres18_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cherryk -d cherryk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
+  backend_postgres18_data:
   postgres18_data:

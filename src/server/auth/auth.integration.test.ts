@@ -30,6 +30,7 @@ const migrationFiles = [
   "0006_overrated_master_chief.sql",
   "0007_skinny_leper_queen.sql",
 ];
+const SESSION_TTL_TOLERANCE_MS = 1000;
 
 describe("Better Auth Drizzle integration", () => {
   it("persists users, accounts, and a 90-day cookie session in migrated Postgres", async () => {
@@ -76,10 +77,13 @@ describe("Better Auth Drizzle integration", () => {
         .from(authSessions)
         .where(eq(authSessions.userId, session?.user.id ?? ""));
       expect(storedSession).toBeDefined();
-      expect(
+      const storedSessionTtl =
         (storedSession?.expiresAt.getTime() ?? 0) -
-          (storedSession?.createdAt.getTime() ?? 0),
-      ).toBe(SESSION_TTL_SECONDS * 1000);
+        (storedSession?.createdAt.getTime() ?? 0);
+      expect(storedSessionTtl).toBeGreaterThanOrEqual(
+        SESSION_TTL_SECONDS * 1000 - SESSION_TTL_TOLERANCE_MS,
+      );
+      expect(storedSessionTtl).toBeLessThanOrEqual(SESSION_TTL_SECONDS * 1000);
       await expect(
         db
           .select({

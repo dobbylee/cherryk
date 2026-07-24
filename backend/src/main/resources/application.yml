@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: cherryk-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/cherryk}
+    username: ${DATABASE_USERNAME:cherryk}
+    password: ${DATABASE_PASSWORD:cherryk}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 10000
+      idle-timeout: 20000
+      max-lifetime: 1800000
+  flyway:
+    baseline-on-migrate: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  session:
+    jdbc:
+      initialize-schema: never
+
+server:
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

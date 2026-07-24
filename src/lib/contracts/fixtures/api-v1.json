@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "apiError": {
+    "error": {
+      "code": "validation_failed",
+      "message": "The request is invalid."
+    }
+  },
+  "meResponse": {
+    "user": {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "displayName": "Cherry",
+      "level": "beginner"
+    }
+  },
+  "correctionRequest": {
+    "text": "저는 학교에 공부했어요.",
+    "inputType": "text",
+    "level": "beginner",
+    "correctionStyle": "minimal"
+  },
+  "correctionResponse": {
+    "correctionId": "20000000-0000-4000-8000-000000000001",
+    "originalText": "저는 학교에 공부했어요.",
+    "correctedText": "저는 학교에서 공부했어요.",
+    "explanationEn": "Use 에서 for the place where an action happens.",
+    "mistakes": [
+      {
+        "tag": "particle_location",
+        "originalPart": "학교에",
+        "correctedPart": "학교에서",
+        "explanationEn": "The action 공부했어요 happens at school.",
+        "severity": "minor"
+      }
+    ],
+    "recommendedTags": ["particle_location"]
+  },
+  "ocrResponse": {
+    "extractedText": "저는 학교에 공부했어요.",
+    "note": "Please review the extracted spacing."
+  },
+  "quizRecommendationQuery": {
+    "tags": ["particle_location"]
+  },
+  "quizRecommendationResponse": {
+    "quizzes": [
+      {
+        "id": "30000000-0000-4000-8000-000000000001",
+        "tag": "particle_location",
+        "difficulty": "beginner",
+        "questionEn": "Choose the particle for where an action happens.",
+        "sentenceKo": "저는 도서관( ) 공부해요.",
+        "choices": [
+          {
+            "id": "40000000-0000-4000-8000-000000000001",
+            "text": "에"
+          },
+          {
+            "id": "40000000-0000-4000-8000-000000000002",
+            "text": "에서"
+          },
+          {
+            "id": "40000000-0000-4000-8000-000000000003",
+            "text": "을"
+          },
+          {
+            "id": "40000000-0000-4000-8000-000000000004",
+            "text": "는"
+          }
+        ],
+        "attemptCount": 0
+      }
+    ],
+    "availableTags": ["particle_location"],
+    "activeTags": ["particle_location"],
+    "progress": {
+      "solvedCount": 0,
+      "totalCount": 1,
+      "attemptCount": 0,
+      "correctCount": 0
+    }
+  },
+  "quizAttemptRequest": {
+    "quizId": "30000000-0000-4000-8000-000000000001",
+    "selectedChoiceId": "40000000-0000-4000-8000-000000000002"
+  },
+  "quizAttemptResponse": {
+    "isCorrect": true,
+    "correctChoiceId": "40000000-0000-4000-8000-000000000002",
+    "explanationEn": "Use 에서 for the place where an action happens."
+  },
+  "adminQuizDraftRequest": {
+    "tag": "particle_location",
+    "difficulty": "beginner",
+    "count": 1,
+    "instruction": "Use a daily routine."
+  },
+  "adminQuizDraftResponse": {
+    "drafts": [
+      {
+        "id": "30000000-0000-4000-8000-000000000001",
+        "tag": "particle_location",
+        "difficulty": "beginner",
+        "questionEn": "Choose the particle for where an action happens.",
+        "sentenceKo": "저는 도서관( ) 공부해요.",
+        "choices": [
+          { "text": "에", "isCorrect": false },
+          { "text": "에서", "isCorrect": true },
+          { "text": "을", "isCorrect": false },
+          { "text": "는", "isCorrect": false }
+        ],
+        "answerExplanationEn": "Use 에서 for the place where an action happens."
+      }
+    ]
+  },
+  "adminQuizUpdateRequest": {
+    "status": "approved"
+  },
+  "adminQuizUpdateResponse": {
+    "quiz": {
+      "id": "30000000-0000-4000-8000-000000000001",
+      "status": "approved"
+    }
+  },
+  "adminQuizDeleteResponse": {
+    "deletedQuizId": "30000000-0000-4000-8000-000000000001"
+  }
+}

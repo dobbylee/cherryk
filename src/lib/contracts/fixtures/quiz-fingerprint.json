@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "base particle object quiz",
+      "input": {
+        "tag": "particle_object",
+        "difficulty": "beginner",
+        "sentenceKo": "저는 사과( ) 먹어요.",
+        "choices": [
+          { "text": "은", "isCorrect": false },
+          { "text": "를", "isCorrect": true },
+          { "text": "에", "isCorrect": false },
+          { "text": "이", "isCorrect": false }
+        ]
+      },
+      "expected": "882b70fac68cb46c00e6110918e6e98ca23ed28a57c55aa0d0420fd540800872"
+    },
+    {
+      "name": "whitespace and choice order normalization",
+      "input": {
+        "tag": "particle_object",
+        "difficulty": "beginner",
+        "sentenceKo": "  저는  사과( )\n먹어요.  ",
+        "choices": [
+          { "text": "이", "isCorrect": false },
+          { "text": "에", "isCorrect": false },
+          { "text": "를", "isCorrect": true },
+          { "text": "은", "isCorrect": false }
+        ]
+      },
+      "expected": "882b70fac68cb46c00e6110918e6e98ca23ed28a57c55aa0d0420fd540800872"
+    },
+    {
+      "name": "initial approved seed 10000000-0000-4000-8000-000000000001",
+      "source": "INITIAL_APPROVED_QUIZZES[0]",
+      "recordId": "10000000-0000-4000-8000-000000000001",
+      "input": {
+        "tag": "particle_object",
+        "difficulty": "beginner",
+        "sentenceKo": "저는 물( ) 마셔요.",
+        "choices": [
+          { "text": "은", "isCorrect": false },
+          { "text": "을", "isCorrect": true },
+          { "text": "에", "isCorrect": false },
+          { "text": "이", "isCorrect": false }
+        ]
+      },
+      "expected": "0d581db0d12f11773af5ed7118f361cf3c26fbd5d427538534fd0c97e41b08db"
+    },
+    {
+      "name": "persisted AI quiz e54a89d7-5501-4201-a384-7e190f2c5a17",
+      "source": "local PostgreSQL quiz_questions and quiz_choices",
+      "recordId": "e54a89d7-5501-4201-a384-7e190f2c5a17",
+      "input": {
+        "tag": "particle_subject",
+        "difficulty": "beginner",
+        "sentenceKo": "비___ 와요.",
+        "choices": [
+          { "text": "가", "isCorrect": true },
+          { "text": "을", "isCorrect": false },
+          { "text": "에", "isCorrect": false },
+          { "text": "도", "isCorrect": false }
+        ]
+      },
+      "expected": "f6108610e047307be134dd3103ff1f81280e948ae86e623629b0838eaaa4b53a"
+    }
+  ]
+}

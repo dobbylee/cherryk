@@ -1,14 +1,14 @@
 # Agent Operating Rules
 
-This repository is the CherryK MVP. Agents must read this file and `local/plan.md` before planning or editing. Stack and version decisions live in `agent-harness/decisions.md`; do not duplicate them here unless they change agent behavior.
+This repository is the CherryK MVP and its active Kotlin/Spring backend migration. Agents must read this file and `local/plan.md` before planning or editing. Stack and version decisions live in `agent-harness/decisions.md`; do not duplicate them here unless they change agent behavior.
 
 ## Working Principles
 
 - Resolve ambiguity before coding only when it can change correctness or product behavior; otherwise state the reasonable assumption and proceed.
-- Use the smallest implementation that solves the request. Avoid speculative features, one-off abstractions, and premature backend layers for a future Spring migration.
+- Use the smallest implementation that solves the request. Avoid speculative features, one-off abstractions, and backend layers beyond the approved Spring migration slice.
 - Keep changes surgical: do not refactor, reformat, or clean up unrelated code. Remove only artifacts made unused by the current change.
 - Turn the request into verifiable success criteria. Reproduce bugs with a test or concrete check, test invalid inputs for validation work, and verify refactors before and after when feasible.
-- Use `pnpm` for app commands. `pnpm test` is the default local quality gate and runs lint, typecheck, and unit tests.
+- Use `pnpm` for app commands. `pnpm test` is the default local quality gate and runs frontend lint, typecheck, and unit tests plus backend tests. Backend integration tests require Docker.
 - Report any verification command that cannot run and its blocker.
 
 ## Harness Evolution
@@ -30,6 +30,10 @@ Do not make business or product decisions silently.
 - Keep server-only AI code under `src/server/ai`.
 - Keep DB access behind server-side repository/service boundaries.
 - Keep route handlers thin: validation, service call, response formatting.
+- In `backend/`, keep Spring controllers thin, keep transaction boundaries in application services, and never serialize JPA entities as API responses.
+- Flyway exclusively owns new schema changes. Keep Hibernate on `ddl-auto=validate`; do not enable automatic Production baselining.
+- Use JPA for aggregate writes/simple CRUD and JdbcTemplate/native SQL for query-heavy read models.
+- Keep OCR and language-model providers behind separate backend interfaces.
 - Do not store OCR image originals.
 - Do not expose AI quiz drafts to users; user-facing quiz content must be approved.
 - Keep local-only planning and handoff notes under `local/`; that directory is intentionally ignored.

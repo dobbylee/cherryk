@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import fingerprintFixture from "@/lib/contracts/fixtures/quiz-fingerprint.json";
 import { createQuizContentFingerprint } from "./quizContentFingerprint";
 
 const quiz = {
@@ -14,6 +15,16 @@ const quiz = {
 };
 
 describe("createQuizContentFingerprint", () => {
+  it("matches the shared Kotlin migration fixtures", () => {
+    expect(fingerprintFixture.version).toBe(1);
+
+    for (const testCase of fingerprintFixture.cases) {
+      expect(createQuizContentFingerprint(testCase.input), testCase.name).toBe(
+        testCase.expected,
+      );
+    }
+  });
+
   it("ignores whitespace and choice ordering", () => {
     expect(
       createQuizContentFingerprint({

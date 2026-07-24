@@ -4,7 +4,7 @@
 
 - Frontend: Next.js App Router with TypeScript, deployed on Vercel.
 - Current backend during migration: Next.js API routes with TypeScript.
-- Target backend: Kotlin with Spring Boot and Spring MVC.
+- Target backend: Kotlin 2.3.21 with Spring Boot 4.1.0 and Spring MVC, targeting Java 25 LTS.
 - Production database: Neon managed PostgreSQL.
 - Local database: Docker Compose with the official `postgres:18` image.
 - Current persistence layer during migration: Drizzle ORM.
@@ -12,7 +12,7 @@
 - Target persistence split: Spring Data JPA for aggregate writes and simple CRUD; JdbcTemplate or native SQL for recommendation, progress, and other query-heavy read models.
 - Hibernate validates mappings against the managed schema with `ddl-auto=validate`; it does not create or update Production schema.
 - Adopt the existing Neon schema into Flyway only after it matches the verified Drizzle-derived baseline. Run the initial baseline explicitly and keep automatic `baselineOnMigrate` disabled.
-- Package/build tools: pnpm for the frontend and the Gradle wrapper for the Spring backend.
+- Package/build tools: pnpm for the frontend and Gradle Wrapper 9.6.1 for the Spring backend.
 - Target backend deployment: a Docker container on one cloud VM. Keep production PostgreSQL on Neon instead of adding a database container to that VM.
 
 ## Authentication
@@ -42,7 +42,6 @@
 
 ## Deferred Decisions
 
-- Exact JDK, Spring Boot, and Kotlin versions are selected together at backend bootstrap and recorded here before implementation.
 - The cloud VM provider, size, public hostname, and TLS termination are selected before Preview deployment.
 - Redis is added only when measured cache, distributed rate-limit, or job-coordination needs justify it.
 - Self-hosting PostgreSQL on the backend VM and JWT-based authentication are not part of the initial migration.
