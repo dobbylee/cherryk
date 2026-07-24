@@ -1,6 +1,9 @@
 # Local-only project notes
 local/
 
+# IDE
+.idea/
+
 # macOS
 .DS_Store
 
