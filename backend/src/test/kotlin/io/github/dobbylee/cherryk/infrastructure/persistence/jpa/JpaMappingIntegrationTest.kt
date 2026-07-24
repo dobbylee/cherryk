@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
-import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -94,14 +93,6 @@ class JpaMappingIntegrationTest(
             ),
         )
         entityManager.persist(
-            DailyUsageEntity(
-                id = DailyUsageId(user.id, LocalDate.parse("2026-07-24")),
-                correctionCount = 1,
-                ocrCount = 0,
-                updatedAt = now,
-            ),
-        )
-        entityManager.persist(
             UserTagStatEntity(
                 id = UserTagStatId(user.id, GrammarTag.PARTICLE_LOCATION),
                 count = 1,
@@ -134,12 +125,6 @@ class JpaMappingIntegrationTest(
         assertNotNull(reloadedAttempt.selectedChoiceId)
         assertTrue(reloadedAttempt.correct)
 
-        val usage =
-            entityManager.find(
-                DailyUsageEntity::class.java,
-                DailyUsageId(user.id, LocalDate.parse("2026-07-24")),
-            )
-        assertEquals(1, usage.correctionCount)
         val tagStat =
             entityManager.find(
                 UserTagStatEntity::class.java,

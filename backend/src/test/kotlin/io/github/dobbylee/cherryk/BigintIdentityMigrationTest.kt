@@ -29,6 +29,7 @@ class BigintIdentityMigrationTest {
             Flyway
                 .configure()
                 .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .target(MigrationVersion.fromVersion("4"))
                 .load()
                 .migrate()
 

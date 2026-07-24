@@ -9,40 +9,6 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Table
 import java.io.Serializable
 import java.time.Instant
-import java.time.LocalDate
-
-@Embeddable
-data class DailyUsageId(
-    @field:Column(name = "user_id", nullable = false)
-    var userId: Long = 0,
-    @field:Column(name = "usage_date", nullable = false)
-    var usageDate: LocalDate = LocalDate.ofEpochDay(0),
-) : Serializable
-
-@Entity
-@Table(name = "daily_usage")
-class DailyUsageEntity(
-    id: DailyUsageId,
-    correctionCount: Int = 0,
-    ocrCount: Int = 0,
-    updatedAt: Instant = Instant.now(),
-) {
-    @field:EmbeddedId
-    var id: DailyUsageId = id
-        protected set
-
-    @field:Column(name = "correction_count", nullable = false)
-    var correctionCount: Int = correctionCount
-        protected set
-
-    @field:Column(name = "ocr_count", nullable = false)
-    var ocrCount: Int = ocrCount
-        protected set
-
-    @field:Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = updatedAt
-        protected set
-}
 
 @Embeddable
 data class UserTagStatId(

@@ -1,5 +1,8 @@
 package io.github.dobbylee.cherryk.application.ocr
 
+import io.github.dobbylee.cherryk.application.usage.UsageFeature
+import io.github.dobbylee.cherryk.application.usage.UsageQuota
+import io.github.dobbylee.cherryk.application.usage.UsageReservation
 import io.github.dobbylee.cherryk.infrastructure.image.Java2dOcrImageNormalizer
 import org.junit.jupiter.api.Test
 import java.awt.image.BufferedImage
@@ -16,7 +19,7 @@ class OcrApplicationServiceTest {
         val service =
             OcrApplicationService(
                 imageNormalizer = Java2dOcrImageNormalizer(),
-                usageLimiter = OcrUsageLimiter { events += "usage" },
+                usageQuota = RecordingUsageQuota(events),
                 provider =
                     OcrProvider { image ->
                         events += "provider"
@@ -37,7 +40,7 @@ class OcrApplicationServiceTest {
 
         assertEquals(OcrResult("저는 학교에 공부했어요."), result)
         assertEquals(OcrImageFormat.JPEG, receivedFormat)
-        assertEquals(listOf("usage", "provider"), events)
+        assertEquals(listOf("reserve", "provider", "commit"), events)
     }
 
     @Test
@@ -47,7 +50,21 @@ class OcrApplicationServiceTest {
         val service =
             OcrApplicationService(
                 imageNormalizer = Java2dOcrImageNormalizer(),
-                usageLimiter = OcrUsageLimiter { usageCalls += 1 },
+                usageQuota =
+                    object : UsageQuota {
+                        override fun reserve(
+                            userId: Long,
+                            feature: UsageFeature,
+                            units: Long,
+                        ): UsageReservation {
+                            usageCalls += 1
+                            return UsageReservation(1, feature, units)
+                        }
+
+                        override fun commit(reservation: UsageReservation) = Unit
+
+                        override fun release(reservation: UsageReservation) = Unit
+                    },
                 provider =
                     OcrProvider {
                         providerCalls += 1
@@ -92,7 +109,18 @@ class OcrApplicationServiceTest {
         val service =
             OcrApplicationService(
                 imageNormalizer = Java2dOcrImageNormalizer(),
-                usageLimiter = OcrUsageLimiter { throw UsageRejectedException() },
+                usageQuota =
+                    object : UsageQuota {
+                        override fun reserve(
+                            userId: Long,
+                            feature: UsageFeature,
+                            units: Long,
+                        ): UsageReservation = throw UsageRejectedException()
+
+                        override fun commit(reservation: UsageReservation) = Unit
+
+                        override fun release(reservation: UsageReservation) = Unit
+                    },
                 provider =
                     OcrProvider {
                         providerCalls += 1
@@ -108,10 +136,11 @@ class OcrApplicationServiceTest {
 
     @Test
     fun `maps an empty provider result to the existing manual entry response`() {
+        val events = mutableListOf<String>()
         val service =
             OcrApplicationService(
                 imageNormalizer = Java2dOcrImageNormalizer(),
-                usageLimiter = OcrUsageLimiter {},
+                usageQuota = RecordingUsageQuota(events),
                 provider =
                     OcrProvider {
                         throw OcrProviderException(
@@ -128,15 +157,17 @@ class OcrApplicationServiceTest {
             "No readable Korean text was found. Please try another image or enter the text manually.",
             result.note,
         )
+        assertEquals(listOf("reserve", "commit"), events)
     }
 
     @Test
     fun `preserves provider failures for stable public error mapping`() {
         val timeout = OcrProviderException(code = "timeout", message = "OCR timed out.")
+        val events = mutableListOf<String>()
         val service =
             OcrApplicationService(
                 imageNormalizer = Java2dOcrImageNormalizer(),
-                usageLimiter = OcrUsageLimiter {},
+                usageQuota = RecordingUsageQuota(events),
                 provider = OcrProvider { throw timeout },
             )
 
@@ -147,6 +178,7 @@ class OcrApplicationServiceTest {
 
         assertEquals(timeout, actual)
         assertEquals("timeout", actual.code)
+        assertEquals(listOf("reserve", "release"), events)
     }
 
     @Test
@@ -154,7 +186,7 @@ class OcrApplicationServiceTest {
         val service =
             OcrApplicationService(
                 imageNormalizer = Java2dOcrImageNormalizer(),
-                usageLimiter = OcrUsageLimiter {},
+                usageQuota = RecordingUsageQuota(),
                 provider =
                     OcrProvider {
                         OcrResult(
@@ -174,6 +206,31 @@ class OcrApplicationServiceTest {
 }
 
 private class UsageRejectedException : RuntimeException()
+
+private class RecordingUsageQuota(
+    private val events: MutableList<String> = mutableListOf(),
+) : UsageQuota {
+    private var nextId = 1L
+
+    override fun reserve(
+        userId: Long,
+        feature: UsageFeature,
+        units: Long,
+    ): UsageReservation {
+        events += "reserve"
+        assertEquals(UsageFeature.OCR, feature)
+        assertEquals(1, units)
+        return UsageReservation(nextId++, feature, units)
+    }
+
+    override fun commit(reservation: UsageReservation) {
+        events += "commit"
+    }
+
+    override fun release(reservation: UsageReservation) {
+        events += "release"
+    }
+}
 
 private fun createJpeg(): ByteArray {
     val image = BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB)

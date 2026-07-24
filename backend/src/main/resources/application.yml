@@ -55,6 +55,10 @@ cherryk:
       timeout: ${CLOVA_OCR_TIMEOUT:10s}
       max-attempts: ${CLOVA_OCR_MAX_ATTEMPTS:2}
       retry-delay: ${CLOVA_OCR_RETRY_DELAY:200ms}
+  usage:
+    daily-limits:
+      correction: ${DAILY_CORRECTION_LIMIT:20}
+      ocr: ${DAILY_OCR_LIMIT:10}
 
 management:
   endpoints:

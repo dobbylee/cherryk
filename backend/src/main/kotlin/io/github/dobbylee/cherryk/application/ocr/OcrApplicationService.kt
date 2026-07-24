@@ -1,17 +1,19 @@
 package io.github.dobbylee.cherryk.application.ocr
 
+import io.github.dobbylee.cherryk.application.usage.UsageFeature
+import io.github.dobbylee.cherryk.application.usage.UsageQuota
+import io.github.dobbylee.cherryk.application.usage.UsageReservation
+import org.springframework.stereotype.Service
+
 data class OcrUpload(
     val bytes: ByteArray,
     val declaredContentType: String?,
 )
 
-fun interface OcrUsageLimiter {
-    fun reserve(userId: Long)
-}
-
+@Service
 class OcrApplicationService(
     private val imageNormalizer: OcrImageNormalizer,
-    private val usageLimiter: OcrUsageLimiter,
+    private val usageQuota: UsageQuota,
     private val provider: OcrProvider,
 ) {
     fun extract(
@@ -35,18 +37,33 @@ class OcrApplicationService(
                 )
             }
 
-        usageLimiter.reserve(userId)
-
+        val reservation = usageQuota.reserve(userId, UsageFeature.OCR, 1)
         val result =
             try {
                 provider.extract(normalizedImage)
             } catch (exception: OcrProviderException) {
                 if (exception.code == "empty_result") {
+                    usageQuota.commit(reservation)
                     return OcrResult(extractedText = "", note = OCR_NO_TEXT_NOTE)
                 }
-                throw exception
+                releaseAfterFailure(reservation, exception)
+            } catch (exception: RuntimeException) {
+                releaseAfterFailure(reservation, exception)
             }
+        usageQuota.commit(reservation)
         return normalizeResult(result)
+    }
+
+    private fun releaseAfterFailure(
+        reservation: UsageReservation,
+        failure: RuntimeException,
+    ): Nothing {
+        try {
+            usageQuota.release(reservation)
+        } catch (releaseFailure: RuntimeException) {
+            failure.addSuppressed(releaseFailure)
+        }
+        throw failure
     }
 
     private fun validate(upload: OcrUpload) {

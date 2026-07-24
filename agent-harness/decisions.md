@@ -29,6 +29,9 @@ code alone. Exact dependency versions live in manifests.
 - Keep OpenAI behind separate correction and quiz-draft provider interfaces.
 - Use CLOVA General OCR V2 only for OCR, behind its own provider interface.
 - OCR output remains an editable draft. Never persist image originals or include image bytes/extracted text in ordinary logs.
+- Speech transcription may produce the same editable correction draft, but pronunciation assessment remains a separate domain and provider boundary.
+- Never persist voice recordings. Select speech providers only after representative Korean learner evaluation.
+- Meter provider usage by feature and units: requests for correction/OCR and audio duration for speech. Reserve quota before a provider call, then commit processed usage or release failed calls.
 
 ## Quiz Domain
 
