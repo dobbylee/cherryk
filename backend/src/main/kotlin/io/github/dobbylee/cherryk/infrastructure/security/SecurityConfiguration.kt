@@ -1,5 +1,6 @@
 package io.github.dobbylee.cherryk.infrastructure.security
 
+import io.github.dobbylee.cherryk.presentation.apiError
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -131,16 +132,7 @@ class SecurityConfiguration(
         response.contentType = MediaType.APPLICATION_JSON_VALUE
         objectMapper.writeValue(
             response.outputStream,
-            ApiErrorResponse(error = ApiErrorBody(code = code, message = message)),
+            apiError(code, message),
         )
     }
 }
-
-private data class ApiErrorResponse(
-    val error: ApiErrorBody,
-)
-
-private data class ApiErrorBody(
-    val code: String,
-    val message: String,
-)

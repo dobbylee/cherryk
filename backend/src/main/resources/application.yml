@@ -32,6 +32,12 @@ spring:
               - openid
               - profile
               - email
+  servlet:
+    multipart:
+      file-size-threshold: 6MB
+      max-file-size: 5MB
+      max-request-size: 6MB
+      resolve-lazily: true
 
 server:
   forward-headers-strategy: framework
