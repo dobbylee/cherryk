@@ -78,3 +78,11 @@ sourceSets {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.register<JavaExec>("schemaPreflight") {
+    group = "verification"
+    description = "Read-only verification of an existing Drizzle schema before Flyway baselining."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.dobbylee.cherryk.preflight.SchemaPreflightKt"
+}
