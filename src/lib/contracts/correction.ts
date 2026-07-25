@@ -24,7 +24,7 @@ export const CorrectionAIOutputSchema = z.object({
 });
 
 export const CorrectionResponseSchema = CorrectionAIOutputSchema.extend({
-  correctionId: z.string().uuid(),
+  correctionId: z.string().min(1),
   originalText: z.string(),
   recommendedTags: z.array(GrammarTagSchema),
 });
