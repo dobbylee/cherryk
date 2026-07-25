@@ -54,6 +54,14 @@ cherryk:
   security:
     admin-emails: ${ADMIN_EMAILS:}
     secure-cookies: ${SESSION_COOKIE_SECURE:true}
+  correction:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${AI_TEXT_MODEL:}
+      reasoning-effort: ${AI_REASONING_EFFORT:}
+      timeout: ${OPENAI_CORRECTION_TIMEOUT:10s}
+      max-attempts: ${OPENAI_CORRECTION_MAX_ATTEMPTS:2}
+      retry-delay: ${OPENAI_CORRECTION_RETRY_DELAY:200ms}
   ocr:
     clova:
       invoke-url: ${CLOVA_OCR_INVOKE_URL:}
