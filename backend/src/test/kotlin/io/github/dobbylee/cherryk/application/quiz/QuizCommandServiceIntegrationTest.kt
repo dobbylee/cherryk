@@ -9,10 +9,12 @@ import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -81,6 +83,72 @@ class QuizCommandServiceIntegrationTest(
     }
 
     @Test
+    fun `changing the correct choice clears the old answer before setting the new one`() {
+        val ids = mutableListOf<Long>()
+        try {
+            val original =
+                content().let { content ->
+                    content.copy(
+                        choices =
+                            content.choices.map { choice ->
+                                choice.copy(correct = choice.sortOrder == 3)
+                            },
+                    )
+                }
+            val created = service.createDraft(original, NOW)
+            ids += created.quizId
+            val replacement =
+                original.choices.map { choice ->
+                    choice.copy(correct = choice.sortOrder == 0)
+                }
+
+            val updated =
+                service.updateDraft(
+                    quizId = created.quizId,
+                    update = QuizDraftUpdate(choices = replacement),
+                    now = NOW.plusSeconds(1),
+                )
+
+            assertEquals(QuizStatus.DRAFT, assertIs<QuizCommandResult.Success>(updated).status)
+            assertEquals(0, correctChoiceSortOrder(created.quizId))
+        } finally {
+            deleteQuizzes(ids)
+        }
+    }
+
+    @Test
+    fun `reverse-order concurrent draft batches do not deadlock`() {
+        val first = content("concurrent-first-${UUID.randomUUID()}")
+        val second = content("concurrent-second-${UUID.randomUUID()}")
+        val executor = Executors.newFixedThreadPool(2)
+        val barrier = CyclicBarrier(2)
+
+        try {
+            val forward =
+                executor.submit<List<CreatedQuizDraft>> {
+                    barrier.await()
+                    service.createDrafts(listOf(first, second), NOW)
+                }
+            val reverse =
+                executor.submit<List<CreatedQuizDraft>> {
+                    barrier.await()
+                    service.createDrafts(listOf(second, first), NOW)
+                }
+
+            val created = forward.get(10, TimeUnit.SECONDS) + reverse.get(10, TimeUnit.SECONDS)
+
+            assertEquals(2, created.size)
+            assertEquals(
+                setOf(first.fingerprint(), second.fingerprint()),
+                created.map { it.content.fingerprint() }.toSet(),
+            )
+        } finally {
+            executor.shutdownNow()
+            deleteQuizzes(findQuizIds(first, second))
+        }
+    }
+
+    @Test
     fun `approving a revision retires its prior approved quiz atomically`() {
         val ids = mutableListOf<Long>()
         try {
@@ -144,7 +212,7 @@ class QuizCommandServiceIntegrationTest(
                 now = NOW.plusSeconds(5),
             )
 
-            assertFailsWith<DataIntegrityViolationException> {
+            assertFailsWith<QuizDuplicateException> {
                 service.approveDraft(revision.quizId, NOW.plusSeconds(6))
             }
 
@@ -217,12 +285,43 @@ class QuizCommandServiceIntegrationTest(
             .query(Int::class.java)
             .single()
 
+    private fun correctChoiceSortOrder(id: Long): Int =
+        jdbcClient
+            .sql(
+                """
+                SELECT sort_order
+                FROM quiz_choices
+                WHERE quiz_question_id = :id
+                  AND is_correct
+                """.trimIndent(),
+            ).param("id", id)
+            .query(Int::class.java)
+            .single()
+
     private fun sentence(id: Long): String =
         jdbcClient
             .sql("SELECT sentence_ko FROM quiz_questions WHERE id = :id")
             .param("id", id)
             .query(String::class.java)
             .single()
+
+    private fun findQuizIds(
+        first: QuizContent,
+        second: QuizContent,
+    ): List<Long> =
+        jdbcClient
+            .sql(
+                """
+                SELECT id
+                FROM quiz_questions
+                WHERE content_fingerprint IN (:first, :second)
+                ORDER BY id DESC
+                """.trimIndent(),
+            ).param("first", first.fingerprint())
+            .param("second", second.fingerprint())
+            .query(Long::class.java)
+            .list()
+            .filterNotNull()
 
     private fun deleteQuizzes(ids: List<Long>) {
         ids.asReversed().forEach { id ->

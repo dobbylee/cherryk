@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserLevelSchema } from "./common";
+import { EntityIdSchema, UserLevelSchema } from "./common";
 import { GrammarTagSchema, GrammarTags } from "./grammar-tags";
 
 export const QuizStatusSchema = z.enum(["draft", "approved"]);
@@ -112,7 +112,7 @@ export const QuizAttemptResponseSchema = z.object({
 export const AdminQuizDraftChoiceSchema = QuizChoiceDraftSchema;
 
 export const AdminQuizDraftSchema = QuizDraftQuestionSchema.extend({
-  id: z.uuid(),
+  id: EntityIdSchema,
 });
 
 export const AdminQuizDraftGenerationResponseSchema = z.object({
@@ -120,10 +120,10 @@ export const AdminQuizDraftGenerationResponseSchema = z.object({
 });
 
 export const AdminQuizChoiceUpdateSchema = z.object({
-  id: z.uuid().optional(),
+  id: EntityIdSchema.optional(),
   text: z.string().trim().min(1),
   isCorrect: z.boolean(),
-  sortOrder: z.number().int().min(0),
+  sortOrder: z.number().int().min(0).max(3),
 });
 
 export const AdminQuizUpdateRequestSchema = z
@@ -182,13 +182,13 @@ export const AdminQuizUpdateRequestSchema = z
 
 export const AdminQuizUpdateResponseSchema = z.object({
   quiz: z.object({
-    id: z.uuid(),
+    id: EntityIdSchema,
     status: QuizStatusSchema,
   }),
 });
 
 export const AdminQuizDeleteResponseSchema = z.object({
-  deletedQuizId: z.uuid(),
+  deletedQuizId: EntityIdSchema,
 });
 
 export type QuizStatus = z.infer<typeof QuizStatusSchema>;

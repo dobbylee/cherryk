@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { GrammarTags } from "./grammar-tags";
 import {
+  AdminQuizDeleteResponseSchema,
+  AdminQuizDraftGenerationResponseSchema,
   QuizDraftInputSchema,
   QuizDraftOutputSchema,
   AdminQuizUpdateRequestSchema,
+  AdminQuizUpdateResponseSchema,
   QuizAttemptRequestSchema,
   QuizRecommendationQuerySchema,
   QuizRecommendationResponseSchema,
@@ -137,6 +140,19 @@ describe("AdminQuizUpdateRequestSchema", () => {
     ).toBe(false);
   });
 
+  it("rejects choice sort orders outside zero through three", () => {
+    expect(
+      AdminQuizUpdateRequestSchema.safeParse({
+        choices: [
+          { text: "은", isCorrect: false, sortOrder: 0 },
+          { text: "를", isCorrect: true, sortOrder: 1 },
+          { text: "에", isCorrect: false, sortOrder: 2 },
+          { text: "이", isCorrect: false, sortOrder: 4 },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it("requires unique defined choice ids", () => {
     expect(
       AdminQuizUpdateRequestSchema.safeParse({
@@ -158,5 +174,48 @@ describe("AdminQuizUpdateRequestSchema", () => {
         ],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("Spring admin quiz entity ids", () => {
+  it("accepts opaque BIGINT strings in admin responses and updates", () => {
+    expect(
+      AdminQuizDraftGenerationResponseSchema.safeParse({
+        drafts: [
+          {
+            id: "42",
+            tag: "particle_object",
+            difficulty: "beginner",
+            questionEn: "Choose the correct particle.",
+            sentenceKo: "저는 사과( ) 먹어요.",
+            choices: [
+              { text: "은", isCorrect: false },
+              { text: "를", isCorrect: true },
+              { text: "에", isCorrect: false },
+              { text: "이", isCorrect: false },
+            ],
+            answerExplanationEn: "Use 를.",
+          },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(
+      AdminQuizUpdateRequestSchema.safeParse({
+        choices: [
+          { id: "101", text: "은", isCorrect: false, sortOrder: 0 },
+          { id: "102", text: "를", isCorrect: true, sortOrder: 1 },
+          { id: "103", text: "에", isCorrect: false, sortOrder: 2 },
+          { id: "104", text: "이", isCorrect: false, sortOrder: 3 },
+        ],
+      }).success,
+    ).toBe(true);
+    expect(
+      AdminQuizUpdateResponseSchema.safeParse({
+        quiz: { id: "42", status: "approved" },
+      }).success,
+    ).toBe(true);
+    expect(
+      AdminQuizDeleteResponseSchema.safeParse({ deletedQuizId: "42" }).success,
+    ).toBe(true);
   });
 });

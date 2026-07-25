@@ -165,6 +165,19 @@ class QuizEntity(
         updatedAt = now
     }
 
+    fun clearCorrectChoiceBeforeReplacement(newCorrectSortOrder: Int): Boolean {
+        require(status == QuizStatus.DRAFT) { "Only draft quizzes are editable." }
+        val currentCorrect = choiceEntities.singleOrNull(QuizChoiceEntity::correct) ?: return false
+        if (currentCorrect.sortOrder == newCorrectSortOrder) {
+            return false
+        }
+        currentCorrect.updateDraftChoice(
+            text = currentCorrect.text,
+            correct = false,
+        )
+        return true
+    }
+
     fun approve(now: Instant) {
         require(status == QuizStatus.DRAFT) { "Only draft quizzes can be approved." }
         content()

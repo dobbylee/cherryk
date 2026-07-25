@@ -64,6 +64,13 @@ interface QuizCommandStore {
         now: Instant,
     ): QuizCommandResult.Success
 
+    fun createDraftIfAbsent(
+        content: QuizContent,
+        now: Instant,
+    ): QuizCommandResult.Success?
+
+    fun prepareDraftBatch(contents: List<QuizContent>)
+
     fun createRevision(
         approvedQuizId: Long,
         now: Instant,
@@ -80,8 +87,21 @@ interface QuizCommandStore {
         now: Instant,
     ): QuizCommandResult
 
+    fun confirmDraft(quizId: Long): QuizCommandResult
+
     fun rejectDraft(quizId: Long): QuizCommandResult
 }
+
+class QuizDuplicateException : RuntimeException("An identical quiz already exists.")
+
+data class CreatedQuizDraft(
+    val content: QuizContent,
+    val result: QuizCommandResult.Success,
+)
+
+internal class QuizReviewRollbackException(
+    val failure: QuizCommandResult.Failure,
+) : RuntimeException("Quiz review transaction was rejected.")
 
 @Service
 class QuizCommandService(
@@ -92,6 +112,19 @@ class QuizCommandService(
         content: QuizContent,
         now: Instant,
     ): QuizCommandResult.Success = store.createDraft(content, now)
+
+    @Transactional
+    fun createDrafts(
+        contents: List<QuizContent>,
+        now: Instant,
+    ): List<CreatedQuizDraft> {
+        store.prepareDraftBatch(contents)
+        return contents.mapNotNull { content ->
+            store.createDraftIfAbsent(content, now)?.let { created ->
+                CreatedQuizDraft(content = content, result = created)
+            }
+        }
+    }
 
     @Transactional
     fun createRevision(
@@ -111,6 +144,30 @@ class QuizCommandService(
         quizId: Long,
         now: Instant,
     ): QuizCommandResult = store.approveDraft(quizId, now)
+
+    @Transactional
+    fun reviewDraft(
+        quizId: Long,
+        update: QuizDraftUpdate?,
+        requestedStatus: QuizStatus?,
+        now: Instant,
+    ): QuizCommandResult {
+        val reviewed =
+            update
+                ?.let { store.updateDraft(quizId, it, now) }
+                ?: store.confirmDraft(quizId)
+        if (reviewed is QuizCommandResult.Failure) {
+            return reviewed
+        }
+        if (requestedStatus != QuizStatus.APPROVED) {
+            return reviewed
+        }
+
+        return when (val approved = store.approveDraft(quizId, now)) {
+            is QuizCommandResult.Success -> approved
+            is QuizCommandResult.Failure -> throw QuizReviewRollbackException(approved)
+        }
+    }
 
     @Transactional
     fun rejectDraft(quizId: Long): QuizCommandResult = store.rejectDraft(quizId)
