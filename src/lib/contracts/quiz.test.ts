@@ -8,6 +8,7 @@ import {
   AdminQuizUpdateRequestSchema,
   AdminQuizUpdateResponseSchema,
   QuizAttemptRequestSchema,
+  QuizAttemptResponseSchema,
   QuizRecommendationQuerySchema,
   QuizRecommendationResponseSchema,
 } from "./quiz";
@@ -216,6 +217,52 @@ describe("Spring admin quiz entity ids", () => {
     ).toBe(true);
     expect(
       AdminQuizDeleteResponseSchema.safeParse({ deletedQuizId: "42" }).success,
+    ).toBe(true);
+  });
+});
+
+describe("Spring quiz practice entity ids", () => {
+  it("accepts opaque BIGINT strings for recommendations and attempts", () => {
+    expect(
+      QuizRecommendationResponseSchema.safeParse({
+        quizzes: [
+          {
+            id: "42",
+            tag: "particle_object",
+            difficulty: "beginner",
+            questionEn: "Choose.",
+            sentenceKo: "저는 물( ) 마셔요.",
+            choices: [
+              { id: "101", text: "은" },
+              { id: "102", text: "을" },
+              { id: "103", text: "에" },
+              { id: "104", text: "이" },
+            ],
+            attemptCount: 0,
+          },
+        ],
+        availableTags: ["particle_object"],
+        activeTags: ["particle_object"],
+        progress: {
+          solvedCount: 0,
+          totalCount: 1,
+          attemptCount: 0,
+          correctCount: 0,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      QuizAttemptRequestSchema.safeParse({
+        quizId: "42",
+        selectedChoiceId: "102",
+      }).success,
+    ).toBe(true);
+    expect(
+      QuizAttemptResponseSchema.safeParse({
+        isCorrect: true,
+        correctChoiceId: "102",
+        explanationEn: "Use 을.",
+      }).success,
     ).toBe(true);
   });
 });

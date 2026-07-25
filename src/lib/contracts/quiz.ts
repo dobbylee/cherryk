@@ -49,12 +49,12 @@ export const QuizRecommendationQuerySchema = z.object({
 });
 
 export const RecommendedQuizChoiceSchema = z.object({
-  id: z.uuid(),
+  id: EntityIdSchema,
   text: z.string().trim().min(1),
 });
 
 export const RecommendedQuizSchema = z.object({
-  id: z.uuid(),
+  id: EntityIdSchema,
   tag: GrammarTagSchema,
   difficulty: UserLevelSchema,
   questionEn: z.string().trim().min(1),
@@ -99,13 +99,13 @@ export const QuizRecommendationResponseSchema = z.object({
 });
 
 export const QuizAttemptRequestSchema = z.object({
-  quizId: z.uuid(),
-  selectedChoiceId: z.uuid(),
+  quizId: EntityIdSchema,
+  selectedChoiceId: EntityIdSchema,
 });
 
 export const QuizAttemptResponseSchema = z.object({
   isCorrect: z.boolean(),
-  correctChoiceId: z.uuid(),
+  correctChoiceId: EntityIdSchema,
   explanationEn: z.string().trim().min(1),
 });
 
