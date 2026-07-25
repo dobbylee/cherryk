@@ -1,6 +1,8 @@
 package io.github.dobbylee.cherryk.infrastructure.persistence.jpa
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
+import io.github.dobbylee.cherryk.domain.quiz.QuizContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizSource
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
 import io.github.dobbylee.cherryk.domain.user.UserLevel
@@ -94,8 +96,16 @@ class QuizEntity(
     @field:OneToMany(mappedBy = "quiz", fetch = FetchType.LAZY, cascade = [CascadeType.ALL], orphanRemoval = true)
     private val choiceEntities: MutableList<QuizChoiceEntity> = mutableListOf()
 
-    val choices: List<QuizChoiceEntity>
-        get() = choiceEntities.toList()
+    val choices: List<QuizChoiceSnapshot>
+        get() =
+            choiceEntities.map { choice ->
+                QuizChoiceSnapshot(
+                    id = choice.id,
+                    text = choice.text,
+                    correct = choice.correct,
+                    sortOrder = choice.sortOrder,
+                )
+            }
 
     fun addChoice(
         text: String,
@@ -119,11 +129,120 @@ class QuizEntity(
                 sortOrder = sortOrder,
             )
     }
+
+    fun content(): QuizContent =
+        QuizContent(
+            tag = tag,
+            difficulty = difficulty,
+            questionEn = questionEn,
+            sentenceKo = sentenceKo,
+            choices =
+                choiceEntities
+                    .sortedBy(QuizChoiceEntity::sortOrder)
+                    .map { choice ->
+                        QuizChoiceContent(
+                            text = choice.text,
+                            correct = choice.correct,
+                            sortOrder = choice.sortOrder,
+                        )
+                    },
+            answerExplanationEn = answerExplanationEn,
+        )
+
+    fun editDraft(
+        content: QuizContent,
+        now: Instant,
+    ) {
+        require(status == QuizStatus.DRAFT) { "Only draft quizzes are editable." }
+
+        tag = content.tag
+        difficulty = content.difficulty
+        questionEn = content.questionEn
+        sentenceKo = content.sentenceKo
+        answerExplanationEn = content.answerExplanationEn
+        contentFingerprint = content.fingerprint()
+        replaceChoices(content.choices)
+        updatedAt = now
+    }
+
+    fun approve(now: Instant) {
+        require(status == QuizStatus.DRAFT) { "Only draft quizzes can be approved." }
+        content()
+        status = QuizStatus.APPROVED
+        updatedAt = now
+    }
+
+    fun retire(now: Instant) {
+        require(status == QuizStatus.APPROVED) { "Only approved quizzes can be retired." }
+        status = QuizStatus.RETIRED
+        updatedAt = now
+    }
+
+    private fun replaceChoices(choices: List<QuizChoiceContent>) {
+        if (choiceEntities.isEmpty()) {
+            choices.sortedBy(QuizChoiceContent::sortOrder).forEach { choice ->
+                addChoice(
+                    text = choice.text,
+                    correct = choice.correct,
+                    sortOrder = choice.sortOrder,
+                )
+            }
+            return
+        }
+
+        require(choiceEntities.size == 4) { "Persisted quiz must contain exactly four choices." }
+        val existingByOrder = choiceEntities.associateBy(QuizChoiceEntity::sortOrder)
+        choices.forEach { choice ->
+            requireNotNull(existingByOrder[choice.sortOrder]) {
+                "Persisted quiz choice sortOrder values must be exactly zero through three."
+            }.updateDraftChoice(
+                text = choice.text,
+                correct = choice.correct,
+            )
+        }
+    }
+
+    companion object {
+        fun createDraft(
+            content: QuizContent,
+            supersedesQuizId: Long? = null,
+            source: QuizSource = QuizSource.AI_DRAFT,
+            now: Instant = Instant.now(),
+        ): QuizEntity =
+            QuizEntity(
+                tag = content.tag,
+                difficulty = content.difficulty,
+                contentFingerprint = content.fingerprint(),
+                supersedesQuizId = supersedesQuizId,
+                status = QuizStatus.DRAFT,
+                questionEn = content.questionEn,
+                sentenceKo = content.sentenceKo,
+                answerExplanationEn = content.answerExplanationEn,
+                source = source,
+                createdAt = now,
+                updatedAt = now,
+            ).apply {
+                content.choices.sortedBy(QuizChoiceContent::sortOrder).forEach { choice ->
+                    addChoice(
+                        text = choice.text,
+                        correct = choice.correct,
+                        sortOrder = choice.sortOrder,
+                    )
+                }
+            }
+    }
 }
+
+data class QuizChoiceSnapshot(
+    val id: Long,
+    val text: String,
+    val correct: Boolean,
+    val sortOrder: Int,
+)
 
 @Entity
 @Table(name = "quiz_choices")
-class QuizChoiceEntity(
+internal class QuizChoiceEntity(
     quiz: QuizEntity,
     text: String,
     correct: Boolean,
@@ -154,6 +273,16 @@ class QuizChoiceEntity(
 
     init {
         this.quiz = quiz
+    }
+
+    internal fun updateDraftChoice(
+        text: String,
+        correct: Boolean,
+    ) {
+        require(quiz.status == QuizStatus.DRAFT) { "Only draft quiz choices are editable." }
+        require(text.isNotBlank()) { "Quiz choice text must not be blank." }
+        this.text = text
+        this.correct = correct
     }
 }
 
