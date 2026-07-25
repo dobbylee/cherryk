@@ -62,6 +62,14 @@ cherryk:
       timeout: ${OPENAI_CORRECTION_TIMEOUT:10s}
       max-attempts: ${OPENAI_CORRECTION_MAX_ATTEMPTS:2}
       retry-delay: ${OPENAI_CORRECTION_RETRY_DELAY:200ms}
+  quiz:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${AI_TEXT_MODEL:}
+      reasoning-effort: ${AI_REASONING_EFFORT:}
+      timeout: ${OPENAI_QUIZ_TIMEOUT:15s}
+      max-attempts: ${OPENAI_QUIZ_MAX_ATTEMPTS:2}
+      retry-delay: ${OPENAI_QUIZ_RETRY_DELAY:200ms}
   ocr:
     clova:
       invoke-url: ${CLOVA_OCR_INVOKE_URL:}
