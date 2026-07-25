@@ -41,5 +41,21 @@ object QuizContentFingerprint {
             .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
     }
 
-    private fun normalize(value: String): String = value.trim().replace(innerWhitespace, " ")
+    private fun normalize(value: String): String =
+        value
+            .trim(::isEcmaScriptTrimWhitespace)
+            .replace(innerWhitespace, " ")
+
+    private fun isEcmaScriptTrimWhitespace(character: Char): Boolean =
+        character in '\u0009'..'\u000d' ||
+            character == '\u0020' ||
+            character == '\u00a0' ||
+            character == '\u1680' ||
+            character in '\u2000'..'\u200a' ||
+            character == '\u2028' ||
+            character == '\u2029' ||
+            character == '\u202f' ||
+            character == '\u205f' ||
+            character == '\u3000' ||
+            character == '\ufeff'
 }

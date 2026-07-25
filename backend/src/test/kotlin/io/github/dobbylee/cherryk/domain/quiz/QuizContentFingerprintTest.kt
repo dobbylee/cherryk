@@ -19,7 +19,7 @@ class QuizContentFingerprintTest {
                 objectMapper.readValue<QuizFingerprintFixture>(input)
             }
 
-        assertEquals(1, fixture.version)
+        assertEquals(2, fixture.version)
         fixture.cases.forEach { testCase ->
             assertEquals(
                 testCase.expected,

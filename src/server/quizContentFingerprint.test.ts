@@ -16,7 +16,7 @@ const quiz = {
 
 describe("createQuizContentFingerprint", () => {
   it("matches the shared Kotlin migration fixtures", () => {
-    expect(fingerprintFixture.version).toBe(1);
+    expect(fingerprintFixture.version).toBe(2);
 
     for (const testCase of fingerprintFixture.cases) {
       expect(createQuizContentFingerprint(testCase.input), testCase.name).toBe(
