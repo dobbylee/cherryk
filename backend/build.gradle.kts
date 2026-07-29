@@ -105,3 +105,11 @@ tasks.register<JavaExec>("migrateExistingDatabaseToV3") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass = "io.github.dobbylee.cherryk.preflight.ExistingDatabaseV3MigrationKt"
 }
+
+tasks.register<JavaExec>("preV4MigrationPreflight") {
+    group = "verification"
+    description = "Read-only verification of Flyway V3 UUID columns and relationships before V4."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.dobbylee.cherryk.preflight.PreV4MigrationPreflightKt"
+}

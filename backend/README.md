@@ -14,6 +14,8 @@ SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
 The command does not start Spring or Flyway. It opens a read-only transaction, compares the database with the frozen final Drizzle snapshot, checks the data required by the planned quiz constraints, and rolls the transaction back.
 
 Do not run Flyway baseline unless this command succeeds against the intended database.
+Do not rerun this frozen-baseline check after V2 or later migrations; use the
+stage-specific preflight below.
 
 ## Existing database adoption
 
@@ -62,6 +64,23 @@ The command requires Flyway history to be exactly at V2, is pinned to target V3,
 refuses a second execution. Verify the V3 history row, then capture the restorable
 pre-V4 database point before starting Spring or applying any later migration.
 
+## Pre-V4 migration preflight
+
+After V3 and the pre-V4 restore point are verified, run the V4-specific read-only
+preflight:
+
+```bash
+SCHEMA_PREFLIGHT_DATABASE_URL=jdbc:postgresql://host/database \
+SCHEMA_PREFLIGHT_DATABASE_USERNAME=user \
+SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
+./backend/gradlew -p backend preV4MigrationPreflight
+```
+
+This command requires Flyway history to be exactly at V3, validates migration
+checksums, verifies every UUID column converted by V4, checks required nullability,
+and detects orphaned application relationships. It does not compare the V2/V3 schema
+with the frozen pre-Flyway Drizzle snapshot.
+
 ## BIGINT identity cutover
 
 `V4__bigint_identity_primary_keys.sql` preserves application rows and relationships
@@ -76,8 +95,8 @@ For Preview rehearsal:
 
 1. Use an isolated Neon branch, adopt through V2, and run the staged V3 command.
 2. Verify V3, record row counts, and capture a restorable pre-V4 point.
-3. Stop Next writes, rerun schema/null/orphan preflight, apply V4 and later migrations,
-   and route Preview API/auth paths to Spring.
+3. Stop Next writes, run `preV4MigrationPreflight`, apply V4 and later migrations, and
+   route Preview API/auth paths to Spring.
 4. Verify Google login, CSRF/cookies/forwarded headers, restart-persistent sessions,
    OCR/correction, quiz attempts, and admin approval.
 5. Rehearse rollback before Production.
@@ -85,7 +104,7 @@ For Preview rehearsal:
 For Production, preserve all three existing users and their application data:
 
 1. Start a maintenance window, stop writes, and create a named Neon restore point.
-2. Record row counts and rerun the verified preflight.
+2. Record row counts and run the verified stage-specific preflight.
 3. Apply migrations through V4, deploy Spring, and verify health.
 4. Route Vercel API/auth paths to Spring, run the same smoke checks, then reopen writes.
 
