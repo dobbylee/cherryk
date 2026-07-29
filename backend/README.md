@@ -227,31 +227,64 @@ Singapore-only writes.
 
 For Production:
 
+Production Spring uses `https://api.cherryk.kr`. Before the maintenance window,
+prepare its Vercel DNS record, Nginx virtual host, TLS certificate, and Google
+callback URI
+`https://api.cherryk.kr/api/auth/callback/google` without changing the active
+Production application route. Keep the new Nginx application paths operator-only or
+return a maintenance response until the write freeze and route switch; a publicly
+reachable Spring endpoint would bypass a frontend-only maintenance page.
+
+OCI keeps the existing Nginx proxy but runs only one Spring application container
+after cutover. Keep the current Preview application container until the cutover,
+then stop and recreate that application service with the Production environment.
+Disable the `api-preview.cherryk.kr` application route rather than proxying it to
+Production. A later backend Preview requires its own temporary container and
+database.
+
+Do not schedule the maintenance window until a tested mechanism blocks public writes
+through both the legacy Next backend and the target Spring backend while permitting
+operator validation.
+
 1. Create a separate empty Singapore Production branch/database with distinct
    credentials. Never reuse the Preview database, archive, or environment file.
-2. Enter the approved maintenance window and block all Production writes before
-   taking a fresh source dump. Create the existing US East restore point and record
-   source schema state and row counts.
+2. Enter the approved maintenance window, enable the tested write block, and verify
+   unauthorized public writes fail before taking a fresh source dump. Create the
+   existing US East restore point and record source schema state and row counts.
 3. Create, checksum, and verify a protected Production archive with `neon_auth`
    excluded, then restore it atomically into the empty Singapore Production target.
 4. On the target, run the existing-schema preflight and guarded Flyway adoption
    sequence through V3, capture the target pre-V4 restore point, run the V4 preflight,
    and apply V4/V5. Verify Flyway history, row counts, identity columns, constraints,
    and Hibernate validation.
-5. Back up the Production application environment with mode `0600`, switch Spring to
-   the Singapore Production credentials, and route the Production API/auth paths to
-   that Spring deployment while public writes remain blocked.
-6. Run health, authentication, session, and read-only parity checks. Any controlled
-   write smoke must use explicitly disposable validation data.
-7. While writes remain blocked, restore the retained pre-cutover Production route
-   and environment. Do not log in or send an authenticated request; verify public
-   health, unauthenticated routing, and the untouched US East source with read-only
-   SQL. Then switch the route and environment back to Singapore and verify any
-   target-only disposable validation data still exists.
-8. If validation fails, keep maintenance active, restore the prior application route
-   and environment, and verify the untouched US East source before reopening legacy
-   writes. Discard the failed Singapore target before another restore attempt.
-9. If validation passes, declare Singapore authoritative and reopen Production
+5. Back up the current application environment with mode `0600`, stop the Preview
+   application service, and recreate the single Spring service with the Singapore
+   Production credentials. Disable the Preview application route and verify
+   `api.cherryk.kr` health through the operator gate while public writes and Vercel
+   Production routing remain blocked.
+6. Keep the legacy Vercel Production database environment pointed at the untouched
+   US East source. Set Production `SPRING_BACKEND_ORIGIN` to `https://api.cherryk.kr`,
+   fast-forward the verified Preview commit to `main`, and trigger a fresh Git
+   Production deployment without Vercel Promote. Open the Production Nginx
+   application route only when that deployment is ready and the write block remains
+   active.
+7. Through the real Production frontend, verify health, Google login, forwarded
+   headers, callback URI, session cookie, CSRF, and read-only parity. Record any
+   explicitly permitted session or disposable write smoke so it can be distinguished
+   from source data.
+8. While writes remain blocked, rehearse the exact legacy pair: remove Production
+   `SPRING_BACKEND_ORIGIN`, trigger and wait for a fresh deployment of the same
+   `main` source without Vercel Promote, and gate the Spring Nginx route again. Do not
+   log in or send an authenticated request. Verify unauthenticated legacy routing and
+   the untouched US East source with read-only SQL.
+9. Restore the exact target pair: set Production `SPRING_BACKEND_ORIGIN` back to
+   `https://api.cherryk.kr`, trigger and wait for another fresh deployment of the same
+   `main` source, then reopen the Nginx application route while the write block
+   remains active. Verify Singapore parity and any target-only validation data.
+10. If validation fails, keep maintenance active, restore the legacy Next/US East
+   pair, and verify the untouched source before reopening legacy writes. Discard the
+   failed Singapore target before another restore attempt.
+11. If validation passes, declare Singapore authoritative and reopen Production
    writes. From that point, endpoint-only rollback is forbidden; reverse migration or
    reconciliation is required to preserve new writes.
 
@@ -272,6 +305,18 @@ the Spring login/logout behavior in the frontend build. Without the variable,
 including Production before cutover, the existing Next.js backend remains active.
 Verify the real Preview forwarded host, Google callback URI, session cookie, and CSRF
 header behavior before using the same routing pattern for Production.
+
+During the Production maintenance window, only after `api.cherryk.kr` health passes,
+set this environment variable for Vercel Production and deploy the verified `main`
+commit:
+
+```text
+SPRING_BACKEND_ORIGIN=https://api.cherryk.kr
+```
+
+Do not point Preview at this Production origin. Once the single Spring application
+service is converted to Production, keep the Preview backend route unavailable until
+an isolated temporary Preview service and database are deliberately provisioned.
 
 ## OpenAI correction
 
@@ -345,3 +390,6 @@ CLOVA_OCR_RETRY_DELAY
 The timeout defaults to `10s`. At most three total attempts are accepted by
 configuration; the default is two attempts with a `200ms` delay. The adapter sends
 image bytes only in memory, never includes them in errors, and does not persist them.
+CLOVA remains the initial Production OCR provider. Google Cloud Vision comparison is
+deferred until measured quality or cost justifies reopening it and is not a
+Production cutover gate.
