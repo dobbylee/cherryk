@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchJson } from "./client";
+import { fetchJson, fetchNoContent } from "./client";
 
 describe("fetchJson", () => {
   afterEach(() => {
@@ -62,5 +62,35 @@ describe("fetchJson", () => {
     await expect(fetchJson("/api/test")).rejects.toThrow(
       "Correction request is invalid.",
     );
+  });
+
+  it("sends the readable CSRF cookie on state-changing requests", async () => {
+    vi.stubGlobal("document", {
+      cookie: "other=value; XSRF-TOKEN=csrf%2Dtoken",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers);
+        expect(headers.get("X-XSRF-TOKEN")).toBe("csrf-token");
+        return new Response(null, { status: 204 });
+      }),
+    );
+
+    await fetchNoContent("/api/auth/logout", { method: "POST" });
+  });
+
+  it("does not send a CSRF header on safe requests", async () => {
+    vi.stubGlobal("document", { cookie: "XSRF-TOKEN=csrf-token" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers);
+        expect(headers.has("X-XSRF-TOKEN")).toBe(false);
+        return Response.json({ ok: true });
+      }),
+    );
+
+    await fetchJson<{ ok: boolean }>("/api/test");
   });
 });

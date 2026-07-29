@@ -113,6 +113,20 @@ traffic back to the matching Next.js deployment. Keep writes stopped until legac
 login and preserved row counts are verified. A Vercel rewrite change alone is not
 sufficient.
 
+## Vercel Preview routing
+
+Set this environment variable for Vercel Preview only:
+
+```text
+SPRING_BACKEND_ORIGIN=https://api-preview.cherryk.kr
+```
+
+When configured, Next.js rewrites `/api/v1/*` and `/api/auth/*` to Spring and embeds
+the Spring login/logout behavior in the frontend build. Without the variable,
+including Production before cutover, the existing Next.js backend remains active.
+Verify the real Preview forwarded host, Google callback URI, session cookie, and CSRF
+header behavior before using the same routing pattern for Production.
+
 ## Spring Security and Google OIDC
 
 The Spring backend uses Google OIDC with PostgreSQL-backed Spring Session. Configure
