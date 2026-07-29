@@ -113,6 +113,114 @@ traffic back to the matching Next.js deployment. Keep writes stopped until legac
 login and preserved row counts are verified. A Vercel rewrite change alone is not
 sufficient.
 
+## Neon regional relocation
+
+The Spring VM runs in OCI Chuncheon. Use a Neon PostgreSQL 17 project in AWS
+Singapore for Spring Preview and Production instead of retaining the legacy US East
+database path. Neon projects cannot change regions in place, so Preview and
+Production move as separate controlled database migrations.
+
+Use direct, unpooled hosts for both dump and restore. Before handling credentials,
+set `umask 077` and use a private operator directory with mode `0700`; archives,
+checksums, libpq files, and environment backups must remain mode `0600`. Never put a
+connection URL or password in process arguments, command history, logs, chat, or
+repository files.
+
+Create a temporary libpq service file containing non-secret host, port, database,
+user, and `sslmode=require` entries named `source` and `target`. Create a separate
+mode-`0600` `PGPASSFILE` interactively, escaping `:` and `\` as required by libpq.
+Pass only the service name on the command line and provide both file paths through
+environment variables:
+
+For a small database, create a recoverable custom-format archive and restore it
+atomically:
+
+```bash
+PGSERVICEFILE="$service_file" PGPASSFILE="$pgpass_file" pg_dump \
+  --dbname="service=source" \
+  --format=custom \
+  --no-owner \
+  --no-acl \
+  --file="$archive_path"
+
+PGSERVICEFILE="$service_file" PGPASSFILE="$pgpass_file" pg_restore \
+  --dbname="service=target" \
+  --no-owner \
+  --no-acl \
+  --single-transaction \
+  --exit-on-error \
+  "$archive_path"
+```
+
+The target must be empty before restore. If a restore is attempted without
+`--single-transaction` or its atomic rollback cannot be established, discard and
+recreate the target branch/database before retrying.
+
+For Preview:
+
+1. Create a PostgreSQL 17 Neon project in AWS Singapore and an isolated Preview
+   branch/database.
+2. Stop the Preview backend so no application write can reach the US East source.
+   Record source Flyway history and application row counts.
+3. Create a dated custom-format archive from the source, record its checksum, and
+   verify the archive with `pg_restore --list`. Do not pipe the only copy directly
+   into the target.
+4. Restore atomically into the empty Singapore target. Compare Flyway history,
+   application row counts, identity columns, and quiz constraints with the source
+   before starting Spring.
+5. Create mode-`0600` US East and Singapore copies of
+   `/opt/cherryk/backend.env`. Switch only the active database connection settings to
+   Singapore and recreate the backend service.
+6. Restrict Preview access to the operator. Verify health, persistent login,
+   OCR/correction, quiz/admin behavior, and response latency. Record all validation
+   writes as disposable Preview-only data.
+7. Stop the backend and rehearse endpoint rollback with the US East environment.
+   Do not make an authenticated HTTP request. Verify public health and unauthenticated
+   routing, then use read-only SQL to compare Flyway history, row counts, and the
+   existing identity/session rows against the frozen source.
+8. Stop the backend again, restore the Singapore environment, recreate the service,
+   and verify the disposable validation writes still exist. Only then declare
+   Singapore authoritative and reopen Preview writes.
+
+Keep the US East source project and the dump archive until Preview rollback passes.
+After Preview writes reopen, rollback requires a write freeze plus reverse migration
+or explicit reconciliation; restoring only the US East environment would lose
+Singapore-only writes.
+
+For Production:
+
+1. Create a separate empty Singapore Production branch/database with distinct
+   credentials. Never reuse the Preview database, archive, or environment file.
+2. Enter the approved maintenance window and block all Production writes before
+   taking a fresh source dump. Create the existing US East restore point and record
+   source schema state and row counts.
+3. Create, checksum, and verify a protected Production archive, then restore it
+   atomically into the empty Singapore Production target.
+4. On the target, run the existing-schema preflight and guarded Flyway adoption
+   sequence through V3, capture the target pre-V4 restore point, run the V4 preflight,
+   and apply V4/V5. Verify Flyway history, row counts, identity columns, constraints,
+   and Hibernate validation.
+5. Back up the Production application environment with mode `0600`, switch Spring to
+   the Singapore Production credentials, and route the Production API/auth paths to
+   that Spring deployment while public writes remain blocked.
+6. Run health, authentication, session, and read-only parity checks. Any controlled
+   write smoke must use explicitly disposable validation data.
+7. While writes remain blocked, restore the retained pre-cutover Production route
+   and environment. Do not log in or send an authenticated request; verify public
+   health, unauthenticated routing, and the untouched US East source with read-only
+   SQL. Then switch the route and environment back to Singapore and verify any
+   target-only disposable validation data still exists.
+8. If validation fails, keep maintenance active, restore the prior application route
+   and environment, and verify the untouched US East source before reopening legacy
+   writes. Discard the failed Singapore target before another restore attempt.
+9. If validation passes, declare Singapore authoritative and reopen Production
+   writes. From that point, endpoint-only rollback is forbidden; reverse migration or
+   reconciliation is required to preserve new writes.
+
+Retain each source project, protected archive, checksums, restore points, and
+environment backup through its approved rollback-retention window. Cleanup is a
+separate destructive operation and requires explicit approval.
+
 ## Vercel Preview routing
 
 Set this environment variable for Vercel Preview only:

@@ -8,6 +8,7 @@ code alone. Exact dependency versions live in manifests.
 - Keep the Next.js frontend on Vercel and move backend behavior to Kotlin/Spring MVC in one Docker container on a cloud VM.
 - Keep Production PostgreSQL on Neon; do not colocate it on the backend VM.
 - Run Spring Preview on an OCI Ampere A1 VM behind a Dockerized Nginx TLS proxy at `api-preview.cherryk.kr`; manage the domain with Vercel DNS and certificates with host Certbot.
+- Keep Spring and Neon in nearby APAC regions. With the backend in OCI Chuncheon and no Neon Seoul region, use Neon AWS Singapore instead of the legacy US East project.
 - Preserve `/api/v1` contracts through the migration. Do not use dual writes.
 - Do not add Redis, JWT, WebFlux, coroutines, or microservices without a measured need and a new decision.
 
@@ -24,6 +25,8 @@ code alone. Exact dependency versions live in manifests.
 - Use JPA for aggregate writes/simple CRUD and JDBC/native SQL for query-heavy read models. Hibernate only validates mappings.
 - Use PostgreSQL BIGINT identity keys for target entities and opaque string IDs in JSON. Composite domain keys and Spring Session identifiers are exceptions.
 - V4 is incompatible with the UUID-based Next backend. Apply it only after writes stop and a Neon restore point exists; rollback must restore both the database and application route.
+- Neon projects do not move regions in place. Relocate Preview and Production separately with a write freeze, recoverable dump/restore, parity checks, and an environment rollback to the retained source project.
+- Treat each regional target as authoritative only when its verification and route/environment rollback rehearsal finish. After real target writes resume, an endpoint or environment-file swap is not a valid rollback without reverse migration or reconciliation.
 
 ## AI, OCR, and Privacy
 
