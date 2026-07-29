@@ -1,4 +1,5 @@
 import { auth } from "@/server/auth/auth";
+import { normalizeSpringBackendOrigin } from "@/lib/springBackendOrigin";
 
 type AdminSession = {
   user: {
@@ -8,6 +9,11 @@ type AdminSession = {
 };
 
 type SessionResolver = (headers: Headers) => Promise<AdminSession | null>;
+type SpringAdminAccess = "allowed" | "unauthorized" | "forbidden";
+type SpringAdminAccessResolver = (
+  origin: string,
+  headers: Headers,
+) => Promise<SpringAdminAccess>;
 
 export class AdminAuthError extends Error {
   constructor(
@@ -23,7 +29,25 @@ export async function requireAdminAccount(
   request: Request,
   adminEmails = process.env.ADMIN_EMAILS,
   resolveSession: SessionResolver = getAuthSession,
+  springBackendOrigin = process.env.SPRING_BACKEND_ORIGIN,
+  resolveSpringAccess: SpringAdminAccessResolver = getSpringAdminAccess,
 ) {
+  const normalizedSpringBackendOrigin =
+    normalizeSpringBackendOrigin(springBackendOrigin);
+  if (normalizedSpringBackendOrigin) {
+    const access = await resolveSpringAccess(
+      normalizedSpringBackendOrigin,
+      request.headers,
+    );
+    if (access === "allowed") {
+      return;
+    }
+    if (access === "unauthorized") {
+      throw new AdminAuthError("unauthorized", "Authentication required.");
+    }
+    throw new AdminAuthError("forbidden", "Admin access is not allowed.");
+  }
+
   const allowedEmails = parseAdminEmails(adminEmails);
   const session = await resolveSession(request.headers);
 
@@ -56,4 +80,38 @@ function normalizeEmail(value: string) {
 
 async function getAuthSession(headers: Headers) {
   return auth.api.getSession({ headers });
+}
+
+async function getSpringAdminAccess(
+  origin: string,
+  requestHeaders: Headers,
+): Promise<SpringAdminAccess> {
+  const sessionCookie = findCookie(requestHeaders, "CHERRYK_SESSION");
+  const response = await fetch(new URL("/api/v1/admin/access", origin), {
+    cache: "no-store",
+    headers: sessionCookie ? { cookie: sessionCookie } : undefined,
+    redirect: "manual",
+  });
+
+  if (response.status === 204) {
+    return "allowed";
+  }
+  if (response.status === 401) {
+    return "unauthorized";
+  }
+  if (response.status === 403) {
+    return "forbidden";
+  }
+  throw new Error(
+    `Spring admin access check failed with status ${response.status}.`,
+  );
+}
+
+function findCookie(headers: Headers, name: string) {
+  const prefix = `${name}=`;
+  return headers
+    .get("cookie")
+    ?.split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(prefix));
 }

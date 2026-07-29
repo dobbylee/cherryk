@@ -5,6 +5,7 @@ import io.github.dobbylee.cherryk.application.auth.GOOGLE_ISSUER
 import io.github.dobbylee.cherryk.application.auth.OidcIdentityProfile
 import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import io.github.dobbylee.cherryk.domain.user.UserLevel
+import io.github.dobbylee.cherryk.presentation.auth.AdminAccessController
 import io.github.dobbylee.cherryk.presentation.auth.AuthController
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -31,7 +32,11 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 
 @WebMvcTest(
-    controllers = [SecurityProbeController::class, AuthController::class],
+    controllers = [
+        SecurityProbeController::class,
+        AuthController::class,
+        AdminAccessController::class,
+    ],
     properties = ["cherryk.security.secure-cookies=false"],
 )
 @Import(SecurityConfiguration::class, SecurityTestConfiguration::class)
@@ -123,20 +128,23 @@ class SecurityConfigurationTest(
     @Test
     fun `admin access requires a verified allowlisted Google email`() {
         mockMvc
-            .perform(get("/api/v1/admin/probe").with(oidcUser(email = "learner@example.com")))
+            .perform(get("/api/v1/admin/access"))
+            .andExpect(status().isUnauthorized)
+
+        mockMvc
+            .perform(get("/api/v1/admin/access").with(oidcUser(email = "learner@example.com")))
             .andExpect(status().isForbidden)
 
         mockMvc
             .perform(
-                get("/api/v1/admin/probe").with(
+                get("/api/v1/admin/access").with(
                     oidcUser(email = "admin@example.com", emailVerified = false),
                 ),
             ).andExpect(status().isForbidden)
 
         mockMvc
-            .perform(get("/api/v1/admin/probe").with(oidcUser(email = " ADMIN@example.com ")))
-            .andExpect(status().isOk)
-            .andExpect(content().string("admin"))
+            .perform(get("/api/v1/admin/access").with(oidcUser(email = " ADMIN@example.com ")))
+            .andExpect(status().isNoContent)
     }
 
     private fun oidcUser(
@@ -205,8 +213,6 @@ class SecurityProbeController {
     @PostMapping("/test/protected")
     fun postProtected() = "ok"
 
-    @GetMapping("/api/v1/admin/probe")
-    fun adminProtected() = "admin"
 }
 
 private const val TEST_USER_ID = 1L
