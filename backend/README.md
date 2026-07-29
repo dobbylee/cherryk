@@ -126,6 +126,11 @@ checksums, libpq files, and environment backups must remain mode `0600`. Never p
 connection URL or password in process arguments, command history, logs, chat, or
 repository files.
 
+CherryK authentication is owned by Spring OIDC, not Neon Auth. Exclude the
+Neon-managed `neon_auth` schema from every regional archive and retain the target
+project's own `neon_auth` objects. Confirm the filtered archive list contains no
+`neon_auth` entry before restoring it.
+
 Create a temporary libpq service file containing non-secret host, port, database,
 user, and `sslmode=require` entries named `source` and `target`. Create a separate
 mode-`0600` `PGPASSFILE` interactively, escaping `:` and `\` as required by libpq.
@@ -141,6 +146,7 @@ PGSERVICEFILE="$service_file" PGPASSFILE="$pgpass_file" pg_dump \
   --format=custom \
   --no-owner \
   --no-acl \
+  --exclude-schema=neon_auth \
   --file="$archive_path"
 
 PGSERVICEFILE="$service_file" PGPASSFILE="$pgpass_file" pg_restore \
@@ -152,9 +158,16 @@ PGSERVICEFILE="$service_file" PGPASSFILE="$pgpass_file" pg_restore \
   "$archive_path"
 ```
 
-The target must be empty before restore. If a restore is attempted without
-`--single-transaction` or its atomic rollback cannot be established, discard and
-recreate the target branch/database before retrying.
+The target must contain no CherryK-owned objects before restore; its
+Neon-managed `neon_auth` schema may already exist. If a restore is attempted
+without `--single-transaction` or its atomic rollback cannot be established,
+discard and recreate the target branch/database before retrying.
+
+Logical dump/restore closes `ordinal_position` gaps left by dropped PostgreSQL
+columns. For column parity, compare names, relative order, types, nullability,
+defaults, and identity properties while ignoring numeric gaps alone. Constraints,
+indexes, Flyway history, application row counts, and sequence state must still
+match exactly.
 
 For Preview:
 
@@ -163,21 +176,26 @@ For Preview:
 2. Stop the Preview backend so no application write can reach the US East source.
    Record source Flyway history and application row counts.
 3. Create a dated custom-format archive from the source, record its checksum, and
-   verify the archive with `pg_restore --list`. Do not pipe the only copy directly
-   into the target.
+   verify the archive with `pg_restore --list`. Exclude `neon_auth` and confirm it is
+   absent from the archive list. Do not pipe the only copy directly into the target.
 4. Restore atomically into the empty Singapore target. Compare Flyway history,
-   application row counts, identity columns, and quiz constraints with the source
-   before starting Spring.
+   application row counts, semantic column definitions, sequences, and quiz
+   constraints with the source before starting Spring.
 5. Create mode-`0600` US East and Singapore copies of
    `/opt/cherryk/backend.env`. Switch only the active database connection settings to
    Singapore and recreate the backend service.
-6. Restrict Preview access to the operator. Verify health, persistent login,
-   OCR/correction, quiz/admin behavior, and response latency. Record all validation
-   writes as disposable Preview-only data.
-7. Stop the backend and rehearse endpoint rollback with the US East environment.
-   Do not make an authenticated HTTP request. Verify public health and unauthenticated
-   routing, then use read-only SQL to compare Flyway history, row counts, and the
-   existing identity/session rows against the frozen source.
+6. Restrict the Vercel Preview deployment to the operator while keeping OCI HTTPS
+   reachable by Vercel rewrites. An OCI source-IP allowlist containing only the
+   operator blocks those rewrites unless Vercel static egress is configured. Verify
+   health, persistent login, OCR/correction, quiz/admin behavior, and response
+   latency. Record all validation writes as disposable Preview-only data.
+7. Stop the backend and rehearse endpoint rollback with a separate copy of the US
+   East environment that sets `SPRING_SESSION_JDBC_CLEANUP_CRON=-`. Do not open the
+   Vercel Preview UI or make an authenticated HTTP request. During this direct
+   API-only check, OCI HTTPS may be limited to the operator IP. Verify public health
+   and unauthenticated routing, stop Spring, then use read-only SQL to compare Flyway
+   history, row counts, sequences, and the existing identity/session rows against
+   the frozen source.
 8. Stop the backend again, restore the Singapore environment, recreate the service,
    and verify the disposable validation writes still exist. Only then declare
    Singapore authoritative and reopen Preview writes.
@@ -194,8 +212,8 @@ For Production:
 2. Enter the approved maintenance window and block all Production writes before
    taking a fresh source dump. Create the existing US East restore point and record
    source schema state and row counts.
-3. Create, checksum, and verify a protected Production archive, then restore it
-   atomically into the empty Singapore Production target.
+3. Create, checksum, and verify a protected Production archive with `neon_auth`
+   excluded, then restore it atomically into the empty Singapore Production target.
 4. On the target, run the existing-schema preflight and guarded Flyway adoption
    sequence through V3, capture the target pre-V4 restore point, run the V4 preflight,
    and apply V4/V5. Verify Flyway history, row counts, identity columns, constraints,

@@ -27,6 +27,7 @@ code alone. Exact dependency versions live in manifests.
 - V4 is incompatible with the UUID-based Next backend. Apply it only after writes stop and a Neon restore point exists; rollback must restore both the database and application route.
 - Neon projects do not move regions in place. Relocate Preview and Production separately with a write freeze, recoverable dump/restore, parity checks, and an environment rollback to the retained source project.
 - Treat each regional target as authoritative only when its verification and route/environment rollback rehearsal finish. After real target writes resume, an endpoint or environment-file swap is not a valid rollback without reverse migration or reconciliation.
+- Treat `neon_auth` as Neon-managed platform state rather than CherryK application data. Regional archives exclude that schema because CherryK authentication is owned by Spring OIDC.
 
 ## AI, OCR, and Privacy
 
