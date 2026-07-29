@@ -134,17 +134,15 @@ class OpenAiCorrectionProviderTest {
     }
 
     @Test
-    fun `bounds timeout retries and returns a stable timeout error`() {
-        repeat(2) {
-            server
-                .expect(requestTo(RESPONSES_URL))
-                .andRespond {
-                    throw ResourceAccessException(
-                        "Do not expose this transport message.",
-                        SocketTimeoutException(),
-                    )
-                }
-        }
+    fun `does not retry a timed out correction request`() {
+        server
+            .expect(requestTo(RESPONSES_URL))
+            .andRespond {
+                throw ResourceAccessException(
+                    "Do not expose this transport message.",
+                    SocketTimeoutException(),
+                )
+            }
 
         val exception =
             assertFailsWith<CorrectionProviderException> {
@@ -153,7 +151,7 @@ class OpenAiCorrectionProviderTest {
 
         assertEquals("timeout", exception.code)
         assertEquals("OpenAI correction request timed out.", exception.message)
-        assertEquals(listOf(Duration.ofMillis(200)), retryWaits)
+        assertEquals(emptyList(), retryWaits)
         server.verify()
     }
 

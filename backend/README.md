@@ -127,6 +127,24 @@ including Production before cutover, the existing Next.js backend remains active
 Verify the real Preview forwarded host, Google callback URI, session cookie, and CSRF
 header behavior before using the same routing pattern for Production.
 
+## OpenAI correction
+
+Configure the correction adapter with:
+
+```text
+OPENAI_API_KEY
+AI_TEXT_MODEL
+AI_REASONING_EFFORT
+OPENAI_CORRECTION_TIMEOUT
+OPENAI_CORRECTION_MAX_ATTEMPTS
+OPENAI_CORRECTION_RETRY_DELAY
+```
+
+The entire configured attempt budget, including retry delays, cannot exceed `30s`;
+the default is one `30s` attempt. Timed-out requests are not retried because the
+provider may still have processed and billed them. Shorter per-attempt timeouts may
+enable bounded retries for retryable HTTP and non-timeout transport failures.
+
 ## Spring Security and Google OIDC
 
 The Spring backend uses Google OIDC with PostgreSQL-backed Spring Session. Configure

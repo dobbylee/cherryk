@@ -7,6 +7,14 @@ import kotlin.test.assertFailsWith
 
 class OpenAiCorrectionConfigurationTest {
     @Test
+    fun `uses a single-request timeout that fits the preview proxy budget`() {
+        val properties = OpenAiCorrectionProperties()
+
+        assertEquals(Duration.ofSeconds(30), properties.timeout)
+        assertEquals(1, properties.maxAttempts)
+    }
+
+    @Test
     fun `validates retry timeout and reasoning settings`() {
         assertFailsWith<IllegalArgumentException> {
             properties(timeout = Duration.ZERO)
@@ -20,6 +28,21 @@ class OpenAiCorrectionConfigurationTest {
         assertFailsWith<IllegalArgumentException> {
             properties(reasoningEffort = "extreme")
         }
+        assertFailsWith<IllegalArgumentException> {
+            properties(
+                timeout = Duration.ofSeconds(15),
+                maxAttempts = 2,
+                retryDelay = Duration.ofMillis(1),
+            )
+        }
+        assertEquals(
+            2,
+            properties(
+                timeout = Duration.ofSeconds(14),
+                maxAttempts = 2,
+                retryDelay = Duration.ofSeconds(2),
+            ).maxAttempts,
+        )
         assertEquals("low", properties(reasoningEffort = "low").reasoningEffort)
     }
 

@@ -87,7 +87,7 @@ class OpenAiCorrectionProvider internal constructor(
                         } else {
                             "OpenAI correction request could not be completed."
                         },
-                    retryable = true,
+                    retryable = !timedOut,
                 )
             } catch (exception: RestClientException) {
                 throw CorrectionProviderException(

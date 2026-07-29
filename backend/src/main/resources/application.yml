@@ -59,8 +59,8 @@ cherryk:
       api-key: ${OPENAI_API_KEY:}
       model: ${AI_TEXT_MODEL:}
       reasoning-effort: ${AI_REASONING_EFFORT:}
-      timeout: ${OPENAI_CORRECTION_TIMEOUT:10s}
-      max-attempts: ${OPENAI_CORRECTION_MAX_ATTEMPTS:2}
+      timeout: ${OPENAI_CORRECTION_TIMEOUT:30s}
+      max-attempts: ${OPENAI_CORRECTION_MAX_ATTEMPTS:1}
       retry-delay: ${OPENAI_CORRECTION_RETRY_DELAY:200ms}
   quiz:
     openai:

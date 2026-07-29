@@ -17,8 +17,8 @@ data class OpenAiCorrectionProperties(
     val apiKey: String = "",
     val model: String = "",
     val reasoningEffort: String = "",
-    val timeout: Duration = Duration.ofSeconds(10),
-    val maxAttempts: Int = 2,
+    val timeout: Duration = Duration.ofSeconds(30),
+    val maxAttempts: Int = 1,
     val retryDelay: Duration = Duration.ofMillis(200),
 ) {
     init {
@@ -33,6 +33,12 @@ data class OpenAiCorrectionProperties(
         }
         require(!retryDelay.isNegative) {
             "OpenAI correction retry delay must not be negative."
+        }
+        val maximumRequestDuration =
+            timeout.multipliedBy(maxAttempts.toLong()) +
+                retryDelay.multipliedBy((maxAttempts - 1).toLong())
+        require(maximumRequestDuration <= MAX_CORRECTION_REQUEST_DURATION) {
+            "OpenAI correction attempts must fit within 30 seconds."
         }
     }
 }
@@ -68,3 +74,4 @@ class OpenAiCorrectionConfiguration {
 }
 
 private val REASONING_EFFORTS = setOf("none", "low", "medium", "high", "xhigh", "max")
+private val MAX_CORRECTION_REQUEST_DURATION = Duration.ofSeconds(30)
