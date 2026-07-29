@@ -97,3 +97,11 @@ tasks.register<JavaExec>("adoptExistingDatabase") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass = "io.github.dobbylee.cherryk.preflight.ExistingDatabaseAdoptionKt"
 }
+
+tasks.register<JavaExec>("migrateExistingDatabaseToV3") {
+    group = "database"
+    description = "Migrate an explicitly verified existing database from V2 to V3 only."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "io.github.dobbylee.cherryk.preflight.ExistingDatabaseV3MigrationKt"
+}

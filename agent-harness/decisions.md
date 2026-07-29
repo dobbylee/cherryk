@@ -7,6 +7,7 @@ code alone. Exact dependency versions live in manifests.
 
 - Keep the Next.js frontend on Vercel and move backend behavior to Kotlin/Spring MVC in one Docker container on a cloud VM.
 - Keep Production PostgreSQL on Neon; do not colocate it on the backend VM.
+- Run Spring Preview on an OCI Ampere A1 VM behind a Dockerized Nginx TLS proxy at `api-preview.cherryk.kr`; manage the domain with Vercel DNS and certificates with host Certbot.
 - Preserve `/api/v1` contracts through the migration. Do not use dual writes.
 - Do not add Redis, JWT, WebFlux, coroutines, or microservices without a measured need and a new decision.
 
@@ -42,6 +43,5 @@ code alone. Exact dependency versions live in manifests.
 
 ## Deferred
 
-- Choose VM provider/size, hostname, and TLS termination before Preview integration.
 - Confirm Vercel rewrite cookie/forwarded-header behavior in Preview before locking the routing design.
 - Consider Redis, self-hosted PostgreSQL, JWT, or role tables only after current migration needs justify them.

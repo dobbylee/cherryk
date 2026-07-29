@@ -44,6 +44,24 @@ SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
 The command is pinned to target version `2`; later migrations are never applied by this
 initial-adoption command.
 
+## Staged V3 migration
+
+After existing-database adoption succeeds, apply the OIDC and Spring Session schema
+without crossing the incompatible V4 boundary:
+
+```bash
+FLYWAY_V3_MIGRATION_CONFIRM=MIGRATE_VERIFIED_DATABASE_TO_V3 \
+FLYWAY_V3_MIGRATION_EXPECTED_HOST=host \
+SCHEMA_PREFLIGHT_DATABASE_URL=jdbc:postgresql://host/database \
+SCHEMA_PREFLIGHT_DATABASE_USERNAME=user \
+SCHEMA_PREFLIGHT_DATABASE_PASSWORD=password \
+./backend/gradlew -p backend migrateExistingDatabaseToV3
+```
+
+The command requires Flyway history to be exactly at V2, is pinned to target V3, and
+refuses a second execution. Verify the V3 history row, then capture the restorable
+pre-V4 database point before starting Spring or applying any later migration.
+
 ## BIGINT identity cutover
 
 `V4__bigint_identity_primary_keys.sql` preserves application rows and relationships
@@ -56,9 +74,10 @@ backend. Do not apply it to a database that Next.js can still write.
 
 For Preview rehearsal:
 
-1. Use an isolated Neon branch and capture a restorable pre-V4 point.
-2. Record row counts, stop Next writes, and run schema/null/orphan preflight.
-3. Apply the intended Flyway sequence and route Preview API/auth paths to Spring.
+1. Use an isolated Neon branch, adopt through V2, and run the staged V3 command.
+2. Verify V3, record row counts, and capture a restorable pre-V4 point.
+3. Stop Next writes, rerun schema/null/orphan preflight, apply V4 and later migrations,
+   and route Preview API/auth paths to Spring.
 4. Verify Google login, CSRF/cookies/forwarded headers, restart-persistent sessions,
    OCR/correction, quiz attempts, and admin approval.
 5. Rehearse rollback before Production.
