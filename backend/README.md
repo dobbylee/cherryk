@@ -113,6 +113,26 @@ traffic back to the matching Next.js deployment. Keep writes stopped until legac
 login and preserved row counts are verified. A Vercel rewrite change alone is not
 sufficient.
 
+Rehearse that legacy path without changing the active Preview deployment:
+
+1. Create an isolated Neon branch from the retained V3 checkpoint and run
+   `preV4MigrationPreflight` against it.
+2. Deploy the matching application tree from a temporary Vercel Git branch. Scope
+   `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and `BETTER_AUTH_URL` to that branch,
+   and ensure it does not inherit `SPRING_BACKEND_ORIGIN`.
+3. Set `BETTER_AUTH_URL` to the stable Vercel branch alias, add only that alias's
+   Google callback URI, and trigger a distinct Git commit so the branch-scoped
+   environment is captured by a new deployment.
+4. Before login, verify the page is reachable, Spring-only health/admin paths return
+   `404`, and the Better Auth session endpoint responds. Log in as one existing user
+   without exercising correction, quiz, or admin writes.
+5. Capture the same read-only Flyway, row-count, column, constraint, index, and
+   sequence snapshot used before login. Except for explicitly expected session
+   activity, it must match the retained V3 baseline.
+6. Keep the isolated database branch, Vercel branch environment, Git branch, and
+   temporary Google callback until the rehearsal evidence is accepted. Removing
+   them is a separate cleanup operation.
+
 ## Neon regional relocation
 
 The Spring VM runs in OCI Chuncheon. Use a Neon PostgreSQL 17 project in AWS
