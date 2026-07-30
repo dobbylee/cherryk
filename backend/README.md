@@ -230,10 +230,12 @@ For Production:
 Production Spring uses `https://api.cherryk.kr`. Before the maintenance window,
 prepare its Vercel DNS record, Nginx virtual host, TLS certificate, and Google
 callback URI
-`https://api.cherryk.kr/api/auth/callback/google` without changing the active
-Production application route. Keep the new Nginx application paths operator-only or
-return a maintenance response until the write freeze and route switch; a publicly
-reachable Spring endpoint would bypass a frontend-only maintenance page.
+`https://cherryk.kr/api/auth/callback/google` without changing the active Production
+application route. Nginx must forward the frontend host `cherryk.kr` so Spring
+generates that registered callback instead of the API origin. Keep the new Nginx
+application paths operator-only or return a maintenance response until the write
+freeze and route switch; a publicly reachable Spring endpoint would bypass a
+frontend-only maintenance page.
 
 OCI keeps the existing Nginx proxy but runs only one Spring application container
 after cutover. Keep the current Preview application container until the cutover,
