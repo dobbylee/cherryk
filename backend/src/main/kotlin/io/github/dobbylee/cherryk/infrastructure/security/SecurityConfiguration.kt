@@ -24,6 +24,10 @@ class SecurityConfiguration(
     private val adminAuthorizationManager: AdminAuthorizationManager,
     @Value("\${cherryk.security.secure-cookies:true}")
     private val secureCookies: Boolean,
+    @Value("\${cherryk.maintenance.mode:off}")
+    private val maintenanceMode: String,
+    @Value("\${cherryk.maintenance.bypass-token:}")
+    private val maintenanceBypassToken: String,
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -48,6 +52,15 @@ class SecurityConfiguration(
             }
 
         http
+            .addFilterBefore(
+                MaintenanceModeFilter(
+                    objectMapper = objectMapper,
+                    writeFrozenEnabled = maintenanceMode == "write-frozen",
+                    bypassToken = maintenanceBypassToken,
+                    secureCookies = secureCookies,
+                ),
+                org.springframework.security.web.context.SecurityContextHolderFilter::class.java,
+            )
             .authorizeHttpRequests { requests ->
                 requests
                     .requestMatchers(

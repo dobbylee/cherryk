@@ -51,6 +51,9 @@ server:
         max-age: 90d
 
 cherryk:
+  maintenance:
+    mode: ${CHERRYK_MAINTENANCE_MODE:off}
+    bypass-token: ${CHERRYK_MAINTENANCE_BYPASS_TOKEN:}
   security:
     admin-emails: ${ADMIN_EMAILS:}
     secure-cookies: ${SESSION_COOKIE_SECURE:true}

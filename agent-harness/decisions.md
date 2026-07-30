@@ -34,6 +34,12 @@ code alone. Exact dependency versions live in manifests.
 - Neon projects do not move regions in place. Relocate Preview and Production separately with a write freeze, recoverable dump/restore, parity checks, and an environment rollback to the retained source project.
 - Treat each regional target as authoritative only when its verification and route/environment rollback rehearsal finish. After real target writes resume, an endpoint or environment-file swap is not a valid rollback without reverse migration or reconciliation.
 - Treat `neon_auth` as Neon-managed platform state rather than CherryK application data. Regional archives exclude that schema because CherryK authentication is owned by Spring OIDC.
+- During a Production migration window, enable the same `write-frozen` maintenance
+  mode at both the Vercel API boundary and the Spring security boundary. Block the
+  complete public `/api/v1` and `/api/auth` trees because OAuth callbacks and
+  authenticated reads can update identity or session state on GET. Operator
+  validation requires the short-lived HttpOnly bypass cookie or its secret header;
+  a missing or invalid bypass secret never reopens public writes.
 
 ## AI, OCR, and Privacy
 

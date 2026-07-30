@@ -246,6 +246,71 @@ Do not schedule the maintenance window until a tested mechanism blocks public wr
 through both the legacy Next backend and the target Spring backend while permitting
 operator validation.
 
+### Production maintenance write block
+
+Use the application-level write block at both boundaries. Set the same protected
+values in the Vercel Production environment and the Spring Production operator
+environment:
+
+```text
+CHERRYK_MAINTENANCE_MODE=write-frozen
+CHERRYK_MAINTENANCE_BYPASS_TOKEN=<at least 32 random characters>
+```
+
+Create the token in the approved secret store and keep it out of shell history,
+deployment logs, screenshots, and committed files. Enabling `write-frozen` blocks
+the complete public `/api/v1` and `/api/auth` trees at the Vercel boundary. This is
+intentionally broader than blocking mutation methods: OAuth callbacks and
+authenticated reads can update identity or session state on GET. The Spring
+security chain enforces the same policy so direct requests to `api.cherryk.kr`
+cannot bypass Vercel. Spring health remains available. A missing or short bypass
+token does not weaken the write block; it only prevents operator bypass.
+
+The Vercel environment change takes effect only in a fresh deployment. Enable and
+verify the Vercel block before stopping writes at the database migration boundary.
+Start Spring with the block already enabled. Before taking the source dump, confirm
+all of these return `503`, the `maintenance` error, and `Retry-After: 300` without an
+operator credential:
+
+```text
+POST https://cherryk.kr/api/v1/corrections
+GET  https://cherryk.kr/api/auth/get-session
+POST https://api.cherryk.kr/api/v1/corrections
+GET  https://api.cherryk.kr/api/auth/login/google
+```
+
+For command-line operator checks, send the token only from a protected environment
+as `X-CherryK-Maintenance-Bypass`. For browser login and callback validation, issue
+an eight-hour HttpOnly cookie by making this same-origin request from the browser
+developer console, then continue in that tab:
+
+```js
+await fetch("/api/maintenance/bypass", {
+  method: "POST",
+  headers: {
+    "X-CherryK-Maintenance-Bypass": "<token from the secret store>",
+  },
+});
+```
+
+The endpoint returns `204`; an invalid token returns `403`. The cookie is scoped to
+the current host, is `Secure` and `SameSite=Lax`, and is forwarded to Spring by the
+Vercel rewrite. Mint it separately on `api.cherryk.kr` only when direct browser
+validation is required. Record every bypassed request and whether it is read-only or
+an approved disposable write. Clear the browser credential after validation:
+
+```js
+await fetch("/api/maintenance/bypass", { method: "DELETE" });
+```
+
+Keep both blocks enabled throughout target verification and the exact legacy/target
+route rehearsal. On success, disable Spring's block first while the Vercel block
+still protects the public route, then deploy Production with
+`CHERRYK_MAINTENANCE_MODE=off`. Confirm ordinary writes only after Singapore is
+declared authoritative. On rollback, keep the Vercel block enabled until the exact
+legacy Next/US East pair and preserved data are verified. Remove or rotate the
+bypass token after the maintenance window.
+
 1. Create a separate empty Singapore Production branch/database with distinct
    credentials. Never reuse the Preview database, archive, or environment file.
 2. Enter the approved maintenance window, enable the tested write block, and verify
