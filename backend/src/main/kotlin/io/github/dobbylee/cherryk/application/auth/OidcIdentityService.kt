@@ -29,10 +29,6 @@ interface OidcIdentityStore {
         subject: String,
     ): AuthenticatedUser?
 
-    fun findLegacyGoogleUserId(subject: String): Long?
-
-    fun findUserById(userId: Long): AuthenticatedUser?
-
     fun findUserIdByEmail(email: String): Long?
 
     fun createUser(
@@ -80,18 +76,6 @@ class OidcIdentityService(
 
         store.findByIdentity(profile.issuer, profile.subject)?.let {
             return store.refreshUser(it.id, profile, now)
-        }
-
-        val legacyUserId = store.findLegacyGoogleUserId(profile.subject)
-        if (legacyUserId != null) {
-            val legacyUser =
-                store.findUserById(legacyUserId)
-                    ?: throw OidcIdentityException(
-                        code = "legacy_identity_invalid",
-                        message = "The legacy Google account has no application user.",
-                    )
-            store.createIdentity(profile.issuer, profile.subject, legacyUser.id, now)
-            return store.refreshUser(legacyUser.id, profile, now)
         }
 
         val normalizedEmail = profile.email?.trim()?.lowercase()?.takeIf(String::isNotEmpty)

@@ -3,7 +3,6 @@ package io.github.dobbylee.cherryk.infrastructure.persistence.jpa
 import io.github.dobbylee.cherryk.application.auth.AuthenticatedUser
 import io.github.dobbylee.cherryk.application.auth.OidcIdentityProfile
 import io.github.dobbylee.cherryk.application.auth.OidcIdentityStore
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.time.Instant
 
@@ -11,7 +10,6 @@ import java.time.Instant
 class JpaOidcIdentityStore(
     private val userRepository: UserJpaRepository,
     private val identityRepository: UserIdentityJpaRepository,
-    private val jdbcClient: JdbcClient,
 ) : OidcIdentityStore {
     override fun findByIdentity(
         issuer: String,
@@ -20,23 +18,6 @@ class JpaOidcIdentityStore(
         val identity = identityRepository.findByIssuerAndSubject(issuer, subject) ?: return null
         return userRepository.findById(identity.userId).orElse(null)?.toAuthenticatedUser()
     }
-
-    override fun findLegacyGoogleUserId(subject: String): Long? =
-        jdbcClient
-            .sql(
-                """
-                SELECT user_id
-                FROM accounts
-                WHERE provider_id = 'google'
-                  AND account_id = :subject
-                """.trimIndent(),
-            ).param("subject", subject)
-            .query(Long::class.java)
-            .optional()
-            .orElse(null)
-
-    override fun findUserById(userId: Long): AuthenticatedUser? =
-        userRepository.findById(userId).orElse(null)?.toAuthenticatedUser()
 
     override fun findUserIdByEmail(email: String): Long? =
         userRepository.findFirstByEmailIgnoreCase(email)?.id

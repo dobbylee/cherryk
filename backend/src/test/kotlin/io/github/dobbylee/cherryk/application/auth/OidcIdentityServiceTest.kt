@@ -32,22 +32,6 @@ class OidcIdentityServiceTest {
     }
 
     @Test
-    fun `links a verified legacy Google subject to its existing application user`() {
-        val existing = store.addUser(email = "learner@example.com")
-        store.legacyGoogleUsers["legacy-google-subject"] = existing.id
-
-        val resolved = service.resolveOrCreate(profile(subject = "legacy-google-subject"))
-
-        assertEquals(existing.id, resolved.id)
-        assertEquals(
-            existing.id,
-            store.identities[GOOGLE_ISSUER to "legacy-google-subject"],
-        )
-        assertEquals(0, store.createdUserCount)
-        assertEquals(1, store.createdIdentityCount)
-    }
-
-    @Test
     fun `does not merge a new Google subject by matching email`() {
         val existing = store.addUser(email = "learner@example.com")
 
@@ -106,7 +90,6 @@ class OidcIdentityServiceTest {
 
 private class FakeOidcIdentityStore : OidcIdentityStore {
     val identities = mutableMapOf<Pair<String, String>, Long>()
-    val legacyGoogleUsers = mutableMapOf<String, Long>()
     private val users = mutableMapOf<Long, FakeUser>()
     private var nextId = 1L
     var createdUserCount = 0
@@ -130,10 +113,6 @@ private class FakeOidcIdentityStore : OidcIdentityStore {
         issuer: String,
         subject: String,
     ): AuthenticatedUser? = identities[issuer to subject]?.let(users::get)?.authenticated()
-
-    override fun findLegacyGoogleUserId(subject: String): Long? = legacyGoogleUsers[subject]
-
-    override fun findUserById(userId: Long): AuthenticatedUser? = users[userId]?.authenticated()
 
     override fun findUserIdByEmail(email: String): Long? =
         users.values

@@ -19,8 +19,8 @@ class OidcIdentityIntegrationTest(
     @Autowired private val jdbcClient: JdbcClient,
 ) : PostgreSqlIntegrationTest() {
     @Test
-    fun `legacy Google account is linked to the existing user id`() {
-        val subject = "legacy-${UUID.randomUUID()}"
+    fun `backfilled Google identity resolves to the existing user id`() {
+        val subject = "backfilled-${UUID.randomUUID()}"
         val existing =
             userRepository.saveAndFlush(
                 UserEntity(
@@ -35,6 +35,16 @@ class OidcIdentityIntegrationTest(
                 VALUES (:subject, 'google', :userId)
                 """.trimIndent(),
             ).param("subject", subject)
+            .param("userId", existing.id)
+            .update()
+        jdbcClient
+            .sql(
+                """
+                INSERT INTO user_identities (issuer, subject, user_id)
+                VALUES (:issuer, :subject, :userId)
+                """.trimIndent(),
+            ).param("issuer", GOOGLE_ISSUER)
+            .param("subject", subject)
             .param("userId", existing.id)
             .update()
         val userCountBefore = userRepository.count()
