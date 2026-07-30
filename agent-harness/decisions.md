@@ -22,11 +22,11 @@ code alone. Exact dependency versions live in manifests.
 
 - Use Spring Security, Google OIDC, and PostgreSQL-backed Spring Session.
 - Link legacy Google users only by verified Google issuer/subject and the matching legacy provider/account identifier; never merge by email alone.
-- Before retiring legacy Better Auth tables, backfill Google provider/account
-  subjects into `user_identities` with a guarded Flyway migration. Fail on
-  conflicting user mappings; after the backfill, runtime identity resolution
-  must use `user_identities` only and must still never merge by email alone.
-- Preserve application users and data, but require one re-login instead of migrating Better Auth sessions.
+- Google provider/account subjects were backfilled into `user_identities` with
+  a guarded Flyway migration before the legacy auth runtime was retired.
+  Runtime identity resolution uses `user_identities` only and never merges by
+  email alone.
+- Preserve application users and data; the migration intentionally required one re-login instead of migrating Better Auth sessions.
 - Keep admin authorization as verified Google identity plus `ADMIN_EMAILS` until role management is justified.
 
 ## Persistence and Cutover

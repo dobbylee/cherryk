@@ -12,7 +12,8 @@ project boundaries from `AGENTS.md`, with particular attention to:
 - thin HTTP layers, transaction boundaries, and DTO/entity separation;
 - approved-only user quiz content;
 - separate OCR/language providers and no OCR image persistence;
-- compatibility between the active Next backend and the Spring target.
+- compatibility between frontend-only Next routing/contracts and the active
+  Spring backend.
 
 If the harness changed, require a concrete qualifying failure and focused
 verification.

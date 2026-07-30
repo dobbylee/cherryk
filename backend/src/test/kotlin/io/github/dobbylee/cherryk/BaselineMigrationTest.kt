@@ -1,11 +1,9 @@
 package io.github.dobbylee.cherryk
 
-import io.github.dobbylee.cherryk.preflight.SchemaPreflight
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.simple.JdbcClient
-import javax.sql.DataSource
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -13,7 +11,6 @@ import kotlin.test.assertTrue
 @SpringBootTest
 class BaselineMigrationTest(
     @Autowired private val jdbcClient: JdbcClient,
-    @Autowired private val dataSource: DataSource,
 ) : DrizzleBaselineIntegrationTest() {
 
     @Test
@@ -66,17 +63,6 @@ class BaselineMigrationTest(
         assertEquals(1, successfulBaselineCount)
         assertTrue(columnIsNullable("corrections", "natural_text"))
         assertTrue(columnIsNullable("quiz_attempts", "selected_choice_id"))
-    }
-
-    @Test
-    fun `read-only preflight accepts the recreated baseline`() {
-        dataSource.connection.use { connection ->
-            connection.isReadOnly = true
-            val report = SchemaPreflight.verify(connection)
-
-            assertTrue(report.schemaErrors.isEmpty(), report.schemaErrors.joinToString())
-            assertEquals(0L, report.quizReadiness.totalViolations)
-        }
     }
 
     private fun columnIsNullable(

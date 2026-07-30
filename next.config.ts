@@ -7,19 +7,15 @@ export function createNextConfig(
   const springBackendOrigin = normalizeSpringBackendOrigin(
     configuredSpringBackendOrigin,
   );
+  if (!springBackendOrigin) {
+    throw new Error(
+      "SPRING_BACKEND_ORIGIN is required because CherryK uses Spring for all API and authentication routes.",
+    );
+  }
 
   return {
     typedRoutes: true,
-    env: {
-      NEXT_PUBLIC_SPRING_BACKEND_ENABLED: springBackendOrigin
-        ? "true"
-        : "false",
-    },
     async rewrites() {
-      if (!springBackendOrigin) {
-        return [];
-      }
-
       return {
         beforeFiles: [
           {
@@ -38,6 +34,7 @@ export function createNextConfig(
   };
 }
 
-const nextConfig = createNextConfig(process.env.SPRING_BACKEND_ORIGIN);
+const nextConfig = () =>
+  createNextConfig(process.env.SPRING_BACKEND_ORIGIN);
 
 export default nextConfig;

@@ -1,1 +1,0 @@
-ALTER TABLE "corrections" DROP COLUMN "extracted_text";

@@ -74,42 +74,9 @@ dependencies {
 sourceSets {
     test {
         resources.srcDir("../src/lib/contracts/fixtures")
-        resources.srcDir("../src/server/db/migrations/meta")
     }
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
-}
-
-tasks.register<JavaExec>("schemaPreflight") {
-    group = "verification"
-    description = "Read-only verification of an existing Drizzle schema before Flyway baselining."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.dobbylee.cherryk.preflight.SchemaPreflightKt"
-}
-
-tasks.register<JavaExec>("adoptExistingDatabase") {
-    group = "database"
-    description = "Explicitly baseline a verified Drizzle database at version 1 and migrate to V2."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.dobbylee.cherryk.preflight.ExistingDatabaseAdoptionKt"
-}
-
-tasks.register<JavaExec>("migrateExistingDatabaseToV3") {
-    group = "database"
-    description = "Migrate an explicitly verified existing database from V2 to V3 only."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.dobbylee.cherryk.preflight.ExistingDatabaseV3MigrationKt"
-}
-
-tasks.register<JavaExec>("preV4MigrationPreflight") {
-    group = "verification"
-    description = "Read-only verification of Flyway V3 UUID columns and relationships before V4."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass = "io.github.dobbylee.cherryk.preflight.PreV4MigrationPreflightKt"
 }

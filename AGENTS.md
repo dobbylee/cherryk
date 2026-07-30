@@ -1,6 +1,7 @@
 # Agent Operating Rules
 
-This repository is the CherryK MVP and its active Kotlin/Spring migration.
+This repository is the CherryK MVP with a Next.js frontend and Kotlin/Spring
+backend.
 
 Before planning or editing, read this file and `local/plan.md`. The plan is a
 router: read only the linked detail document needed for the active task.
@@ -17,8 +18,10 @@ structure should be read from manifests and code.
 
 ## Project Boundaries
 
-- Keep contracts in `src/lib/contracts`, frontend API helpers in `src/lib/api`, server-only AI in `src/server/ai`, and DB access behind repositories/services.
-- Keep Next route handlers and Spring controllers thin. Put Spring transactions in application services and never serialize JPA entities as API responses.
+- Keep contracts in `src/lib/contracts`, frontend API helpers in `src/lib/api`,
+  and backend AI integrations under the Spring provider boundaries.
+- Keep Spring controllers thin. Put transactions in application services and
+  never serialize JPA entities as API responses.
 - Flyway alone owns new schema changes; Hibernate stays on `ddl-auto=validate`. Use JPA for aggregate writes/simple CRUD and SQL projections for query-heavy reads.
 - Keep OCR and language-model providers separate. Never persist OCR image originals or expose unapproved AI quiz drafts.
 - Keep ignored plans and handoffs under `local/`.

@@ -7,14 +7,14 @@ A Korean learning app for writing correction, handwriting OCR, and reviewed MCQ 
 ```bash
 pnpm install
 cp .env.example .env.local
-# Set the Google OAuth and Better Auth values in .env.local.
-docker compose up -d postgres
-pnpm db:migrate
-pnpm db:seed:quizzes
+# Set the Spring backend provider and OAuth values in .env.local.
+docker compose --env-file .env.local --profile backend up --build -d
 pnpm dev
 ```
 
-The local database runs through Docker.
+The local Spring backend and its Flyway-managed PostgreSQL database run through
+Docker. Next.js is frontend-only and proxies `/api/v1` and `/api/auth` to the
+configured `SPRING_BACKEND_ORIGIN`.
 
 Users sign up or sign in with Google. Configure this authorized redirect URI in
 Google Cloud for local development:
@@ -30,8 +30,8 @@ that can access the quiz review workflow.
 
 ## Project Direction
 
-- The frontend remains Next.js on Vercel while `/api/v1` behavior moves from
-  Next.js routes to the Kotlin/Spring backend.
+- The frontend remains Next.js on Vercel while Kotlin/Spring owns all API,
+  authentication, AI, and persistence behavior.
 - Neon Postgres remains the source of truth.
 - AI quiz drafts require operator approval before users can see them.
 - Backend migration and database-operation commands are documented in
@@ -43,8 +43,5 @@ that can access the quiz review workflow.
 pnpm test
 pnpm test:unit
 pnpm build
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed:quizzes
-pnpm db:psql
+pnpm build:backend
 ```

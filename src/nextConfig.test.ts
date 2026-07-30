@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { createNextConfig } from "../next.config";
 
-describe("Next Preview backend routing", () => {
-  it("keeps the existing Next backend when no Spring origin is configured", async () => {
-    const config = createNextConfig(undefined);
-
-    expect(config.env?.NEXT_PUBLIC_SPRING_BACKEND_ENABLED).toBe("false");
-    await expect(config.rewrites?.()).resolves.toEqual([]);
+describe("Next Spring backend routing", () => {
+  it("fails closed when no Spring origin is configured", () => {
+    expect(() => createNextConfig(undefined)).toThrow(
+      "SPRING_BACKEND_ORIGIN is required",
+    );
   });
 
-  it("rewrites API and auth paths only when a valid Spring origin is configured", async () => {
+  it("rewrites API and auth paths when a valid Spring origin is configured", async () => {
     const config = createNextConfig("https://api-preview.cherryk.kr/");
 
-    expect(config.env?.NEXT_PUBLIC_SPRING_BACKEND_ENABLED).toBe("true");
     await expect(config.rewrites?.()).resolves.toEqual({
       beforeFiles: [
         {

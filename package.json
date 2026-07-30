@@ -14,40 +14,25 @@
     "test:backend": "./backend/gradlew -p backend test",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "build:backend": "./backend/gradlew -p backend bootJar",
-    "db:deploy": "pnpm db:migrate && pnpm db:seed:quizzes",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed:quizzes": "tsx src/server/db/seedInitialApprovedQuizzes.ts",
-    "db:studio": "drizzle-kit studio",
-    "db:psql": "docker compose exec postgres psql -U cherryk -d cherryk"
+    "build:backend": "./backend/gradlew -p backend bootJar"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "1.6.23",
     "@vercel/analytics": "2.0.1",
-    "better-auth": "1.6.23",
-    "drizzle-orm": "0.45.2",
     "next": "16.2.10",
-    "postgres": "3.4.9",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "sharp": "0.34.5",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.4",
-    "@next/env": "16.2.10",
     "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "4.3.2",
     "@types/node": "26.1.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.10",
     "prettier": "3.9.4",
     "tailwindcss": "4.3.2",
-    "tsx": "4.23.0",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
   }

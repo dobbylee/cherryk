@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
-import { AdminAuthError, requireAdminAccount } from "@/server/auth/admin";
+import {
+  AdminAuthError,
+  requireAdminAccount,
+} from "@/lib/api/adminAccess";
 
 export default async function AdminQuizzesLayout({
   children,
@@ -27,12 +30,9 @@ export default async function AdminQuizzesLayout({
 
 function AdminAccessMessage({ error }: { error: AdminAuthError }) {
   const isSignedOut = error.code === "unauthorized";
-  const message =
-    error.code === "admin_not_configured"
-      ? "Admin access is not configured."
-      : isSignedOut
-        ? "Sign in with an approved Google account to continue."
-        : "This Google account does not have admin access.";
+  const message = isSignedOut
+    ? "Sign in with an approved Google account to continue."
+    : "This Google account does not have admin access.";
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-10 text-[var(--foreground)]">
