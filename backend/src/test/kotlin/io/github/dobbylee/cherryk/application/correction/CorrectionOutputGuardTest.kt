@@ -53,6 +53,29 @@ class CorrectionOutputGuardTest {
     }
 
     @Test
+    fun `rejects blank corrected text and explanations`() {
+        listOf(
+            CorrectionResult(
+                correctedText = " ",
+                explanationEn = "A correction explanation.",
+                mistakes = emptyList(),
+            ),
+            CorrectionResult(
+                correctedText = "저는 학교에 가요.",
+                explanationEn = "\n",
+                mistakes = emptyList(),
+            ),
+        ).forEach { output ->
+            assertFailsWith<CorrectionOutputException> {
+                guard.guard(
+                    originalText = "저는 학교를 가요.",
+                    output = output,
+                )
+            }
+        }
+    }
+
+    @Test
     fun `allows existing Latin words but rejects newly introduced English`() {
         val allowed =
             guard.guard(
@@ -95,6 +118,7 @@ class CorrectionOutputGuardTest {
                             listOf(
                                 valid,
                                 insertion,
+                                mistake("학교를", "학교에", explanationEn = " "),
                                 mistake("학교를", "학교를"),
                                 mistake("없는 말", "학교에"),
                                 mistake("학교를", "없는 말"),
@@ -108,11 +132,12 @@ class CorrectionOutputGuardTest {
     private fun mistake(
         originalPart: String,
         correctedPart: String,
+        explanationEn: String = "Use the destination particle.",
     ) = CorrectionMistake(
         tag = GrammarTag.PARTICLE_LOCATION,
         originalPart = originalPart,
         correctedPart = correctedPart,
-        explanationEn = "Use the destination particle.",
+        explanationEn = explanationEn,
         severity = MistakeSeverity.MINOR,
     )
 }

@@ -8,6 +8,10 @@ class CorrectionOutputGuard {
         originalText: String,
         output: CorrectionResult,
     ): CorrectionResult {
+        if (output.correctedText.isBlank() || output.explanationEn.isBlank()) {
+            throw CorrectionOutputException()
+        }
+
         if (originalText.normalizeWhitespace() == output.correctedText.normalizeWhitespace()) {
             return CorrectionResult(
                 correctedText = originalText,
@@ -24,6 +28,7 @@ class CorrectionOutputGuard {
             mistakes =
                 output.mistakes.filter { mistake ->
                     val describesChange = mistake.originalPart != mistake.correctedPart
+                    val hasExplanation = mistake.explanationEn.isNotBlank()
                     val matchesOriginal =
                         mistake.originalPart.isEmpty() ||
                             originalText.contains(mistake.originalPart)
@@ -31,7 +36,7 @@ class CorrectionOutputGuard {
                         mistake.correctedPart.isEmpty() ||
                             output.correctedText.contains(mistake.correctedPart)
 
-                    describesChange && matchesOriginal && matchesCorrection
+                    describesChange && hasExplanation && matchesOriginal && matchesCorrection
                 },
         )
     }
