@@ -60,18 +60,18 @@ class OpenAiQuizDraftProviderTest {
             .andExpect { request ->
                 val requestJson =
                     objectMapper.readTree((request as MockClientHttpRequest).bodyAsString)
-                val providerInput = objectMapper.readTree(requestJson["input"].asText())
-                assertEquals("particle_object", providerInput["tag"].asText())
-                assertEquals("beginner", providerInput["difficulty"].asText())
+                val providerInput = objectMapper.readTree(requestJson["input"].stringValue())
+                assertEquals("particle_object", providerInput["tag"].stringValue())
+                assertEquals("beginner", providerInput["difficulty"].stringValue())
                 assertEquals(1, providerInput["count"].asInt())
-                assertEquals("Use food vocabulary.", providerInput["instruction"].asText())
+                assertEquals("Use food vocabulary.", providerInput["instruction"].stringValue())
                 assertEquals(
                     objectMapper.readTree(EXPECTED_QUIZ_FORMAT),
                     requestJson["text"]["format"],
                 )
                 assertTrue(
                     requestJson["instructions"]
-                        .asText()
+                        .stringValue()
                         .contains("one correctAnswer and exactly three"),
                 )
             }
