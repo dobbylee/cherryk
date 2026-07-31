@@ -12,7 +12,7 @@ import kotlin.test.assertFailsWith
 class AuthSchemaMigrationTest {
     @Test
     fun `V3 adds OIDC identity and Spring Session tables without changing existing data`() {
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer(TEST_POSTGRES_IMAGE)
         postgres.start()
         try {
             val flyway =

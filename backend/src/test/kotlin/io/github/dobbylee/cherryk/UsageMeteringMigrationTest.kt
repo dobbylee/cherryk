@@ -11,7 +11,7 @@ import kotlin.test.assertNull
 class UsageMeteringMigrationTest {
     @Test
     fun `V5 preserves legacy counts as feature units`() {
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer(TEST_POSTGRES_IMAGE)
         postgres.start()
         try {
             Flyway

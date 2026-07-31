@@ -52,12 +52,14 @@ abstract class DrizzleBaselineIntegrationTest {
 
 private object SharedPostgresContainer {
     val instance: PostgreSQLContainer =
-        PostgreSQLContainer("postgres:18")
+        PostgreSQLContainer(TEST_POSTGRES_IMAGE)
             .apply { start() }
 }
 
 private object DrizzleBaselinePostgresContainer {
     val instance: PostgreSQLContainer =
-        PostgreSQLContainer("postgres:18")
+        PostgreSQLContainer(TEST_POSTGRES_IMAGE)
             .apply { start() }
 }
+
+const val TEST_POSTGRES_IMAGE = "postgres:17"

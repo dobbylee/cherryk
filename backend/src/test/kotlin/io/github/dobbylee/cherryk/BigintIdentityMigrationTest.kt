@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 class BigintIdentityMigrationTest {
     @Test
     fun `V4 converts entity ids and foreign keys without losing application data`() {
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer(TEST_POSTGRES_IMAGE)
         postgres.start()
         try {
             val configuration =

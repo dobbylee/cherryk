@@ -37,13 +37,13 @@ services:
 
   backend-postgres:
     profiles: ["backend"]
-    image: postgres:18
+    image: postgres:17
     environment:
       POSTGRES_DB: cherryk
       POSTGRES_USER: cherryk
       POSTGRES_PASSWORD: cherryk
     volumes:
-      - backend_postgres18_data:/var/lib/postgresql
+      - backend_postgres17_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cherryk -d cherryk"]
       interval: 5s
@@ -51,4 +51,4 @@ services:
       retries: 10
 
 volumes:
-  backend_postgres18_data:
+  backend_postgres17_data:

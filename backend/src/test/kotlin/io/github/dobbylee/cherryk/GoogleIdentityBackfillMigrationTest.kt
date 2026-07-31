@@ -14,7 +14,7 @@ import kotlin.test.assertFailsWith
 class GoogleIdentityBackfillMigrationTest {
     @Test
     fun `V6 backfills missing Google identities without changing existing identities`() {
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer(TEST_POSTGRES_IMAGE)
         postgres.start()
         try {
             migrateThroughV5(postgres)
@@ -59,7 +59,7 @@ class GoogleIdentityBackfillMigrationTest {
 
     @Test
     fun `V6 fails when an existing Google identity belongs to a different user`() {
-        val postgres = PostgreSQLContainer("postgres:18")
+        val postgres = PostgreSQLContainer(TEST_POSTGRES_IMAGE)
         postgres.start()
         try {
             migrateThroughV5(postgres)
