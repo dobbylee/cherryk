@@ -25,9 +25,7 @@ describe("auth API helpers", () => {
 
     loginWithGoogle();
 
-    expect(mocks.locationAssign).toHaveBeenCalledWith(
-      "/api/auth/login/google",
-    );
+    expect(mocks.locationAssign).toHaveBeenCalledWith("/api/auth/login/google");
   });
 
   it("logs out through Spring", async () => {

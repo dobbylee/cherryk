@@ -40,10 +40,7 @@ describe("Spring admin access helper", () => {
     );
 
     await expect(
-      requireAdminAccount(
-        springRequest,
-        "https://api-preview.cherryk.kr",
-      ),
+      requireAdminAccount(springRequest, "https://api-preview.cherryk.kr"),
     ).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -62,9 +59,9 @@ describe("Spring admin access helper", () => {
     const fetchMock = vi.fn<typeof fetch>();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      requireAdminAccount(request, undefined),
-    ).rejects.toThrow("SPRING_BACKEND_ORIGIN is required");
+    await expect(requireAdminAccount(request, undefined)).rejects.toThrow(
+      "SPRING_BACKEND_ORIGIN is required",
+    );
     await expect(
       requireAdminAccount(
         request,

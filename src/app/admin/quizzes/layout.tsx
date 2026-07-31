@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
-import {
-  AdminAuthError,
-  requireAdminAccount,
-} from "@/lib/api/adminAccess";
+import { AdminAuthError, requireAdminAccount } from "@/lib/api/adminAccess";
 
 export default async function AdminQuizzesLayout({
   children,

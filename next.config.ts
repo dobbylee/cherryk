@@ -34,7 +34,6 @@ export function createNextConfig(
   };
 }
 
-const nextConfig = () =>
-  createNextConfig(process.env.SPRING_BACKEND_ORIGIN);
+const nextConfig = () => createNextConfig(process.env.SPRING_BACKEND_ORIGIN);
 
 export default nextConfig;

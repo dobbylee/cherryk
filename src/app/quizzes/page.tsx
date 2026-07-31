@@ -21,10 +21,7 @@ import type {
   QuizPracticeItem,
   QuizProgress,
 } from "@/lib/contracts/quiz";
-import {
-  invalidateLatestRequest,
-  runLatestRequest,
-} from "@/lib/latestRequest";
+import { invalidateLatestRequest, runLatestRequest } from "@/lib/latestRequest";
 
 type FormStatus = "idle" | "loading";
 
@@ -93,9 +90,7 @@ function QuizWorkspace() {
     );
   }, [hasExplicitTags, searchParams]);
   const requestedTagsKey =
-    requestedTags === undefined
-      ? "history"
-      : requestedTags.join(",") || "all";
+    requestedTags === undefined ? "history" : requestedTags.join(",") || "all";
   const selectedTags = hasExplicitTags
     ? (requestedTags ?? []).filter((tag) => availableTags.includes(tag))
     : activeTags;
@@ -191,8 +186,7 @@ function QuizWorkspace() {
       setProgress((currentProgress) => ({
         ...currentProgress,
         solvedCount:
-          currentProgress.solvedCount +
-          (activeQuiz.attemptCount === 0 ? 1 : 0),
+          currentProgress.solvedCount + (activeQuiz.attemptCount === 0 ? 1 : 0),
         attemptCount: currentProgress.attemptCount + 1,
         correctCount:
           currentProgress.correctCount + (response.isCorrect ? 1 : 0),
@@ -248,9 +242,7 @@ function QuizWorkspace() {
       nextTags.add(tag);
     }
 
-    updateTagFilter(
-      GrammarTags.filter((candidate) => nextTags.has(candidate)),
-    );
+    updateTagFilter(GrammarTags.filter((candidate) => nextTags.has(candidate)));
   }
 
   if (!user) {

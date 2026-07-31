@@ -28,9 +28,9 @@ describe("Next Spring backend routing", () => {
   });
 
   it("rejects unsafe or path-bearing backend origins", () => {
-    expect(() =>
-      createNextConfig("http://api-preview.cherryk.kr"),
-    ).toThrow(/HTTPS origin/);
+    expect(() => createNextConfig("http://api-preview.cherryk.kr")).toThrow(
+      /HTTPS origin/,
+    );
     expect(() =>
       createNextConfig("https://api-preview.cherryk.kr/api"),
     ).toThrow(/HTTPS origin/);

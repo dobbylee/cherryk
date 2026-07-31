@@ -50,7 +50,8 @@ describe("buildAdminQuizUpdateRequest", () => {
         { text: "에", isCorrect: false, sortOrder: 2 },
         { text: "이", isCorrect: false, sortOrder: 3 },
       ],
-      answerExplanationEn: "Use 를 because 사과 is the direct object of 먹어요.",
+      answerExplanationEn:
+        "Use 를 because 사과 is the direct object of 먹어요.",
     });
   });
 
