@@ -12,9 +12,9 @@ import {
   type FormEvent,
 } from "react";
 import { AppHeader } from "@/app/_components/app-header";
-import { fetchCurrentUser, logout } from "@/lib/api/auth";
+import { SessionUnavailable } from "@/app/_components/session-unavailable";
+import { useAuthSession } from "@/app/_hooks/use-auth-session";
 import { fetchQuizRecommendations, submitQuizAttempt } from "@/lib/api/quizzes";
-import type { AuthUser } from "@/lib/contracts/auth";
 import { GrammarTags, type GrammarTag } from "@/lib/contracts/grammar-tags";
 import type {
   QuizAttemptResponse,
@@ -41,8 +41,13 @@ export default function QuizzesPage() {
 function QuizWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
+  const {
+    message: authMessage,
+    refresh: refreshAuth,
+    signOut,
+    status: authStatus,
+    user,
+  } = useAuthSession();
   const [quizzes, setQuizzes] = useState<QuizPracticeItem[]>([]);
   const [availableTags, setAvailableTags] = useState<GrammarTag[]>([]);
   const [activeTags, setActiveTags] = useState<GrammarTag[]>([]);
@@ -65,36 +70,12 @@ function QuizWorkspace() {
   const initialLoadKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadUser() {
-      try {
-        const response = await fetchCurrentUser();
-        if (ignore) {
-          return;
-        }
-        if (!response.user) {
-          router.replace("/");
-          return;
-        }
-        setUser(response.user);
-      } catch {
-        if (!ignore) {
-          router.replace("/");
-        }
-      } finally {
-        if (!ignore) {
-          setAuthStatus("idle");
-        }
-      }
+    if (authStatus === "signed-out") {
+      initialLoadKeyRef.current = null;
+      invalidateLatestRequest(quizRequestIdRef);
+      router.replace("/");
     }
-
-    void loadUser();
-
-    return () => {
-      ignore = true;
-    };
-  }, [router]);
+  }, [authStatus, router]);
 
   const hasExplicitTags = searchParams.has("tags");
   const requestedTags = useMemo(() => {
@@ -174,17 +155,12 @@ function QuizWorkspace() {
 
   async function handleLogout() {
     setMessage(null);
-    setAuthStatus("loading");
     invalidateLatestRequest(quizRequestIdRef);
     setQuizStatus("idle");
     setQuizAttemptStatus("idle");
 
-    try {
-      await logout();
+    if (await signOut()) {
       router.replace("/");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Logout failed.");
-      setAuthStatus("idle");
     }
   }
 
@@ -278,6 +254,14 @@ function QuizWorkspace() {
   }
 
   if (!user) {
+    if (authStatus === "unavailable") {
+      return (
+        <SessionUnavailable
+          message={authMessage ?? "Authentication is unavailable."}
+          onRetry={() => void refreshAuth()}
+        />
+      );
+    }
     return <LoadingPage />;
   }
 
@@ -359,6 +343,7 @@ function QuizWorkspace() {
           </p>
         </section>
 
+        {authMessage ? <Message message={authMessage} /> : null}
         {message ? <Message message={message} /> : null}
 
         <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)] sm:p-5">

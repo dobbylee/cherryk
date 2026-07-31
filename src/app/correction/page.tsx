@@ -10,11 +10,11 @@ import {
   type FormEvent,
 } from "react";
 import { AppHeader } from "@/app/_components/app-header";
-import { fetchCurrentUser, logout } from "@/lib/api/auth";
+import { SessionUnavailable } from "@/app/_components/session-unavailable";
+import { useAuthSession } from "@/app/_hooks/use-auth-session";
 import { submitCorrection } from "@/lib/api/corrections";
 import { extractKoreanTextFromImage } from "@/lib/api/ocr";
 import { buildCorrectionHighlightSegments } from "@/lib/correctionHighlights";
-import type { AuthUser } from "@/lib/contracts/auth";
 import type {
   CorrectionInput,
   CorrectionResponse,
@@ -24,12 +24,17 @@ type FormStatus = "idle" | "loading";
 
 export default function CorrectionPage() {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const {
+    message: authMessage,
+    refresh: refreshAuth,
+    signOut,
+    status: authStatus,
+    user,
+  } = useAuthSession();
   const [text, setText] = useState("저는 학교에 공부했어요.");
   const [inputSource, setInputSource] =
     useState<CorrectionInput["inputType"]>("text");
   const [correction, setCorrection] = useState<CorrectionResponse | null>(null);
-  const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
   const [correctionStatus, setCorrectionStatus] = useState<FormStatus>("idle");
   const [ocrStatus, setOcrStatus] = useState<FormStatus>("idle");
   const [ocrNote, setOcrNote] = useState<string | null>(null);
@@ -43,36 +48,10 @@ export default function CorrectionPage() {
   const resultRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    let ignore = false;
-
-    async function loadUser() {
-      try {
-        const response = await fetchCurrentUser();
-        if (ignore) {
-          return;
-        }
-        if (!response.user) {
-          router.replace("/");
-          return;
-        }
-        setUser(response.user);
-      } catch {
-        if (!ignore) {
-          router.replace("/");
-        }
-      } finally {
-        if (!ignore) {
-          setAuthStatus("idle");
-        }
-      }
+    if (authStatus === "signed-out") {
+      router.replace("/");
     }
-
-    void loadUser();
-
-    return () => {
-      ignore = true;
-    };
-  }, [router]);
+  }, [authStatus, router]);
 
   useEffect(() => {
     if (correction) {
@@ -82,17 +61,12 @@ export default function CorrectionPage() {
 
   async function handleLogout() {
     setMessage(null);
-    setAuthStatus("loading");
     correctionRequestIdRef.current += 1;
     setCorrectionStatus("idle");
     setOcrStatus("idle");
 
-    try {
-      await logout();
+    if (await signOut()) {
       router.replace("/");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Logout failed.");
-      setAuthStatus("idle");
     }
   }
 
@@ -184,6 +158,14 @@ export default function CorrectionPage() {
   }
 
   if (!user) {
+    if (authStatus === "unavailable") {
+      return (
+        <SessionUnavailable
+          message={authMessage ?? "Authentication is unavailable."}
+          onRetry={() => void refreshAuth()}
+        />
+      );
+    }
     return <LoadingPage />;
   }
 
@@ -216,6 +198,7 @@ export default function CorrectionPage() {
           </Link>
         </div>
 
+        {authMessage ? <ErrorMessage message={authMessage} /> : null}
         {message ? <ErrorMessage message={message} /> : null}
 
         <form

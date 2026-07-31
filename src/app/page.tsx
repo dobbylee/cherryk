@@ -1,79 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { AppHeader } from "@/app/_components/app-header";
-import { fetchCurrentUser, loginWithGoogle, logout } from "@/lib/api/auth";
-import type { AuthUser } from "@/lib/contracts/auth";
-
-type FormStatus = "idle" | "loading";
+import { useAuthSession } from "@/app/_hooks/use-auth-session";
 
 export default function HomePage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [authStatus, setAuthStatus] = useState<FormStatus>("loading");
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadUser() {
-      try {
-        const response = await fetchCurrentUser();
-        if (!ignore) {
-          setUser(response.user);
-        }
-      } catch {
-        if (!ignore) {
-          setUser(null);
-        }
-      } finally {
-        if (!ignore) {
-          setAuthStatus("idle");
-        }
-      }
-    }
-
-    void loadUser();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  async function handleGoogleLogin() {
-    setMessage(null);
-    setAuthStatus("loading");
-
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Google sign-in failed.",
-      );
-      setAuthStatus("idle");
-    }
-  }
-
-  async function handleLogout() {
-    setMessage(null);
-    setAuthStatus("loading");
-
-    try {
-      await logout();
-      setUser(null);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Logout failed.");
-    } finally {
-      setAuthStatus("idle");
-    }
-  }
+  const {
+    message,
+    refresh,
+    signIn,
+    signOut,
+    status: authStatus,
+    user,
+  } = useAuthSession();
+  const authenticationUnavailable =
+    authStatus === "unavailable" && user === null;
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
         <AppHeader
           authBusy={authStatus === "loading"}
-          onLogout={handleLogout}
+          onLogout={() => void signOut()}
           user={user}
         />
 
@@ -115,12 +63,16 @@ export default function HomePage() {
                 <button
                   className="flex h-11 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:cursor-wait disabled:opacity-60"
                   disabled={authStatus === "loading"}
-                  onClick={handleGoogleLogin}
+                  onClick={() =>
+                    void (authenticationUnavailable ? refresh() : signIn())
+                  }
                   type="button"
                 >
                   {authStatus === "loading"
                     ? "Checking account..."
-                    : "Continue with Google"}
+                    : authenticationUnavailable
+                      ? "Retry account check"
+                      : "Continue with Google"}
                 </button>
               </div>
             </div>
