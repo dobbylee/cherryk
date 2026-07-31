@@ -29,16 +29,20 @@ class ProvisioningOidcUserService(
                 image = oidcUser.claims["picture"] as? String,
             )
 
-        try {
-            identityResolver.resolveOrCreate(profile)
-        } catch (error: OidcIdentityException) {
-            throw OAuth2AuthenticationException(
-                OAuth2Error(error.code),
-                error.message,
-                error,
-            )
-        }
+        val applicationUser =
+            try {
+                identityResolver.resolveOrCreate(profile)
+            } catch (error: OidcIdentityException) {
+                throw OAuth2AuthenticationException(
+                    OAuth2Error(error.code),
+                    error.message,
+                    error,
+                )
+            }
 
-        return oidcUser
+        return ProvisionedOidcUser(
+            applicationUser = applicationUser,
+            delegate = oidcUser,
+        )
     }
 }

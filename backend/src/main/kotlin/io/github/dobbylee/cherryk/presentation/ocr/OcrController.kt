@@ -1,11 +1,11 @@
 package io.github.dobbylee.cherryk.presentation.ocr
 
 import com.fasterxml.jackson.annotation.JsonInclude
-import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import io.github.dobbylee.cherryk.application.ocr.OcrApplicationException
 import io.github.dobbylee.cherryk.application.ocr.OcrApplicationService
 import io.github.dobbylee.cherryk.application.ocr.OcrUpload
 import io.github.dobbylee.cherryk.application.usage.UsageLimitExceededException
+import io.github.dobbylee.cherryk.presentation.auth.CurrentUserResolver
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile
 @RestController
 @RequestMapping("/api/v1/ocr")
 class OcrController(
-    private val identityResolver: OidcIdentityResolver,
+    private val currentUserResolver: CurrentUserResolver,
     private val ocrService: OcrApplicationService,
 ) {
     @PostMapping(
@@ -40,10 +40,8 @@ class OcrController(
         val authenticatedUser =
             principal
                 ?.let {
-                    val issuer = it.claims["iss"]?.toString().orEmpty()
-                    val subject = it.claims["sub"]?.toString().orEmpty()
                     try {
-                        identityResolver.findExisting(issuer, subject)
+                        currentUserResolver.resolve(it)
                     } catch (exception: RuntimeException) {
                         throw OcrAuthenticationUnavailableException(exception)
                     }

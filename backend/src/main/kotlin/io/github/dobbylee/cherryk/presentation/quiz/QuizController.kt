@@ -1,6 +1,5 @@
 package io.github.dobbylee.cherryk.presentation.quiz
 
-import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import io.github.dobbylee.cherryk.application.quiz.QuizAttemptFailure
 import io.github.dobbylee.cherryk.application.quiz.QuizAttemptInput
 import io.github.dobbylee.cherryk.application.quiz.QuizAttemptResult
@@ -13,6 +12,7 @@ import io.github.dobbylee.cherryk.application.quiz.QuizRecommendationService
 import io.github.dobbylee.cherryk.application.quiz.RecommendedQuiz
 import io.github.dobbylee.cherryk.application.quiz.RecommendedQuizChoice
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.presentation.auth.CurrentUserResolver
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
@@ -27,7 +27,7 @@ import tools.jackson.databind.JsonNode
 @RestController
 @RequestMapping("/api/v1/quizzes")
 class QuizController(
-    private val identityResolver: OidcIdentityResolver,
+    private val currentUserResolver: CurrentUserResolver,
     private val recommendationService: QuizRecommendationService,
     private val attemptService: QuizAttemptService,
 ) {
@@ -88,10 +88,8 @@ class QuizController(
         val user =
             principal
                 ?.let {
-                    val issuer = it.claims["iss"]?.toString().orEmpty()
-                    val subject = it.claims["sub"]?.toString().orEmpty()
                     try {
-                        identityResolver.findExisting(issuer, subject)
+                        currentUserResolver.resolve(it)
                     } catch (exception: RuntimeException) {
                         throw QuizAuthenticationUnavailableException(exception)
                     }

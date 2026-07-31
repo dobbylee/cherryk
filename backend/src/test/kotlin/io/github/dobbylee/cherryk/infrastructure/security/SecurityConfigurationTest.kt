@@ -7,6 +7,7 @@ import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import io.github.dobbylee.cherryk.presentation.auth.AdminAccessController
 import io.github.dobbylee.cherryk.presentation.auth.AuthController
+import io.github.dobbylee.cherryk.presentation.auth.CurrentUserResolver
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
@@ -39,7 +40,11 @@ import org.springframework.web.bind.annotation.RestController
     ],
     properties = ["cherryk.security.secure-cookies=false"],
 )
-@Import(SecurityConfiguration::class, SecurityTestConfiguration::class)
+@Import(
+    SecurityConfiguration::class,
+    SecurityTestConfiguration::class,
+    CurrentUserResolver::class,
+)
 class SecurityConfigurationTest(
     @Autowired private val mockMvc: MockMvc,
 ) {

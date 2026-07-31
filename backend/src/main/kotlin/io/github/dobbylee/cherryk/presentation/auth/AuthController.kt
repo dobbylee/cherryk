@@ -1,6 +1,5 @@
 package io.github.dobbylee.cherryk.presentation.auth
 
-import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.web.csrf.CsrfToken
@@ -11,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/auth")
 class AuthController(
-    private val identityResolver: OidcIdentityResolver,
+    private val currentUserResolver: CurrentUserResolver,
 ) {
     @GetMapping("/me")
     fun me(
@@ -23,9 +22,7 @@ class AuthController(
             return MeResponse(user = null)
         }
 
-        val issuer = principal.claims["iss"]?.toString().orEmpty()
-        val subject = principal.claims["sub"]?.toString().orEmpty()
-        val user = identityResolver.findExisting(issuer, subject)
+        val user = currentUserResolver.resolve(principal)
 
         return MeResponse(
             user =

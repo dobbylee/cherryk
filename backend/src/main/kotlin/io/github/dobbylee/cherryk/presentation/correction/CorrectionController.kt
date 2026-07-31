@@ -1,6 +1,5 @@
 package io.github.dobbylee.cherryk.presentation.correction
 
-import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import io.github.dobbylee.cherryk.application.correction.CorrectionApplicationResult
 import io.github.dobbylee.cherryk.application.correction.CorrectionApplicationService
 import io.github.dobbylee.cherryk.application.correction.CorrectionMistake
@@ -9,6 +8,7 @@ import io.github.dobbylee.cherryk.application.correction.CorrectionRequest
 import io.github.dobbylee.cherryk.application.usage.UsageLimitExceededException
 import io.github.dobbylee.cherryk.domain.correction.CorrectionInputType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
+import io.github.dobbylee.cherryk.presentation.auth.CurrentUserResolver
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
@@ -21,7 +21,7 @@ import tools.jackson.databind.JsonNode
 @RestController
 @RequestMapping("/api/v1/corrections")
 class CorrectionController(
-    private val identityResolver: OidcIdentityResolver,
+    private val currentUserResolver: CurrentUserResolver,
     private val correctionService: CorrectionApplicationService,
 ) {
     @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -32,10 +32,8 @@ class CorrectionController(
         val authenticatedUser =
             principal
                 ?.let {
-                    val issuer = it.claims["iss"]?.toString().orEmpty()
-                    val subject = it.claims["sub"]?.toString().orEmpty()
                     try {
-                        identityResolver.findExisting(issuer, subject)
+                        currentUserResolver.resolve(it)
                     } catch (exception: RuntimeException) {
                         throw CorrectionAuthenticationUnavailableException(exception)
                     }
