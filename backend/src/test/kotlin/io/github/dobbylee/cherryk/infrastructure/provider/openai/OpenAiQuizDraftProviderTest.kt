@@ -16,6 +16,7 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.content
 import org.springframework.test.web.client.match.MockRestRequestMatchers.header
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
+import org.springframework.test.web.client.response.MockRestResponseCreators.withRawStatus
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.ResourceAccessException
@@ -195,16 +196,25 @@ class OpenAiQuizDraftProviderTest {
     }
 
     @Test
-    fun `does not retry a permanent client error`() {
-        server
-            .expect(requestTo(RESPONSES_URL))
-            .andRespond(withStatus(HttpStatus.BAD_REQUEST))
+    fun `does not retry a permanent or nonstandard response`() {
+        val responses =
+            listOf(
+                withStatus(HttpStatus.BAD_REQUEST) to "request_failed",
+                withRawStatus(600) to "invalid_response",
+            )
+        responses.forEach { (response, _) ->
+            server
+                .expect(requestTo(RESPONSES_URL))
+                .andRespond(response)
+        }
 
-        assertFailsWith<QuizDraftProviderException> {
-            provider.generate(input())
-        }.also { exception ->
-            assertEquals("request_failed", exception.code)
-            assertEquals(false, exception.retryable)
+        responses.forEach { (_, expectedCode) ->
+            assertFailsWith<QuizDraftProviderException> {
+                provider.generate(input())
+            }.also { exception ->
+                assertEquals(expectedCode, exception.code)
+                assertEquals(false, exception.retryable)
+            }
         }
         assertEquals(emptyList(), retryWaits)
         server.verify()
@@ -242,6 +252,7 @@ class OpenAiQuizDraftProviderTest {
         listOf(
             """{"status":"completed","output":[{"content":[{"type":"refusal"}]}]}""",
             """{"status":"incomplete","output":[]}""",
+            "not-json",
             response("not-json"),
         ).forEach { body ->
             val builder = RestClient.builder()

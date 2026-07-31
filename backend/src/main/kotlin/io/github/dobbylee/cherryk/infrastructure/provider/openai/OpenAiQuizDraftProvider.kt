@@ -6,15 +6,9 @@ import io.github.dobbylee.cherryk.application.quiz.QuizDraftProviderInput
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
-import org.springframework.http.MediaType
-import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
-import org.springframework.web.client.RestClientException
-import org.springframework.web.client.RestClientResponseException
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.module.kotlin.readValue
-import java.net.SocketTimeoutException
-import java.net.http.HttpTimeoutException
 import java.time.Duration
 import kotlin.random.Random
 
@@ -25,6 +19,8 @@ class OpenAiQuizDraftProvider internal constructor(
     private val retryWaiter: (Duration) -> Unit = ::waitBeforeQuizRetry,
     private val randomIndex: (Int) -> Int = Random.Default::nextInt,
 ) : QuizDraftProvider {
+    private val transport = OpenAiResponsesTransport(restClient)
+
     override fun generate(input: QuizDraftProviderInput): List<QuizContent> {
         requireConfigured()
         val request =
@@ -42,13 +38,13 @@ class OpenAiQuizDraftProvider internal constructor(
                     ),
                 "store" to false,
                 "text" to
-                    OpenAiQuizText(
+                    OpenAiText(
                         format = OpenAiQuizDraftSchema.format(input.count),
                     ),
             )
         properties.reasoningEffort
             .takeIf(String::isNotBlank)
-            ?.let { request["reasoning"] = OpenAiQuizReasoning(it) }
+            ?.let { request["reasoning"] = OpenAiReasoning(it) }
 
         repeat(properties.maxAttempts) { attempt ->
             try {
@@ -67,60 +63,12 @@ class OpenAiQuizDraftProvider internal constructor(
         request: Map<String, Any>,
         input: QuizDraftProviderInput,
     ): List<QuizContent> {
-        val response =
-            try {
-                restClient
-                    .post()
-                    .uri(RESPONSES_URL)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer ${properties.apiKey}")
-                    .body(request)
-                    .retrieve()
-                    .body(OpenAiQuizResponse::class.java)
-            } catch (exception: RestClientResponseException) {
-                val retryable =
-                    exception.statusCode.is5xxServerError ||
-                        exception.statusCode.value() in TRANSIENT_HTTP_STATUSES
-                throw QuizDraftProviderException(
-                    code = "request_failed",
-                    message = "OpenAI quiz request failed with status ${exception.statusCode.value()}.",
-                    retryable = retryable,
-                )
-            } catch (exception: ResourceAccessException) {
-                val timedOut = exception.hasQuizTimeoutCause()
-                throw QuizDraftProviderException(
-                    code = if (timedOut) "timeout" else "request_failed",
-                    message =
-                        if (timedOut) {
-                            "OpenAI quiz request timed out."
-                        } else {
-                            "OpenAI quiz request could not be completed."
-                        },
-                    retryable = true,
-                )
-            } catch (exception: RestClientException) {
-                throw QuizDraftProviderException(
-                    code = "invalid_response",
-                    message = "OpenAI quiz response could not be parsed.",
-                )
-            }
-
-        if (response?.status != "completed") {
-            throw invalidResponse()
-        }
-        if (response.output.flatMap(OpenAiQuizOutputItem::content).any { it.type == "refusal" }) {
-            throw QuizDraftProviderException(
-                code = "invalid_response",
-                message = "OpenAI quiz request was refused.",
-            )
-        }
         val outputText =
-            response.output
-                .asSequence()
-                .flatMap { it.content.asSequence() }
-                .firstOrNull { it.type == "output_text" && !it.text.isNullOrBlank() }
-                ?.text
-                ?: throw invalidResponse()
+            try {
+                transport.execute(properties.apiKey, request)
+            } catch (failure: OpenAiResponseFailure) {
+                throw failure.toQuizDraftProviderException()
+            }
 
         return parseOutput(outputText, input)
     }
@@ -200,12 +148,6 @@ class OpenAiQuizDraftProvider internal constructor(
         }
     }
 
-    private fun invalidResponse() =
-        QuizDraftProviderException(
-            code = "invalid_response",
-            message = "OpenAI quiz response did not include completed output text.",
-        )
-
     private fun invalidQuizOutput() =
         QuizDraftProviderException(
             code = "invalid_response",
@@ -218,33 +160,11 @@ private data class GeneratedChoice(
     val correct: Boolean,
 )
 
-private data class OpenAiQuizReasoning(
-    val effort: String,
-)
-
-private data class OpenAiQuizText(
-    val format: Map<String, Any>,
-)
-
 private data class OpenAiQuizDraftInput(
     val tag: String,
     val difficulty: String,
     val count: Int,
     val instruction: String?,
-)
-
-private data class OpenAiQuizResponse(
-    val status: String? = null,
-    val output: List<OpenAiQuizOutputItem> = emptyList(),
-)
-
-private data class OpenAiQuizOutputItem(
-    val content: List<OpenAiQuizContentPart> = emptyList(),
-)
-
-private data class OpenAiQuizContentPart(
-    val type: String? = null,
-    val text: String? = null,
 )
 
 private data class OpenAiQuizDraftOutput(
@@ -340,21 +260,53 @@ private fun questionInstruction(tag: GrammarTag): String =
         GrammarTag.UNNATURAL -> "Choose the most natural sentence."
     }
 
-private fun ResourceAccessException.hasQuizTimeoutCause(): Boolean =
-    generateSequence(cause) { it.cause }
-        .any { it is SocketTimeoutException || it is HttpTimeoutException }
-
 private fun waitBeforeQuizRetry(delay: Duration) {
-    try {
-        Thread.sleep(delay)
-    } catch (exception: InterruptedException) {
-        Thread.currentThread().interrupt()
-        throw QuizDraftProviderException(
+    waitBeforeOpenAiRetry(delay) {
+        QuizDraftProviderException(
             code = "request_failed",
             message = "OpenAI quiz retry was interrupted.",
         )
     }
 }
+
+private fun OpenAiResponseFailure.toQuizDraftProviderException(): QuizDraftProviderException =
+    when (kind) {
+        OpenAiResponseFailureKind.HTTP_STATUS ->
+            QuizDraftProviderException(
+                code = "request_failed",
+                message = "OpenAI quiz request failed with status $statusCode.",
+                retryable =
+                    requireNotNull(statusCode) in 500..599 ||
+                        statusCode in TRANSIENT_HTTP_STATUSES,
+            )
+        OpenAiResponseFailureKind.TIMEOUT ->
+            QuizDraftProviderException(
+                code = "timeout",
+                message = "OpenAI quiz request timed out.",
+                retryable = true,
+            )
+        OpenAiResponseFailureKind.REQUEST_FAILED ->
+            QuizDraftProviderException(
+                code = "request_failed",
+                message = "OpenAI quiz request could not be completed.",
+                retryable = true,
+            )
+        OpenAiResponseFailureKind.INVALID_RESPONSE ->
+            QuizDraftProviderException(
+                code = "invalid_response",
+                message = "OpenAI quiz response could not be parsed.",
+            )
+        OpenAiResponseFailureKind.INCOMPLETE ->
+            QuizDraftProviderException(
+                code = "invalid_response",
+                message = "OpenAI quiz response did not include completed output text.",
+            )
+        OpenAiResponseFailureKind.REFUSAL ->
+            QuizDraftProviderException(
+                code = "invalid_response",
+                message = "OpenAI quiz request was refused.",
+            )
+    }
 
 private val QUIZ_DRAFT_INSTRUCTIONS =
     listOf(
@@ -379,5 +331,3 @@ private val KOREAN_INSTRUCTION_PREFIXES =
 private val INNER_WHITESPACE = Regex("[\\t\\n\\u000c\\r ]+")
 
 private val TRANSIENT_HTTP_STATUSES = setOf(408, 409, 429)
-
-private const val RESPONSES_URL = "https://api.openai.com/v1/responses"

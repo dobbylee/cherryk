@@ -7,15 +7,9 @@ import io.github.dobbylee.cherryk.application.correction.CorrectionProviderInput
 import io.github.dobbylee.cherryk.application.correction.CorrectionResult
 import io.github.dobbylee.cherryk.domain.correction.MistakeSeverity
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
-import org.springframework.http.MediaType
-import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
-import org.springframework.web.client.RestClientException
-import org.springframework.web.client.RestClientResponseException
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.module.kotlin.readValue
-import java.net.SocketTimeoutException
-import java.net.http.HttpTimeoutException
 import java.time.Duration
 
 class OpenAiCorrectionProvider internal constructor(
@@ -24,6 +18,8 @@ class OpenAiCorrectionProvider internal constructor(
     private val objectMapper: ObjectMapper,
     private val retryWaiter: (Duration) -> Unit = ::waitBeforeRetry,
 ) : CorrectionProvider {
+    private val transport = OpenAiResponsesTransport(restClient)
+
     override fun correct(input: CorrectionProviderInput): CorrectionResult {
         requireConfigured()
         val request =
@@ -58,60 +54,12 @@ class OpenAiCorrectionProvider internal constructor(
     }
 
     private fun execute(request: Map<String, Any>): CorrectionResult {
-        val response =
-            try {
-                restClient
-                    .post()
-                    .uri(RESPONSES_URL)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer ${properties.apiKey}")
-                    .body(request)
-                    .retrieve()
-                    .body(OpenAiResponse::class.java)
-            } catch (exception: RestClientResponseException) {
-                val retryable =
-                    exception.statusCode.is5xxServerError ||
-                        exception.statusCode.value() == 429
-                throw CorrectionProviderException(
-                    code = "request_failed",
-                    message = "OpenAI correction request failed with status ${exception.statusCode.value()}.",
-                    retryable = retryable,
-                )
-            } catch (exception: ResourceAccessException) {
-                val timedOut = exception.hasTimeoutCause()
-                throw CorrectionProviderException(
-                    code = if (timedOut) "timeout" else "request_failed",
-                    message =
-                        if (timedOut) {
-                            "OpenAI correction request timed out."
-                        } else {
-                            "OpenAI correction request could not be completed."
-                        },
-                    retryable = !timedOut,
-                )
-            } catch (exception: RestClientException) {
-                throw CorrectionProviderException(
-                    code = "invalid_response",
-                    message = "OpenAI correction response could not be parsed.",
-                )
-            }
-
-        if (response?.status != "completed") {
-            throw invalidResponse()
-        }
-        if (response.output.flatMap(OpenAiOutputItem::content).any { it.type == "refusal" }) {
-            throw CorrectionProviderException(
-                code = "invalid_response",
-                message = "OpenAI correction request was refused.",
-            )
-        }
         val outputText =
-            response.output
-                .asSequence()
-                .flatMap { it.content.asSequence() }
-                .firstOrNull { it.type == "output_text" && !it.text.isNullOrBlank() }
-                ?.text
-                ?: throw invalidResponse()
+            try {
+                transport.execute(properties.apiKey, request)
+            } catch (failure: OpenAiResponseFailure) {
+                throw failure.toCorrectionProviderException()
+            }
 
         return parseOutput(outputText)
     }
@@ -159,39 +107,12 @@ class OpenAiCorrectionProvider internal constructor(
         }
     }
 
-    private fun invalidResponse() =
-        CorrectionProviderException(
-            code = "invalid_response",
-            message = "OpenAI correction response did not include completed output text.",
-        )
 }
-
-private data class OpenAiReasoning(
-    val effort: String,
-)
-
-private data class OpenAiText(
-    val format: Map<String, Any>,
-)
 
 private data class OpenAiCorrectionInput(
     val text: String,
     val level: String,
     val correctionStyle: String = "minimal",
-)
-
-private data class OpenAiResponse(
-    val status: String? = null,
-    val output: List<OpenAiOutputItem> = emptyList(),
-)
-
-private data class OpenAiOutputItem(
-    val content: List<OpenAiContentPart> = emptyList(),
-)
-
-private data class OpenAiContentPart(
-    val type: String? = null,
-    val text: String? = null,
 )
 
 private data class OpenAiCorrectionOutput(
@@ -265,21 +186,50 @@ private object OpenAiCorrectionSchema {
         )
 }
 
-private fun ResourceAccessException.hasTimeoutCause(): Boolean =
-    generateSequence(cause) { it.cause }
-        .any { it is SocketTimeoutException || it is HttpTimeoutException }
-
 private fun waitBeforeRetry(delay: Duration) {
-    try {
-        Thread.sleep(delay)
-    } catch (exception: InterruptedException) {
-        Thread.currentThread().interrupt()
-        throw CorrectionProviderException(
+    waitBeforeOpenAiRetry(delay) {
+        CorrectionProviderException(
             code = "request_failed",
             message = "OpenAI correction retry was interrupted.",
         )
     }
 }
+
+private fun OpenAiResponseFailure.toCorrectionProviderException(): CorrectionProviderException =
+    when (kind) {
+        OpenAiResponseFailureKind.HTTP_STATUS ->
+            CorrectionProviderException(
+                code = "request_failed",
+                message = "OpenAI correction request failed with status $statusCode.",
+                retryable = requireNotNull(statusCode) in 500..599 || statusCode == 429,
+            )
+        OpenAiResponseFailureKind.TIMEOUT ->
+            CorrectionProviderException(
+                code = "timeout",
+                message = "OpenAI correction request timed out.",
+            )
+        OpenAiResponseFailureKind.REQUEST_FAILED ->
+            CorrectionProviderException(
+                code = "request_failed",
+                message = "OpenAI correction request could not be completed.",
+                retryable = true,
+            )
+        OpenAiResponseFailureKind.INVALID_RESPONSE ->
+            CorrectionProviderException(
+                code = "invalid_response",
+                message = "OpenAI correction response could not be parsed.",
+            )
+        OpenAiResponseFailureKind.INCOMPLETE ->
+            CorrectionProviderException(
+                code = "invalid_response",
+                message = "OpenAI correction response did not include completed output text.",
+            )
+        OpenAiResponseFailureKind.REFUSAL ->
+            CorrectionProviderException(
+                code = "invalid_response",
+                message = "OpenAI correction request was refused.",
+            )
+    }
 
 private val CORRECTION_INSTRUCTIONS =
     listOf(
@@ -291,5 +241,3 @@ private val CORRECTION_INSTRUCTIONS =
         "Each mistake must describe a real change: originalPart and correctedPart must differ and must match the relevant source and corrected text exactly.",
         "Return English explanations and tags only from the allowed enum.",
     ).joinToString("\n")
-
-private const val RESPONSES_URL = "https://api.openai.com/v1/responses"
