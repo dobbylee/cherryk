@@ -115,12 +115,13 @@ export const AdminQuizDraftGenerationResponseSchema = z
     });
   });
 
-export const AdminQuizChoiceUpdateSchema = z.object({
-  id: EntityIdSchema.optional(),
-  text: z.string().trim().min(1),
-  isCorrect: z.boolean(),
-  sortOrder: z.number().int().min(0).max(3),
-});
+export const AdminQuizChoiceUpdateSchema = z
+  .object({
+    text: z.string().trim().min(1),
+    isCorrect: z.boolean(),
+    sortOrder: z.number().int().min(0).max(3),
+  })
+  .strict();
 
 export const AdminQuizUpdateRequestSchema = z
   .object({
@@ -160,17 +161,6 @@ export const AdminQuizUpdateRequestSchema = z
           code: "custom",
           path: ["choices"],
           message: "Quiz update choices must have unique sortOrder values.",
-        });
-      }
-
-      const definedIds = value.choices
-        .map((choice) => choice.id)
-        .filter((id) => id !== undefined);
-      if (new Set(definedIds).size !== definedIds.length) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["choices"],
-          message: "Quiz update choices must have unique ids.",
         });
       }
     }

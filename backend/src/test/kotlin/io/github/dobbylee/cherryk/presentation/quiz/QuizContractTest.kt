@@ -8,6 +8,7 @@ import org.springframework.core.io.ClassPathResource
 import tools.jackson.databind.JsonNode
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class QuizContractTest {
     private val objectMapper = jacksonObjectMapper()
@@ -145,6 +146,30 @@ class QuizContractTest {
             ),
             AdminQuizUpdateRequest.fromJson(fixtures.get("adminQuizUpdateRequest")),
         )
+    }
+
+    @Test
+    fun `admin update request rejects unknown choice fields`() {
+        listOf(
+            """"id":"4001",""",
+            """"legacyId":"4001",""",
+        ).forEach { unknownField ->
+            val payload =
+                objectMapper.readTree(
+                    """
+                    {
+                      "choices": [
+                        {$unknownField"text":"에","isCorrect":false,"sortOrder":0},
+                        {"text":"에서","isCorrect":true,"sortOrder":1},
+                        {"text":"을","isCorrect":false,"sortOrder":2},
+                        {"text":"는","isCorrect":false,"sortOrder":3}
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+            assertNull(AdminQuizUpdateRequest.fromJson(payload))
+        }
     }
 
     @Test

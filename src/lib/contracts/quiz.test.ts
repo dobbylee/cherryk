@@ -135,27 +135,28 @@ describe("AdminQuizUpdateRequestSchema", () => {
     ).toBe(false);
   });
 
-  it("requires unique defined choice ids", () => {
-    expect(
-      AdminQuizUpdateRequestSchema.safeParse({
-        choices: [
-          {
-            id: "101",
-            text: "은",
-            isCorrect: false,
-            sortOrder: 0,
-          },
-          {
-            id: "101",
-            text: "를",
-            isCorrect: true,
-            sortOrder: 1,
-          },
-          { text: "에", isCorrect: false, sortOrder: 2 },
-          { text: "이", isCorrect: false, sortOrder: 3 },
-        ],
-      }).success,
-    ).toBe(false);
+  it("rejects unknown choice fields", () => {
+    ["id", "legacyId"].forEach((unknownField) => {
+      expect(
+        AdminQuizUpdateRequestSchema.safeParse({
+          choices: [
+            {
+              [unknownField]: "101",
+              text: "은",
+              isCorrect: false,
+              sortOrder: 0,
+            },
+            {
+              text: "를",
+              isCorrect: true,
+              sortOrder: 1,
+            },
+            { text: "에", isCorrect: false, sortOrder: 2 },
+            { text: "이", isCorrect: false, sortOrder: 3 },
+          ],
+        }).success,
+      ).toBe(false);
+    });
   });
 });
 
@@ -184,10 +185,10 @@ describe("Spring admin quiz entity ids", () => {
     expect(
       AdminQuizUpdateRequestSchema.safeParse({
         choices: [
-          { id: "101", text: "은", isCorrect: false, sortOrder: 0 },
-          { id: "102", text: "를", isCorrect: true, sortOrder: 1 },
-          { id: "103", text: "에", isCorrect: false, sortOrder: 2 },
-          { id: "104", text: "이", isCorrect: false, sortOrder: 3 },
+          { text: "은", isCorrect: false, sortOrder: 0 },
+          { text: "를", isCorrect: true, sortOrder: 1 },
+          { text: "에", isCorrect: false, sortOrder: 2 },
+          { text: "이", isCorrect: false, sortOrder: 3 },
         ],
       }).success,
     ).toBe(true);

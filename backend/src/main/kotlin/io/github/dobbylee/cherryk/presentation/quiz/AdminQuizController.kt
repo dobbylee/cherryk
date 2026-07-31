@@ -220,11 +220,11 @@ data class AdminQuizChoiceUpdate(
                 if (!choice.isObject) {
                     return null
                 }
-                if (choice.has("id")) {
-                    val id = choice.textValue("id") ?: return null
-                    if (!id.isOpaqueEntityId()) {
-                        return null
-                    }
+                if (
+                    choice.size() != ADMIN_CHOICE_UPDATE_FIELDS.size ||
+                    ADMIN_CHOICE_UPDATE_FIELDS.any { !choice.has(it) }
+                ) {
+                    return null
                 }
                 val text =
                     choice.textValue("text")?.trim()?.takeIf(String::isNotEmpty)
@@ -345,9 +345,6 @@ private fun JsonNode.exactInt(): Int? {
 private fun String.toPositiveLongOrNull(): Long? =
     takeIf { it.matches(POSITIVE_LONG) }?.toLongOrNull()?.takeIf { it > 0 }
 
-private fun String.isOpaqueEntityId(): Boolean =
-    matches(POSITIVE_LONG) || matches(UUID)
-
 private const val MAX_QUIZ_INSTRUCTION_LENGTH = 1000
 private val UPDATE_FIELDS =
     setOf(
@@ -359,9 +356,6 @@ private val UPDATE_FIELDS =
         "answerExplanationEn",
         "status",
     )
+private val ADMIN_CHOICE_UPDATE_FIELDS = setOf("text", "isCorrect", "sortOrder")
 private val ADMIN_UPDATE_STATUSES = setOf(QuizStatus.DRAFT, QuizStatus.APPROVED)
 private val POSITIVE_LONG = Regex("[1-9]\\d*")
-private val UUID =
-    Regex(
-        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}",
-    )
