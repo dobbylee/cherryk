@@ -21,6 +21,10 @@ import type {
   QuizPracticeItem,
   QuizProgress,
 } from "@/lib/contracts/quiz";
+import {
+  invalidateLatestRequest,
+  runLatestRequest,
+} from "@/lib/latestRequest";
 
 type FormStatus = "idle" | "loading";
 
@@ -121,12 +125,7 @@ function QuizWorkspace() {
     quizAttemptStatus === "loading";
 
   const handleLoadRecommendedQuizzes = useCallback(async () => {
-    if (
-      !user ||
-      authStatus === "loading" ||
-      quizStatus === "loading" ||
-      quizAttemptStatus === "loading"
-    ) {
+    if (!user || authStatus === "loading") {
       return;
     }
 
@@ -135,31 +134,30 @@ function QuizWorkspace() {
     setQuizAttemptStatus("idle");
     setSelectedChoiceId(null);
     setQuizAttempt(null);
-    const requestId = quizRequestIdRef.current + 1;
-    quizRequestIdRef.current = requestId;
+    const result = await runLatestRequest(quizRequestIdRef, () =>
+      fetchQuizRecommendations(requestedTags),
+    );
 
-    try {
-      const response = await fetchQuizRecommendations(requestedTags);
-      if (quizRequestIdRef.current === requestId) {
-        setQuizzes(response.quizzes);
-        setAvailableTags(response.availableTags);
-        setActiveTags(response.activeTags);
-        setProgress(response.progress);
-        setActiveQuizIndex(0);
-        setSelectedChoiceId(null);
-        setQuizAttempt(null);
-        setMessage(response.quizzes.length ? null : "No approved quizzes yet.");
-      }
-    } catch (error) {
-      if (quizRequestIdRef.current === requestId) {
-        setMessage(error instanceof Error ? error.message : "Practice failed.");
-      }
-    } finally {
-      if (quizRequestIdRef.current === requestId) {
-        setQuizStatus("idle");
-      }
+    if (result.status === "success") {
+      const response = result.value;
+      setQuizzes(response.quizzes);
+      setAvailableTags(response.availableTags);
+      setActiveTags(response.activeTags);
+      setProgress(response.progress);
+      setActiveQuizIndex(0);
+      setSelectedChoiceId(null);
+      setQuizAttempt(null);
+      setMessage(response.quizzes.length ? null : "No approved quizzes yet.");
+      setQuizStatus("idle");
+    } else if (result.status === "error") {
+      setMessage(
+        result.error instanceof Error
+          ? result.error.message
+          : "Practice failed.",
+      );
+      setQuizStatus("idle");
     }
-  }, [authStatus, quizAttemptStatus, quizStatus, requestedTags, user]);
+  }, [authStatus, requestedTags, user]);
 
   useEffect(() => {
     if (!user || authStatus === "loading") {
@@ -177,7 +175,7 @@ function QuizWorkspace() {
   async function handleLogout() {
     setMessage(null);
     setAuthStatus("loading");
-    quizRequestIdRef.current += 1;
+    invalidateLatestRequest(quizRequestIdRef);
     setQuizStatus("idle");
     setQuizAttemptStatus("idle");
 
@@ -204,43 +202,40 @@ function QuizWorkspace() {
 
     setMessage(null);
     setQuizAttemptStatus("loading");
-    const requestId = quizRequestIdRef.current + 1;
-    quizRequestIdRef.current = requestId;
-
-    try {
-      const response = await submitQuizAttempt({
+    const result = await runLatestRequest(quizRequestIdRef, () =>
+      submitQuizAttempt({
         quizId: activeQuiz.id,
         selectedChoiceId,
-      });
-      if (quizRequestIdRef.current === requestId) {
-        setQuizAttempt(response);
-        setProgress((currentProgress) => ({
-          ...currentProgress,
-          solvedCount:
-            currentProgress.solvedCount +
-            (activeQuiz.attemptCount === 0 ? 1 : 0),
-          attemptCount: currentProgress.attemptCount + 1,
-          correctCount:
-            currentProgress.correctCount + (response.isCorrect ? 1 : 0),
-        }));
-        setQuizzes((currentQuizzes) =>
-          currentQuizzes.map((quiz) =>
-            quiz.id === activeQuiz.id
-              ? { ...quiz, attemptCount: quiz.attemptCount + 1 }
-              : quiz,
-          ),
-        );
-      }
-    } catch (error) {
-      if (quizRequestIdRef.current === requestId) {
-        setMessage(
-          error instanceof Error ? error.message : "Quiz attempt failed.",
-        );
-      }
-    } finally {
-      if (quizRequestIdRef.current === requestId) {
-        setQuizAttemptStatus("idle");
-      }
+      }),
+    );
+
+    if (result.status === "success") {
+      const response = result.value;
+      setQuizAttempt(response);
+      setProgress((currentProgress) => ({
+        ...currentProgress,
+        solvedCount:
+          currentProgress.solvedCount +
+          (activeQuiz.attemptCount === 0 ? 1 : 0),
+        attemptCount: currentProgress.attemptCount + 1,
+        correctCount:
+          currentProgress.correctCount + (response.isCorrect ? 1 : 0),
+      }));
+      setQuizzes((currentQuizzes) =>
+        currentQuizzes.map((quiz) =>
+          quiz.id === activeQuiz.id
+            ? { ...quiz, attemptCount: quiz.attemptCount + 1 }
+            : quiz,
+        ),
+      );
+      setQuizAttemptStatus("idle");
+    } else if (result.status === "error") {
+      setMessage(
+        result.error instanceof Error
+          ? result.error.message
+          : "Quiz attempt failed.",
+      );
+      setQuizAttemptStatus("idle");
     }
   }
 
