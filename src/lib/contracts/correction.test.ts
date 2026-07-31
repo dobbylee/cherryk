@@ -19,17 +19,23 @@ const correctionResponse = {
 };
 
 describe("CorrectionResponseSchema", () => {
-  it("accepts opaque non-empty string ids after BIGINT migration", () => {
+  it("accepts positive decimal string ids after BIGINT migration", () => {
     expect(CorrectionResponseSchema.parse(correctionResponse)).toEqual(
       correctionResponse,
     );
   });
 
-  it("rejects an empty correction id", () => {
+  it("rejects non-Spring correction ids", () => {
     expect(
       CorrectionResponseSchema.safeParse({
         ...correctionResponse,
         correctionId: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      CorrectionResponseSchema.safeParse({
+        ...correctionResponse,
+        correctionId: "20000000-0000-4000-8000-000000000001",
       }).success,
     ).toBe(false);
   });

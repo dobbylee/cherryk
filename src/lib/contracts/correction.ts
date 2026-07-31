@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserLevelSchema } from "./common";
+import { EntityIdSchema, UserLevelSchema } from "./common";
 import { GrammarTagSchema } from "./grammar-tags";
 
 export const CorrectionInputSchema = z.object({
@@ -17,18 +17,17 @@ export const CorrectionMistakeSchema = z.object({
   severity: z.enum(["minor", "major"]),
 });
 
-export const CorrectionAIOutputSchema = z.object({
+const CorrectionContentSchema = z.object({
   correctedText: z.string(),
   explanationEn: z.string(),
   mistakes: z.array(CorrectionMistakeSchema),
 });
 
-export const CorrectionResponseSchema = CorrectionAIOutputSchema.extend({
-  correctionId: z.string().min(1),
+export const CorrectionResponseSchema = CorrectionContentSchema.extend({
+  correctionId: EntityIdSchema,
   originalText: z.string(),
   recommendedTags: z.array(GrammarTagSchema),
 });
 
 export type CorrectionInput = z.infer<typeof CorrectionInputSchema>;
-export type CorrectionAIOutput = z.infer<typeof CorrectionAIOutputSchema>;
 export type CorrectionResponse = z.infer<typeof CorrectionResponseSchema>;

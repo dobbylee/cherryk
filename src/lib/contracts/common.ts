@@ -8,12 +8,9 @@ export const UserLevels = [
 
 export const UserLevelSchema = z.enum(UserLevels);
 
-// IDs are opaque strings at the API boundary. UUIDs are accepted while the
-// Next.js backend remains active; Spring returns decimal BIGINT identities.
-export const EntityIdSchema = z.union([
-  z.string().uuid(),
-  z.string().regex(/^[1-9]\d*$/),
-]);
+// IDs stay strings at the API boundary so clients never depend on JavaScript
+// number precision. The Spring backend exposes positive PostgreSQL BIGINT values.
+export const EntityIdSchema = z.string().regex(/^[1-9]\d*$/);
 
 export const ApiErrorSchema = z.object({
   error: z.object({

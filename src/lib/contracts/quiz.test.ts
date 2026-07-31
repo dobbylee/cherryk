@@ -4,7 +4,6 @@ import {
   AdminQuizDeleteResponseSchema,
   AdminQuizDraftGenerationResponseSchema,
   QuizDraftInputSchema,
-  QuizDraftOutputSchema,
   AdminQuizUpdateRequestSchema,
   AdminQuizUpdateResponseSchema,
   QuizAttemptRequestSchema,
@@ -20,30 +19,6 @@ describe("QuizDraftInputSchema", () => {
         tag: "particle_object",
         difficulty: "beginner",
         count: 100,
-      }).success,
-    ).toBe(false);
-  });
-});
-
-describe("QuizDraftOutputSchema", () => {
-  it("requires exactly one correct choice per question", () => {
-    expect(
-      QuizDraftOutputSchema.safeParse({
-        questions: [
-          {
-            tag: "particle_object",
-            difficulty: "beginner",
-            questionEn: "Choose the correct particle.",
-            sentenceKo: "저는 사과( ) 먹어요.",
-            choices: [
-              { text: "은", isCorrect: false },
-              { text: "를", isCorrect: true },
-              { text: "에", isCorrect: true },
-              { text: "이", isCorrect: false },
-            ],
-            answerExplanationEn: "Use 를 for the direct object.",
-          },
-        ],
       }).success,
     ).toBe(false);
   });
@@ -94,10 +69,16 @@ describe("QuizRecommendationResponseSchema", () => {
 });
 
 describe("QuizAttemptRequestSchema", () => {
-  it("requires quiz and selected choice UUIDs", () => {
+  it("requires positive decimal quiz and selected choice ids", () => {
     expect(
       QuizAttemptRequestSchema.safeParse({
-        quizId: "not-a-uuid",
+        quizId: "not-an-id",
+        selectedChoiceId: "33",
+      }).success,
+    ).toBe(false);
+    expect(
+      QuizAttemptRequestSchema.safeParse({
+        quizId: "32",
         selectedChoiceId: "33333333-3333-4333-8333-333333333333",
       }).success,
     ).toBe(false);
@@ -159,13 +140,13 @@ describe("AdminQuizUpdateRequestSchema", () => {
       AdminQuizUpdateRequestSchema.safeParse({
         choices: [
           {
-            id: "11111111-1111-4111-8111-111111111111",
+            id: "101",
             text: "은",
             isCorrect: false,
             sortOrder: 0,
           },
           {
-            id: "11111111-1111-4111-8111-111111111111",
+            id: "101",
             text: "를",
             isCorrect: true,
             sortOrder: 1,
@@ -218,6 +199,29 @@ describe("Spring admin quiz entity ids", () => {
     expect(
       AdminQuizDeleteResponseSchema.safeParse({ deletedQuizId: "42" }).success,
     ).toBe(true);
+  });
+
+  it("rejects draft responses without exactly one correct choice", () => {
+    expect(
+      AdminQuizDraftGenerationResponseSchema.safeParse({
+        drafts: [
+          {
+            id: "42",
+            tag: "particle_object",
+            difficulty: "beginner",
+            questionEn: "Choose the correct particle.",
+            sentenceKo: "저는 사과( ) 먹어요.",
+            choices: [
+              { text: "은", isCorrect: false },
+              { text: "를", isCorrect: true },
+              { text: "에", isCorrect: true },
+              { text: "이", isCorrect: false },
+            ],
+            answerExplanationEn: "Use 를.",
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });
 

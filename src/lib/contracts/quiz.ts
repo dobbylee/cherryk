@@ -25,25 +25,6 @@ export const QuizDraftQuestionSchema = z.object({
   answerExplanationEn: z.string().trim().min(1),
 });
 
-export const QuizDraftOutputSchema = z
-  .object({
-    questions: z.array(QuizDraftQuestionSchema),
-  })
-  .superRefine((value, ctx) => {
-    value.questions.forEach((question, index) => {
-      const correctCount = question.choices.filter(
-        (choice) => choice.isCorrect,
-      ).length;
-      if (correctCount !== 1) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["questions", index, "choices"],
-          message: "Quiz questions must have exactly one correct choice.",
-        });
-      }
-    });
-  });
-
 export const QuizRecommendationQuerySchema = z.object({
   tags: z.array(GrammarTagSchema).max(GrammarTags.length).default([]),
 });
@@ -115,9 +96,24 @@ export const AdminQuizDraftSchema = QuizDraftQuestionSchema.extend({
   id: EntityIdSchema,
 });
 
-export const AdminQuizDraftGenerationResponseSchema = z.object({
-  drafts: z.array(AdminQuizDraftSchema),
-});
+export const AdminQuizDraftGenerationResponseSchema = z
+  .object({
+    drafts: z.array(AdminQuizDraftSchema),
+  })
+  .superRefine((value, ctx) => {
+    value.drafts.forEach((draft, index) => {
+      const correctCount = draft.choices.filter(
+        (choice) => choice.isCorrect,
+      ).length;
+      if (correctCount !== 1) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["drafts", index, "choices"],
+          message: "Quiz drafts must have exactly one correct choice.",
+        });
+      }
+    });
+  });
 
 export const AdminQuizChoiceUpdateSchema = z.object({
   id: EntityIdSchema.optional(),
@@ -193,7 +189,6 @@ export const AdminQuizDeleteResponseSchema = z.object({
 
 export type QuizStatus = z.infer<typeof QuizStatusSchema>;
 export type QuizDraftInput = z.infer<typeof QuizDraftInputSchema>;
-export type QuizDraftOutput = z.infer<typeof QuizDraftOutputSchema>;
 export type QuizRecommendationQuery = z.infer<
   typeof QuizRecommendationQuerySchema
 >;

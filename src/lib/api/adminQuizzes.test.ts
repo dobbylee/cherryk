@@ -43,9 +43,7 @@ describe("admin quiz API helpers", () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const headers = new Headers(init?.headers);
-        expect(input).toBe(
-          "/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
-        );
+        expect(input).toBe("/api/v1/admin/quizzes/111");
         expect(init?.method).toBe("PATCH");
         expect([...headers.keys()]).toEqual(["content-type"]);
         expect(init?.body).toBe(
@@ -55,7 +53,7 @@ describe("admin quiz API helpers", () => {
         );
         return Response.json({
           quiz: {
-            id: "11111111-1111-4111-8111-111111111111",
+            id: "111",
             status: "approved",
           },
         });
@@ -65,12 +63,12 @@ describe("admin quiz API helpers", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      updateAdminQuiz("11111111-1111-4111-8111-111111111111", {
+      updateAdminQuiz("111", {
         status: "approved",
       }),
     ).resolves.toEqual({
       quiz: {
-        id: "11111111-1111-4111-8111-111111111111",
+        id: "111",
         status: "approved",
       },
     });
@@ -80,23 +78,19 @@ describe("admin quiz API helpers", () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const headers = new Headers(init?.headers);
-        expect(input).toBe(
-          "/api/v1/admin/quizzes/11111111-1111-4111-8111-111111111111",
-        );
+        expect(input).toBe("/api/v1/admin/quizzes/111");
         expect(init?.method).toBe("DELETE");
         expect([...headers.keys()]).toEqual([]);
         return Response.json({
-          deletedQuizId: "11111111-1111-4111-8111-111111111111",
+          deletedQuizId: "111",
         });
       },
     );
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(
-      deleteAdminQuizDraft("11111111-1111-4111-8111-111111111111"),
-    ).resolves.toEqual({
-      deletedQuizId: "11111111-1111-4111-8111-111111111111",
+    await expect(deleteAdminQuizDraft("111")).resolves.toEqual({
+      deletedQuizId: "111",
     });
   });
 });
