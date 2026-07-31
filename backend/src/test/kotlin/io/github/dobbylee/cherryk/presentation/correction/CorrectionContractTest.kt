@@ -31,7 +31,7 @@ class CorrectionContractTest {
         val actual: JsonNode =
             objectMapper.valueToTree(
                 CorrectionResponse(
-                    correctionId = "20000000-0000-4000-8000-000000000001",
+                    correctionId = "2001",
                     originalText = "저는 학교에 공부했어요.",
                     correctedText = "저는 학교에서 공부했어요.",
                     explanationEn = "Use 에서 for the place where an action happens.",

@@ -41,7 +41,7 @@ class QuizController(
     ): QuizRecommendationResponse {
         val userId = authenticatedUserId(principal)
         val parsedTags =
-            tags?.let(::parseTags)
+            tags?.let(::parseQuizRecommendationTags)
                 ?: if (tags != null) throw QuizInvalidRequestException(
                     "Quiz recommendation query is invalid.",
                 ) else null
@@ -225,7 +225,7 @@ class QuizUnavailableException(
     cause: Throwable,
 ) : RuntimeException(publicMessage, cause)
 
-private fun parseTags(value: String): List<GrammarTag>? {
+internal fun parseQuizRecommendationTags(value: String): List<GrammarTag>? {
     val values =
         value
             .split(",")

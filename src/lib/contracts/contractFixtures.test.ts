@@ -18,7 +18,7 @@ import {
 
 describe("Spring migration API fixtures", () => {
   it("remain valid examples of every public v1 contract", () => {
-    expect(fixtures.version).toBe(1);
+    expect(fixtures.version).toBe(2);
     expect(ApiErrorSchema.parse(fixtures.apiError)).toEqual(fixtures.apiError);
     expect(MeResponseSchema.parse(fixtures.meResponse)).toEqual(
       fixtures.meResponse,

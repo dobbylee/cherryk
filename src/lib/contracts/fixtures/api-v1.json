@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "apiError": {
     "error": {
       "code": "validation_failed",
@@ -20,7 +20,7 @@
     "correctionStyle": "minimal"
   },
   "correctionResponse": {
-    "correctionId": "20000000-0000-4000-8000-000000000001",
+    "correctionId": "2001",
     "originalText": "저는 학교에 공부했어요.",
     "correctedText": "저는 학교에서 공부했어요.",
     "explanationEn": "Use 에서 for the place where an action happens.",
@@ -45,26 +45,26 @@
   "quizRecommendationResponse": {
     "quizzes": [
       {
-        "id": "30000000-0000-4000-8000-000000000001",
+        "id": "3001",
         "tag": "particle_location",
         "difficulty": "beginner",
         "questionEn": "Choose the particle for where an action happens.",
         "sentenceKo": "저는 도서관( ) 공부해요.",
         "choices": [
           {
-            "id": "40000000-0000-4000-8000-000000000001",
+            "id": "4001",
             "text": "에"
           },
           {
-            "id": "40000000-0000-4000-8000-000000000002",
+            "id": "4002",
             "text": "에서"
           },
           {
-            "id": "40000000-0000-4000-8000-000000000003",
+            "id": "4003",
             "text": "을"
           },
           {
-            "id": "40000000-0000-4000-8000-000000000004",
+            "id": "4004",
             "text": "는"
           }
         ],
@@ -81,12 +81,12 @@
     }
   },
   "quizAttemptRequest": {
-    "quizId": "30000000-0000-4000-8000-000000000001",
-    "selectedChoiceId": "40000000-0000-4000-8000-000000000002"
+    "quizId": "3001",
+    "selectedChoiceId": "4002"
   },
   "quizAttemptResponse": {
     "isCorrect": true,
-    "correctChoiceId": "40000000-0000-4000-8000-000000000002",
+    "correctChoiceId": "4002",
     "explanationEn": "Use 에서 for the place where an action happens."
   },
   "adminQuizDraftRequest": {
@@ -98,7 +98,7 @@
   "adminQuizDraftResponse": {
     "drafts": [
       {
-        "id": "30000000-0000-4000-8000-000000000001",
+        "id": "3001",
         "tag": "particle_location",
         "difficulty": "beginner",
         "questionEn": "Choose the particle for where an action happens.",
@@ -118,11 +118,11 @@
   },
   "adminQuizUpdateResponse": {
     "quiz": {
-      "id": "30000000-0000-4000-8000-000000000001",
+      "id": "3001",
       "status": "approved"
     }
   },
   "adminQuizDeleteResponse": {
-    "deletedQuizId": "30000000-0000-4000-8000-000000000001"
+    "deletedQuizId": "3001"
   }
 }
