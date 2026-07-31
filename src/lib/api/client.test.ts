@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchJson, fetchNoContent } from "./client";
+import { z } from "zod";
+import {
+  ApiContractError,
+  ApiRequestError,
+  fetchJson,
+  fetchNoContent,
+} from "./client";
+
+const OkResponseSchema = z.object({ ok: z.boolean() });
 
 describe("fetchJson", () => {
   afterEach(() => {
@@ -17,7 +25,7 @@ describe("fetchJson", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await fetchJson<{ ok: boolean }>("/api/test", {
+    await fetchJson("/api/test", OkResponseSchema, {
       method: "POST",
       body: JSON.stringify({ ok: true }),
     });
@@ -37,7 +45,7 @@ describe("fetchJson", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await fetchJson<{ ok: boolean }>("/api/v1/ocr/extract", {
+    await fetchJson("/api/v1/ocr/extract", OkResponseSchema, {
       method: "POST",
       body,
     });
@@ -59,9 +67,67 @@ describe("fetchJson", () => {
       ),
     );
 
-    await expect(fetchJson("/api/test")).rejects.toThrow(
+    await expect(fetchJson("/api/test", OkResponseSchema)).rejects.toThrow(
       "Correction request is invalid.",
     );
+  });
+
+  it("preserves status and code for API errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: "invalid_request",
+              message: "Request is invalid.",
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    const error = await fetchJson("/api/test", OkResponseSchema).catch(
+      (caught) => caught,
+    );
+
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error).toMatchObject({
+      code: "invalid_request",
+      message: "Request is invalid.",
+      status: 400,
+    });
+  });
+
+  it("uses the HTTP status when an error body is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () => new Response("<html>Bad gateway</html>", { status: 502 }),
+      ),
+    );
+
+    const error = await fetchJson("/api/test", OkResponseSchema).catch(
+      (caught) => caught,
+    );
+
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error).toMatchObject({
+      message: "Request failed with status 502",
+      status: 502,
+    });
+  });
+
+  it("rejects successful payloads that violate the response contract", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ ok: "yes" })),
+    );
+
+    await expect(
+      fetchJson("/api/test", OkResponseSchema),
+    ).rejects.toBeInstanceOf(ApiContractError);
   });
 
   it("sends the readable CSRF cookie on state-changing requests", async () => {
@@ -80,6 +146,51 @@ describe("fetchJson", () => {
     await fetchNoContent("/api/auth/logout", { method: "POST" });
   });
 
+  it("preserves status and code for no-content API errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: "forbidden",
+              message: "Access is not allowed.",
+            },
+          },
+          { status: 403 },
+        ),
+      ),
+    );
+
+    const error = await fetchNoContent("/api/auth/logout", {
+      method: "POST",
+    }).catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error).toMatchObject({
+      code: "forbidden",
+      message: "Access is not allowed.",
+      status: 403,
+    });
+  });
+
+  it("uses the HTTP status for non-JSON no-content errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 503 })),
+    );
+
+    const error = await fetchNoContent("/api/auth/logout", {
+      method: "POST",
+    }).catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error).toMatchObject({
+      message: "Request failed with status 503",
+      status: 503,
+    });
+  });
+
   it("does not send a CSRF header on safe requests", async () => {
     vi.stubGlobal("document", { cookie: "XSRF-TOKEN=csrf-token" });
     vi.stubGlobal(
@@ -91,6 +202,6 @@ describe("fetchJson", () => {
       }),
     );
 
-    await fetchJson<{ ok: boolean }>("/api/test");
+    await fetchJson("/api/test", OkResponseSchema);
   });
 });

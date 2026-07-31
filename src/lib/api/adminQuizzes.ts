@@ -1,15 +1,18 @@
 import type {
-  AdminQuizDeleteResponse,
-  AdminQuizDraftGenerationResponse,
   AdminQuizUpdateRequest,
-  AdminQuizUpdateResponse,
   QuizDraftInput,
+} from "@/lib/contracts/quiz";
+import {
+  AdminQuizDeleteResponseSchema,
+  AdminQuizDraftGenerationResponseSchema,
+  AdminQuizUpdateResponseSchema,
 } from "@/lib/contracts/quiz";
 import { fetchJson } from "./client";
 
 export function generateAdminQuizDrafts(input: QuizDraftInput) {
-  return fetchJson<AdminQuizDraftGenerationResponse>(
+  return fetchJson(
     "/api/v1/admin/quizzes/generate-drafts",
+    AdminQuizDraftGenerationResponseSchema,
     {
       method: "POST",
       body: JSON.stringify(input),
@@ -18,14 +21,22 @@ export function generateAdminQuizDrafts(input: QuizDraftInput) {
 }
 
 export function updateAdminQuiz(quizId: string, input: AdminQuizUpdateRequest) {
-  return fetchJson<AdminQuizUpdateResponse>(`/api/v1/admin/quizzes/${quizId}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
+  return fetchJson(
+    `/api/v1/admin/quizzes/${quizId}`,
+    AdminQuizUpdateResponseSchema,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 export function deleteAdminQuizDraft(quizId: string) {
-  return fetchJson<AdminQuizDeleteResponse>(`/api/v1/admin/quizzes/${quizId}`, {
-    method: "DELETE",
-  });
+  return fetchJson(
+    `/api/v1/admin/quizzes/${quizId}`,
+    AdminQuizDeleteResponseSchema,
+    {
+      method: "DELETE",
+    },
+  );
 }
