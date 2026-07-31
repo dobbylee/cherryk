@@ -110,8 +110,12 @@ SESSION_COOKIE_SECURE
 development. The local Google authorized redirect URI is:
 
 ```text
-http://localhost:8080/api/auth/callback/google
+http://localhost:3000/api/auth/callback/google
 ```
+
+The browser enters through Next on port 3000, which rewrites the callback to
+Spring on port 8080. Register a direct port-8080 callback only for an intentional
+backend-only diagnostic flow.
 
 The authentication endpoints are:
 

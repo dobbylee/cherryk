@@ -7,13 +7,11 @@ code alone. Exact dependency versions live in manifests.
 
 - Keep the Next.js frontend on Vercel and move backend behavior to Kotlin/Spring MVC in one Docker container on a cloud VM.
 - Keep Production PostgreSQL on Neon; do not colocate it on the backend VM.
-- Run Spring Preview on an OCI Ampere A1 VM behind a Dockerized Nginx TLS proxy at `api-preview.cherryk.kr`; manage the domain with Vercel DNS and certificates with host Certbot.
 - Expose Spring Production at `api.cherryk.kr`. After cutover, keep one Spring
   application container configured for Production behind the existing Nginx proxy;
-  the current Preview application container is transitional, not a second permanent
-  service. Never route Preview traffic to the Production container or database.
-  Future backend Preview verification must use a separately configured temporary
-  container and database.
+  do not operate a second permanent Preview service. Never route Preview traffic
+  to the Production container or database. Future backend Preview verification
+  must use a separately configured temporary container and database.
 - Keep Spring and Neon in nearby APAC regions. With the backend in OCI Chuncheon and no Neon Seoul region, use Neon AWS Singapore instead of the legacy US East project.
 - Preserve `/api/v1` contracts through the migration. Do not use dual writes.
 - Do not add Redis, JWT, WebFlux, coroutines, or microservices without a measured need and a new decision.
