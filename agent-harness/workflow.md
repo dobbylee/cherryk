@@ -29,3 +29,11 @@ fit is at least 2. Otherwise leave a task note instead.
 When changing the harness, record the triggering failure, score, and why the
 chosen placement is the smallest effective safeguard. Tighten an existing rule
 instead of adding a duplicate.
+
+## Recorded Safeguards
+
+- `pnpm test` reruns backend tests and checks formatting; `pnpm verify` also builds
+  both applications and validates Compose. This was added after cached Gradle
+  output hid Docker-blocked integration tests and seven files drifted from the
+  repository formatter (severity `2`, recurrence `2`, detectability `2`, rule fit
+  `3`; total `9`). Package scripts are the smallest deterministic check.

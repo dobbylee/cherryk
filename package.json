@@ -6,15 +6,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:backend": "./backend/gradlew -p backend bootJar",
+    "compose:check": "docker compose --profile backend config --quiet",
     "start": "next start",
+    "format:check": "prettier --check .",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:frontend && pnpm test:backend",
-    "test:frontend": "pnpm lint && pnpm typecheck && pnpm test:unit",
-    "test:backend": "./backend/gradlew -p backend test",
+    "test:frontend": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit",
+    "test:backend": "./backend/gradlew -p backend test --rerun-tasks",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "build:backend": "./backend/gradlew -p backend bootJar"
+    "verify": "pnpm test && pnpm build && pnpm build:backend && pnpm compose:check"
   },
   "dependencies": {
     "@vercel/analytics": "2.0.1",

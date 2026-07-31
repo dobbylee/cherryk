@@ -41,7 +41,12 @@ that can access the quiz review workflow.
 
 ```bash
 pnpm test
+pnpm verify
 pnpm test:unit
 pnpm build
 pnpm build:backend
 ```
+
+`pnpm test` always reruns backend tests and therefore requires Docker for the
+Testcontainers integration suite. `pnpm verify` adds both production builds and
+Compose configuration validation.
