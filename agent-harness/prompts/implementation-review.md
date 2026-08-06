@@ -1,8 +1,8 @@
 # Implementation Review
 
-Read `AGENTS.md` and the active task detail routed by `local/plan.md`. Review only
-the changed files listed by the main agent; do not edit or request unrelated
-cleanup.
+Read `AGENTS.md`, `local/plan.md`, and only an active task detail explicitly routed
+there, if one exists. Review only the changed files listed by the main agent; do
+not edit or request unrelated cleanup.
 
 Look for concrete bugs, regressions, security/privacy/data-loss risks, contract
 or schema drift, missing validation, and missing tests. Enforce only applicable

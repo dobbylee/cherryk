@@ -37,3 +37,8 @@ instead of adding a duplicate.
   output hid Docker-blocked integration tests and seven files drifted from the
   repository formatter (severity `2`, recurrence `2`, detectability `2`, rule fit
   `3`; total `9`). Package scripts are the smallest deterministic check.
+- Keep `local/plan.md` current-only, durable decisions actionable, and completed
+  rollout evidence in task details. This tightened the existing ownership rule
+  after completed migration work remained duplicated as active guidance across
+  all three layers (severity `2`, recurrence `2`, detectability `2`, rule fit `2`;
+  total `8`).

@@ -3,10 +3,11 @@
 This repository is the CherryK MVP with a Next.js frontend and Kotlin/Spring
 backend.
 
-Before planning or editing, read this file and `local/plan.md`. The plan is a
-router: read only the linked detail document needed for the active task.
-Durable choices belong in `agent-harness/decisions.md`; resolved versions and
-structure should be read from manifests and code.
+Before planning or editing, read this file and `local/plan.md`. Keep the plan a
+current-state router: do not copy completed rollout logs, test counts, or commit
+lists into it. Read only the detail document linked for an active task. Durable
+choices belong in `agent-harness/decisions.md`; completed history belongs in the
+task detail, while resolved versions and structure come from manifests and code.
 
 ## Execution
 
