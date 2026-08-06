@@ -35,8 +35,9 @@ and the Production Neon database in Singapore.
 Preview must never use the Production container or database. Backend Preview
 verification uses a separately configured temporary container and Neon branch.
 
-OCI deployment replaces only the backend service after building a commit-addressed
-image:
+The `Deploy Backend` GitHub Actions workflow runs only after the `CI` workflow
+succeeds for a `main` push. It builds an ARM64, commit-addressed image, transfers
+it directly to OCI, and replaces only the backend service:
 
 ```bash
 sudo docker compose up -d --no-deps backend
@@ -45,6 +46,10 @@ curl --fail --silent --show-error https://api.cherryk.kr/actuator/health
 
 Keep the previous image and a protected Compose backup until Production health,
 authentication, and the changed behavior are verified.
+
+The GitHub `Production` environment provides `OCI_SSH_HOST` and `OCI_SSH_USER`
+variables plus `OCI_SSH_PRIVATE_KEY` and `OCI_SSH_KNOWN_HOSTS` secrets. Deployment
+jobs are serialized and fail closed if `main` advances beyond the verified SHA.
 
 ## Maintenance write block
 

@@ -12,6 +12,14 @@ code alone. Exact dependency versions live in manifests.
   do not operate a second permanent Preview service. Never route Preview traffic
   to the Production container or database. Future backend Preview verification
   must use a separately configured temporary container and database.
+- While CherryK has one developer, use only the local checkout, `preview`, and
+  `main`: push reviewed commits directly to `preview`, run the full CI gate there,
+  verify Preview, and fast-forward the same green commit to `main`. Do not require
+  feature branches or pull requests for this stage.
+- Keep Vercel Git deployment as the frontend CD path. A successful `main` CI run
+  deploys the commit-addressed ARM64 backend image to OCI, serializes Production
+  changes, preserves the previous image and Compose file, and rolls the application
+  container back when health or public contract checks fail.
 - Keep Spring and Neon in nearby APAC regions. With the backend in OCI Chuncheon and no Neon Seoul region, use Neon AWS Singapore instead of the legacy US East project.
 - Preserve `/api/v1` contracts through the migration. Do not use dual writes.
 - Do not add Redis, JWT, WebFlux, coroutines, or microservices without a measured need and a new decision.

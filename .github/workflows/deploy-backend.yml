@@ -1,0 +1,108 @@
+name: Deploy Backend
+run-name: Deploy backend ${{ github.event.workflow_run.head_sha }}
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backend-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' }}
+    environment: Production
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      OCI_SSH_HOST: ${{ vars.OCI_SSH_HOST }}
+      OCI_SSH_USER: ${{ vars.OCI_SSH_USER }}
+    steps:
+      # v7.0.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Validate deployment configuration
+        env:
+          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+
+          test "$DEPLOY_SHA" = "$(git rev-parse HEAD)"
+          test -n "$OCI_SSH_HOST"
+          test -n "$OCI_SSH_USER"
+          test -n "$OCI_SSH_PRIVATE_KEY"
+          test -n "$OCI_SSH_KNOWN_HOSTS"
+
+      - name: Build ARM64 backend image
+        run: |
+          set -Eeuo pipefail
+
+          docker build \
+            --platform linux/arm64 \
+            --tag "cherryk-backend:${DEPLOY_SHA}" \
+            backend
+
+      - name: Configure SSH
+        env:
+          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+
+          install -m 700 -d "$RUNNER_TEMP/cherryk-ssh"
+          install -m 600 /dev/null "$RUNNER_TEMP/cherryk-ssh/id_ed25519"
+          install -m 600 /dev/null "$RUNNER_TEMP/cherryk-ssh/known_hosts"
+          printf '%s\n' "$OCI_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/cherryk-ssh/id_ed25519"
+          printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/cherryk-ssh/known_hosts"
+
+      - name: Confirm main still targets this commit
+        run: |
+          set -Eeuo pipefail
+
+          remote_main=$(git ls-remote origin refs/heads/main | cut -f1)
+          test "$remote_main" = "$DEPLOY_SHA"
+
+      - name: Transfer backend image
+        run: |
+          set -Eeuo pipefail
+
+          docker save "cherryk-backend:${DEPLOY_SHA}" |
+            gzip -1 |
+            ssh \
+              -i "$RUNNER_TEMP/cherryk-ssh/id_ed25519" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/cherryk-ssh/known_hosts" \
+              "$OCI_SSH_USER@$OCI_SSH_HOST" \
+              'gzip -dc | sudo docker load'
+
+      - name: Deploy with automatic rollback
+        run: |
+          set -Eeuo pipefail
+
+          remote_main=$(git ls-remote origin refs/heads/main | cut -f1)
+          test "$remote_main" = "$DEPLOY_SHA"
+
+          ssh \
+            -i "$RUNNER_TEMP/cherryk-ssh/id_ed25519" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/cherryk-ssh/known_hosts" \
+            "$OCI_SSH_USER@$OCI_SSH_HOST" \
+            "sudo env DEPLOY_SHA='$DEPLOY_SHA' bash -s" \
+            < ops/deploy-backend.sh
