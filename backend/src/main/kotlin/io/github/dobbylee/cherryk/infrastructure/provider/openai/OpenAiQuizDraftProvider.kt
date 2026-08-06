@@ -112,7 +112,10 @@ class OpenAiQuizDraftProvider internal constructor(
                 val sentenceKo =
                     when (input.quizType) {
                         QuizType.GRAMMAR ->
-                            stripKnownInstructionPrefix(requireNotNull(question.sentenceKo))
+                            normalizeGrammarSentence(
+                                value = requireNotNull(question.sentenceKo),
+                                tag = input.tag,
+                            )
                         QuizType.VOCABULARY -> {
                             require((listOf(correctAnswer) + distractors).all(::isKoreanVocabularyChoice))
                             null
@@ -275,16 +278,59 @@ private fun normalizeVocabularyDefinition(value: String): String {
     return definition
 }
 
-private fun stripKnownInstructionPrefix(value: String): String {
+private fun normalizeGrammarSentence(
+    value: String,
+    tag: GrammarTag,
+): String {
     val trimmed = value.trim()
     val withoutPrefix =
-        KOREAN_INSTRUCTION_PREFIXES
-            .firstOrNull(trimmed::startsWith)
-            ?.let { prefix -> trimmed.removePrefix(prefix).trimStart() }
-            ?: trimmed
+        if (tag == GrammarTag.UNNATURAL) {
+            trimmed
+        } else {
+            val prefix = KOREAN_DIRECTIVE_PREFIX.find(trimmed)
+            if (prefix != null && isInstructionForTag(prefix.value, tag)) {
+                trimmed.removeRange(prefix.range).trimStart()
+            } else {
+                trimmed
+            }
+        }
     require(withoutPrefix.isNotBlank()) { "Quiz sentence must not be blank." }
     return withoutPrefix
 }
+
+private fun isInstructionForTag(
+    prefix: String,
+    tag: GrammarTag,
+): Boolean {
+    if (GENERIC_NEXT_CHOICE.containsMatchIn(prefix)) {
+        return true
+    }
+
+    val instructionTerms =
+        when (tag) {
+            GrammarTag.PARTICLE_SUBJECT,
+            GrammarTag.PARTICLE_TOPIC,
+            GrammarTag.PARTICLE_OBJECT,
+            GrammarTag.PARTICLE_LOCATION,
+            -> listOf("조사")
+            GrammarTag.VERB_CONJUGATION -> listOf("동사", "활용형", "변형")
+            GrammarTag.HONORIFIC -> listOf("높임말", "존댓말", "경어")
+            GrammarTag.SPACING -> listOf("띄어쓰기", "띄어 쓰기")
+            GrammarTag.WORD_CHOICE -> listOf("단어", "표현", "어휘")
+            GrammarTag.SENTENCE_ORDER -> listOf("단어", "문장", "순서", "어순")
+            GrammarTag.MISSING_WORD -> listOf("빈칸", "단어", "누락")
+            GrammarTag.UNNATURAL -> emptyList()
+        }
+    return instructionTerms.any { term -> containsBoundedKoreanTerm(prefix, term) }
+}
+
+private fun containsBoundedKoreanTerm(
+    value: String,
+    term: String,
+): Boolean =
+    Regex(
+        """(?:^|\s)${Regex.escape(term)}(?:으로|에서|에게|부터|까지|을|를|이|가|은|는|의|로|에|와|과)?(?=\s|[,，:：.]|$)""",
+    ).containsMatchIn(value)
 
 private fun questionInstruction(tag: GrammarTag): String =
     when (tag) {
@@ -363,13 +409,13 @@ private val QUIZ_DRAFT_INSTRUCTIONS =
         "The server supplies the English question instruction for grammar quizzes and randomizes choice order for every quiz.",
     ).joinToString("\n")
 
-private val KOREAN_INSTRUCTION_PREFIXES =
-    listOf(
-        "다음 중 알맞은 것을 고르시오:",
-        "다음 중 알맞은 것을 고르세요:",
-        "다음 중 올바른 것을 고르시오:",
-        "다음 중 올바른 것을 고르세요:",
+private val KOREAN_DIRECTIVE_PREFIX =
+    Regex(
+        """^다음[^:：.\r\n]*(?:세요|시오|십시오|하라)[^:：.\r\n]*(?:[:：]|\.\s+|\r?\n)\s*""",
     )
+
+private val GENERIC_NEXT_CHOICE =
+    Regex("""^다음\s+중(?:에서|에)?(?=\s|[,，:：.]|$)""")
 
 private val INNER_WHITESPACE = Regex("[\\t\\n\\u000c\\r ]+")
 

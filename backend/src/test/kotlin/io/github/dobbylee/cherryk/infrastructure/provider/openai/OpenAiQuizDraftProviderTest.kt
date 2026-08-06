@@ -203,6 +203,167 @@ class OpenAiQuizDraftProviderTest {
     }
 
     @Test
+    fun `removes tag-specific Korean instructions from grammar exercise content`() {
+        listOf(
+            Triple(
+                GrammarTag.PARTICLE_SUBJECT,
+                "다음 빈칸에 알맞은 주격 조사를 넣으세요: 비( ) 와요.",
+                "비( ) 와요.",
+            ),
+            Triple(
+                GrammarTag.PARTICLE_TOPIC,
+                "다음 문장에서 올바른 조사를 선택하세요: 저는 학생이에요.",
+                "저는 학생이에요.",
+            ),
+            Triple(
+                GrammarTag.PARTICLE_OBJECT,
+                "다음 중에서 알맞은 것을 고르시오: 저는 사과( ) 먹어요.",
+                "저는 사과( ) 먹어요.",
+            ),
+            Triple(
+                GrammarTag.PARTICLE_OBJECT,
+                "다음 중에 알맞은 것을 고르세요: 저는 책( ) 읽어요.",
+                "저는 책( ) 읽어요.",
+            ),
+            Triple(
+                GrammarTag.PARTICLE_LOCATION,
+                "다음 문장에 맞는 위치 조사를 쓰세요: 학교( ) 공부해요.",
+                "학교( ) 공부해요.",
+            ),
+            Triple(
+                GrammarTag.VERB_CONJUGATION,
+                "다음 동사를 올바르게 활용하세요: 어제 친구를 만났어요.",
+                "어제 친구를 만났어요.",
+            ),
+            Triple(
+                GrammarTag.HONORIFIC,
+                "다음 문장을 높임말로 바꾸세요: 할머니께서 주무세요.",
+                "할머니께서 주무세요.",
+            ),
+            Triple(
+                GrammarTag.SPACING,
+                "다음 문장의 띄어쓰기를 고치세요. 저는 학교에 가요.",
+                "저는 학교에 가요.",
+            ),
+            Triple(
+                GrammarTag.WORD_CHOICE,
+                "다음 문장에 가장 자연스러운 단어를 쓰세요: 날씨가 아주 좋아요.",
+                "날씨가 아주 좋아요.",
+            ),
+            Triple(
+                GrammarTag.SENTENCE_ORDER,
+                "다음 단어를 바르게 배열하세요: 저는 매일 학교에 가요.",
+                "저는 매일 학교에 가요.",
+            ),
+            Triple(
+                GrammarTag.MISSING_WORD,
+                "다음 빈칸을 알맞은 단어로 채우세요: 저는 학교에 가요.",
+                "저는 학교에 가요.",
+            ),
+        ).forEach { (tag, generatedSentence, expectedSentence) ->
+            val builder = RestClient.builder()
+            val localServer = MockRestServiceServer.bindTo(builder).build()
+            localServer
+                .expect(requestTo(RESPONSES_URL))
+                .andRespond(
+                    withSuccess(
+                        response(validOutput().replace(GRAMMAR_SENTENCE, generatedSentence)),
+                        MediaType.APPLICATION_JSON,
+                    ),
+                )
+            val localProvider =
+                OpenAiQuizDraftProvider(
+                    restClient = builder.build(),
+                    properties = properties(),
+                    objectMapper = objectMapper,
+                    randomIndex = { 0 },
+                )
+
+            val quiz = localProvider.generate(input(tag = tag)).single()
+
+            assertEquals(expectedSentence, quiz.sentenceKo)
+            localServer.verify()
+        }
+    }
+
+    @Test
+    fun `preserves a Korean instruction for unnatural quizzes`() {
+        val generatedSentence = "다음 중 자연스러운 문장을 고르세요."
+        server
+            .expect(requestTo(RESPONSES_URL))
+            .andRespond(
+                withSuccess(
+                    response(validOutput().replace(GRAMMAR_SENTENCE, generatedSentence)),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val quiz = provider.generate(input(tag = GrammarTag.UNNATURAL)).single()
+
+        assertEquals(generatedSentence, quiz.sentenceKo)
+        server.verify()
+    }
+
+    @Test
+    fun `does not remove meaningful exercise content that starts with next`() {
+        listOf(
+            GrammarTag.PARTICLE_LOCATION to
+                "다음 역에서 내리세요. 저는 서울역에서 내려요.",
+            GrammarTag.PARTICLE_OBJECT to
+                "다음 중간고사에서는 꼭 만점을 받으세요. 시험을 준비해요.",
+            GrammarTag.VERB_CONJUGATION to
+                "다음 동사무소에서 신청하세요. 서류를 준비했어요.",
+        ).forEach { (tag, generatedSentence) ->
+            val builder = RestClient.builder()
+            val localServer = MockRestServiceServer.bindTo(builder).build()
+            localServer
+                .expect(requestTo(RESPONSES_URL))
+                .andRespond(
+                    withSuccess(
+                        response(validOutput().replace(GRAMMAR_SENTENCE, generatedSentence)),
+                        MediaType.APPLICATION_JSON,
+                    ),
+                )
+            val localProvider =
+                OpenAiQuizDraftProvider(
+                    restClient = builder.build(),
+                    properties = properties(),
+                    objectMapper = objectMapper,
+                    randomIndex = { 0 },
+                )
+
+            val quiz = localProvider.generate(input(tag = tag)).single()
+
+            assertEquals(generatedSentence, quiz.sentenceKo)
+            localServer.verify()
+        }
+    }
+
+    @Test
+    fun `rejects a grammar response that contains only a Korean instruction`() {
+        server
+            .expect(requestTo(RESPONSES_URL))
+            .andRespond(
+                withSuccess(
+                    response(
+                        validOutput().replace(
+                            GRAMMAR_SENTENCE,
+                            "다음 단어를 바르게 배열하세요:",
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        assertFailsWith<QuizDraftProviderException> {
+            provider.generate(input(tag = GrammarTag.SENTENCE_ORDER))
+        }.also { exception ->
+            assertEquals("invalid_response", exception.code)
+        }
+        server.verify()
+    }
+
+    @Test
     fun `rejects a response with the wrong question count`() {
         server
             .expect(requestTo(RESPONSES_URL))
@@ -418,7 +579,7 @@ class OpenAiQuizDraftProviderTest {
         """
         {
           "questions": [{
-            "sentenceKo": "다음 중 알맞은 것을 고르시오: 저는 사과( ) 먹어요.",
+            "sentenceKo": "$GRAMMAR_SENTENCE",
             "correctAnswer": "를",
             "distractors": ["은", "에", "이"],
             "explanationEn": "Use 를 because 사과 is the object of 먹어요."
@@ -453,6 +614,7 @@ class OpenAiQuizDraftProviderTest {
 }
 
 private const val RESPONSES_URL = "https://api.openai.com/v1/responses"
+private const val GRAMMAR_SENTENCE = "다음 중 알맞은 것을 고르시오: 저는 사과( ) 먹어요."
 
 private val EXPECTED_QUIZ_FORMAT =
     """

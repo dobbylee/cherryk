@@ -61,6 +61,10 @@ code alone. Exact dependency versions live in manifests.
 - Model grammar and vocabulary as explicit quiz types. Vocabulary quizzes use an
   English definition as the question, exactly four Korean word choices, and the
   existing `word_choice` tag for compatibility with tag-based quiz history.
+- `questionEn` owns the learner instruction. For grammar tags, `sentenceKo`
+  contains only exercise content; generated Korean instruction prefixes are
+  removed before persistence. `unnatural` is the explicit exception because it
+  has no separate exercise stem and may repeat the instruction in Korean.
 - Only approved quizzes are user-visible. Approved content is immutable; changes use a new draft and retire the previous quiz after approval.
 - Preserve current fingerprint and personalized recommendation behavior during migration.
 - Keep admin command DTOs separate from user read DTOs.
