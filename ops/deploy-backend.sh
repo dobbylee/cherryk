@@ -13,6 +13,8 @@ internal_health_url=${CHERRYK_INTERNAL_HEALTH_URL:-http://backend:8080/actuator/
 external_health_url=${CHERRYK_EXTERNAL_HEALTH_URL:-https://api.cherryk.kr/actuator/health}
 auth_url=${CHERRYK_AUTH_URL:-https://cherryk.kr/api/v1/auth/me}
 recovery_log_dir=${CHERRYK_RECOVERY_LOG_DIR:-/tmp}
+expected_main_sha=${CHERRYK_EXPECTED_MAIN_SHA:-}
+github_api_config=${CHERRYK_GITHUB_API_CONFIG:-}
 
 if [[ ! $deploy_sha =~ ^[0-9a-f]{40}$ ]]; then
   echo "Invalid deploy SHA: $deploy_sha" >&2
@@ -125,6 +127,28 @@ fail_deploy() {
   exit 1
 }
 
+confirm_main_before_cutover() {
+  local remote_main
+
+  if [[ -z $expected_main_sha && -z $github_api_config ]]; then
+    return 0
+  fi
+  if [[ $expected_main_sha != "$deploy_sha" || ! -f $github_api_config ]]; then
+    echo "Invalid main verification configuration" >&2
+    return 1
+  fi
+
+  remote_main=$(
+    curl --config "$github_api_config" \
+      https://api.github.com/repos/dobbylee/cherryk/commits/main |
+      jq -er '.sha'
+  ) || return
+  if [[ $remote_main != "$deploy_sha" ]]; then
+    echo "main no longer targets $deploy_sha" >&2
+    return 1
+  fi
+}
+
 trap handle_exit EXIT
 trap 'failure_reason="Backend deployment interrupted by HUP"; exit 129' HUP
 trap 'failure_reason="Backend deployment interrupted by INT"; exit 130' INT
@@ -182,6 +206,9 @@ if [[ $next_image != "$candidate_image" ]]; then
 fi
 chown --reference="$compose_file" "$next_compose"
 chmod --reference="$compose_file" "$next_compose"
+if ! confirm_main_before_cutover; then
+  fail_deploy "main advanced before backend cutover"
+fi
 cutover_started=1
 mv "$next_compose" "$compose_file"
 next_compose=""

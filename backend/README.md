@@ -36,8 +36,11 @@ Preview must never use the Production container or database. Backend Preview
 verification uses a separately configured temporary container and Neon branch.
 
 The `Deploy Backend` GitHub Actions workflow runs only after the `CI` workflow
-succeeds for a `main` push. It builds an ARM64, commit-addressed image, transfers
-it directly to OCI, and replaces only the backend service:
+succeeds for a `main` push. GitHub's ARM64 runner publishes an immutable image to
+GHCR by digest. The repository-scoped `cherryk-production` runner on OCI has no
+Docker access of its own; its only passwordless sudo command invokes the root-owned
+deployment wrapper. That wrapper confirms `main` still targets the requested SHA,
+pulls the exact digest, confirms ARM64, and replaces only the backend service:
 
 ```bash
 sudo docker compose up -d --no-deps backend
@@ -47,9 +50,14 @@ curl --fail --silent --show-error https://api.cherryk.kr/actuator/health
 Keep the previous image and a protected Compose backup until Production health,
 authentication, and the changed behavior are verified.
 
-The GitHub `Production` environment provides `OCI_SSH_HOST` and `OCI_SSH_USER`
-variables plus `OCI_SSH_PRIVATE_KEY` and `OCI_SSH_KNOWN_HOSTS` secrets. Deployment
-jobs are serialized and fail closed if `main` advances beyond the verified SHA.
+Deployment jobs are serialized and fail closed if `main` advances beyond the
+verified SHA before either image publication or Production cutover. The runner is
+not used for pull-request or general CI jobs. The root-owned wrapper is installed at
+`/usr/local/sbin/cherryk-deploy-backend-from-ghcr`; it invokes the root-owned copy of
+`ops/deploy-backend.sh` at `/opt/cherryk/operator/deploy-backend.sh`. The runner
+service uses the dedicated `cherryk-runner` system user without Docker-group access;
+`ops/cherryk-runner.sudoers` grants only the argument-free wrapper command. The
+GitHub `Production` environment accepts deployments from `main` only.
 
 ## Maintenance write block
 

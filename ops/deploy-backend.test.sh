@@ -25,6 +25,10 @@ make_fixture() {
 
   cat > "$fixture/bin/flock" <<'FAKE_FLOCK'
 #!/usr/bin/env bash
+set -Eeuo pipefail
+if [[ ${FAKE_ADVANCE_MAIN_DURING_LOCK:-0} == 1 ]]; then
+  printf '%s\n' "$FAKE_ADVANCED_MAIN_SHA" > "$FAKE_REMOTE_MAIN_FILE"
+fi
 exit 0
 FAKE_FLOCK
 
@@ -84,11 +88,20 @@ FAKE_DOCKER
 #!/usr/bin/env bash
 set -Eeuo pipefail
 case "${*: -1}" in
+  */repos/dobbylee/cherryk/commits/main)
+    printf '{"sha":"%s"}\n' "$(cat "$FAKE_REMOTE_MAIN_FILE")"
+    ;;
   */actuator/health) printf '{"status":"UP"}\n' ;;
   */api/v1/auth/me) printf '{"user":null}\n' ;;
   *) exit 1 ;;
 esac
 FAKE_CURL
+
+  cat > "$fixture/bin/jq" <<'FAKE_JQ'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+sed -nE 's/^\{"sha":"([0-9a-f]{40})"\}$/\1/p'
+FAKE_JQ
 
   chmod +x \
     "$fixture/bin/flock" \
@@ -97,7 +110,8 @@ FAKE_CURL
     "$fixture/bin/stat" \
     "$fixture/bin/mv" \
     "$fixture/bin/docker" \
-    "$fixture/bin/curl"
+    "$fixture/bin/curl" \
+    "$fixture/bin/jq"
 }
 
 run_deploy() {
@@ -154,6 +168,25 @@ grep -q "image: cherryk-backend:$old_sha" "$fixture/root/compose.yaml" || fail "
 recovery_log=$(find "$fixture" -name 'cherryk-backend-deploy-recovery.*' -type f)
 [[ -n $recovery_log ]] || fail "interrupted deploy did not preserve a host-local recovery log"
 grep -q 'Previous backend release restored' "$recovery_log" || fail "interrupted deploy did not finish rollback after its output channel closed"
+rm -rf "$fixture"
+trap - EXIT
+
+make_fixture
+trap 'rm -rf "$fixture"' EXIT
+printf '%s\n' "$new_sha" > "$fixture/remote-main"
+: > "$fixture/github-api.config"
+if FAKE_ADVANCE_MAIN_DURING_LOCK=1 \
+  FAKE_ADVANCED_MAIN_SHA="$old_sha" \
+  FAKE_REMOTE_MAIN_FILE="$fixture/remote-main" \
+  CHERRYK_EXPECTED_MAIN_SHA="$new_sha" \
+  CHERRYK_GITHUB_API_CONFIG="$fixture/github-api.config" \
+  run_deploy; then
+  fail "deploy continued after main advanced during lock acquisition"
+fi
+grep -q "image: cherryk-backend:$old_sha" "$fixture/root/compose.yaml" || fail "main advance changed Compose"
+if grep -q 'compose -f .* up -d --no-deps backend' "$fixture/docker.log"; then
+  fail "main advance reached backend replacement"
+fi
 rm -rf "$fixture"
 trap - EXIT
 

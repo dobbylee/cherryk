@@ -17,9 +17,17 @@ code alone. Exact dependency versions live in manifests.
   verify Preview, and fast-forward the same green commit to `main`. Do not require
   feature branches or pull requests for this stage.
 - Keep Vercel Git deployment as the frontend CD path. A successful `main` CI run
-  deploys the commit-addressed ARM64 backend image to OCI, serializes Production
-  changes, preserves the previous image and Compose file, and rolls the application
-  container back when health or public contract checks fail.
+  publishes the commit-addressed ARM64 backend image to GHCR. A repository-scoped,
+  Production-only self-hosted runner on OCI may invoke only the root-owned deployment
+  wrapper, which pulls the immutable digest, serializes Production changes, preserves
+  the previous image and Compose file, and rolls the application container back when
+  health or public contract checks fail. Do not run pull-request or general CI work
+  on the Production runner, and restrict the GitHub `Production` environment to
+  `main`.
+- Keep `Verify` as the required `main` check. When the exact SHA already has a
+  successful push-triggered `preview` CI run, the `main` check reuses that result
+  instead of repeating the full gate. A direct `main` SHA, manual run, or failed API
+  lookup runs the complete gate on `main`.
 - Keep Spring and Neon in nearby APAC regions. With the backend in OCI Chuncheon and no Neon Seoul region, use Neon AWS Singapore instead of the legacy US East project.
 - Preserve `/api/v1` contracts through the migration. Do not use dual writes.
 - Do not add Redis, JWT, WebFlux, coroutines, or microservices without a measured need and a new decision.

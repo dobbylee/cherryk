@@ -15,94 +15,89 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     if: >-
       ${{ github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.event == 'push' &&
           github.event.workflow_run.head_branch == 'main' }}
-    environment: Production
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
-      OCI_SSH_HOST: ${{ vars.OCI_SSH_HOST }}
-      OCI_SSH_USER: ${{ vars.OCI_SSH_USER }}
+      IMAGE_REPOSITORY: ghcr.io/dobbylee/cherryk-backend
+    outputs:
+      image_digest: ${{ steps.publish.outputs.digest }}
     steps:
       # v7.0.0
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Validate deployment configuration
+      - name: Validate exact deployment commit
         env:
-          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
-          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
 
           test "$DEPLOY_SHA" = "$(git rev-parse HEAD)"
-          test -n "$OCI_SSH_HOST"
-          test -n "$OCI_SSH_USER"
-          test -n "$OCI_SSH_PRIVATE_KEY"
-          test -n "$OCI_SSH_KNOWN_HOSTS"
+          remote_main=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq '.sha')
+          test "$remote_main" = "$DEPLOY_SHA"
 
-      - name: Build ARM64 backend image
+      - name: Build and publish ARM64 backend image
+        id: publish
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
 
+          printf '%s' "$GHCR_TOKEN" |
+            docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker build \
             --platform linux/arm64 \
-            --tag "cherryk-backend:${DEPLOY_SHA}" \
+            --tag "${IMAGE_REPOSITORY}:${DEPLOY_SHA}" \
             backend
+          docker push "${IMAGE_REPOSITORY}:${DEPLOY_SHA}"
 
-      - name: Configure SSH
+          remote_main=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq '.sha')
+          test "$remote_main" = "$DEPLOY_SHA"
+
+          image_digest=$(
+            docker image inspect "${IMAGE_REPOSITORY}:${DEPLOY_SHA}" \
+              --format '{{index .RepoDigests 0}}' |
+              cut -d@ -f2
+          )
+          [[ $image_digest =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "digest=$image_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io || true
+
+  deploy:
+    needs: build
+    environment: Production
+    runs-on: [self-hosted, Linux, ARM64, cherryk-production]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      IMAGE_DIGEST: ${{ needs.build.outputs.image_digest }}
+    steps:
+      - name: Deploy exact image with automatic rollback
         env:
-          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
-          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+          GHCR_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
 
-          install -m 700 -d "$RUNNER_TEMP/cherryk-ssh"
-          install -m 600 /dev/null "$RUNNER_TEMP/cherryk-ssh/id_ed25519"
-          install -m 600 /dev/null "$RUNNER_TEMP/cherryk-ssh/known_hosts"
-          printf '%s\n' "$OCI_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/cherryk-ssh/id_ed25519"
-          printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/cherryk-ssh/known_hosts"
-
-      - name: Confirm main still targets this commit
-        run: |
-          set -Eeuo pipefail
-
-          remote_main=$(git ls-remote origin refs/heads/main | cut -f1)
-          test "$remote_main" = "$DEPLOY_SHA"
-
-      - name: Transfer backend image
-        run: |
-          set -Eeuo pipefail
-
-          docker save "cherryk-backend:${DEPLOY_SHA}" |
-            gzip -1 |
-            ssh \
-              -i "$RUNNER_TEMP/cherryk-ssh/id_ed25519" \
-              -o BatchMode=yes \
-              -o IdentitiesOnly=yes \
-              -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$RUNNER_TEMP/cherryk-ssh/known_hosts" \
-              "$OCI_SSH_USER@$OCI_SSH_HOST" \
-              'gzip -dc | sudo docker load'
-
-      - name: Deploy with automatic rollback
-        run: |
-          set -Eeuo pipefail
-
-          remote_main=$(git ls-remote origin refs/heads/main | cut -f1)
-          test "$remote_main" = "$DEPLOY_SHA"
-
-          ssh \
-            -i "$RUNNER_TEMP/cherryk-ssh/id_ed25519" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$RUNNER_TEMP/cherryk-ssh/known_hosts" \
-            "$OCI_SSH_USER@$OCI_SSH_HOST" \
-            "sudo env DEPLOY_SHA='$DEPLOY_SHA' bash -s" \
-            < ops/deploy-backend.sh
+          printf '%s\n%s\n%s\n%s\n' \
+            "$DEPLOY_SHA" \
+            "$IMAGE_DIGEST" \
+            "$GITHUB_ACTOR" \
+            "$GHCR_TOKEN" |
+            sudo /usr/local/sbin/cherryk-deploy-backend-from-ghcr
