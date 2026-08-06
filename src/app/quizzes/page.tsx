@@ -20,6 +20,7 @@ import type {
   QuizAttemptResponse,
   QuizPracticeItem,
   QuizProgress,
+  QuizType,
 } from "@/lib/contracts/quiz";
 import { invalidateLatestRequest, runLatestRequest } from "@/lib/latestRequest";
 
@@ -75,8 +76,10 @@ function QuizWorkspace() {
   }, [authStatus, router]);
 
   const hasExplicitTags = searchParams.has("tags");
+  const quizType: QuizType =
+    searchParams.get("type") === "vocabulary" ? "vocabulary" : "grammar";
   const requestedTags = useMemo(() => {
-    if (!hasExplicitTags) {
+    if (quizType === "vocabulary" || !hasExplicitTags) {
       return undefined;
     }
 
@@ -88,12 +91,16 @@ function QuizWorkspace() {
           .filter((tag): tag is GrammarTag => grammarTagSet.has(tag)),
       ),
     );
-  }, [hasExplicitTags, searchParams]);
+  }, [hasExplicitTags, quizType, searchParams]);
   const requestedTagsKey =
-    requestedTags === undefined ? "history" : requestedTags.join(",") || "all";
-  const selectedTags = hasExplicitTags
-    ? (requestedTags ?? []).filter((tag) => availableTags.includes(tag))
-    : activeTags;
+    `${quizType}:` +
+    (requestedTags === undefined
+      ? "history"
+      : requestedTags.join(",") || "all");
+  const selectedTags =
+    quizType === "grammar" && hasExplicitTags
+      ? (requestedTags ?? []).filter((tag) => availableTags.includes(tag))
+      : activeTags;
   const activeQuiz = quizzes[activeQuizIndex] ?? null;
   const quizControlsBusy =
     authStatus === "loading" ||
@@ -111,7 +118,7 @@ function QuizWorkspace() {
     setSelectedChoiceId(null);
     setQuizAttempt(null);
     const result = await runLatestRequest(quizRequestIdRef, () =>
-      fetchQuizRecommendations(requestedTags),
+      fetchQuizRecommendations(requestedTags, quizType),
     );
 
     if (result.status === "success") {
@@ -133,7 +140,7 @@ function QuizWorkspace() {
       );
       setQuizStatus("idle");
     }
-  }, [authStatus, requestedTags, user]);
+  }, [authStatus, quizType, requestedTags, user]);
 
   useEffect(() => {
     if (!user || authStatus === "loading") {
@@ -233,6 +240,21 @@ function QuizWorkspace() {
     });
   }
 
+  function updateQuizType(nextQuizType: QuizType) {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("tags");
+    if (nextQuizType === "grammar") {
+      nextSearchParams.delete("type");
+    } else {
+      nextSearchParams.set("type", nextQuizType);
+    }
+
+    const query = nextSearchParams.toString();
+    router.replace(query ? `/quizzes?${query}` : "/quizzes", {
+      scroll: false,
+    });
+  }
+
   function handleTagToggle(tag: GrammarTag) {
     const nextTags = new Set(selectedTags);
 
@@ -268,9 +290,9 @@ function QuizWorkspace() {
 
         <div className="flex items-start justify-between gap-3 sm:items-center">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[var(--accent)]">MCQ</p>
+            <p className="text-sm font-bold text-[var(--accent)]">Quiz</p>
             <h2 className="mt-1 text-2xl font-semibold tracking-normal">
-              Practice approved questions
+              Practice Korean
             </h2>
           </div>
           <Link
@@ -282,58 +304,82 @@ function QuizWorkspace() {
         </div>
 
         <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_12px_30px_rgb(32_143_202_/_5%)]">
-          <p className="text-sm font-semibold">Question tags</p>
+          <p className="text-sm font-semibold">Quiz type</p>
           <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-            Recommended uses your correction history and falls back to all
-            approved questions.
+            Practice grammar in context or choose the Korean word that matches
+            an English definition.
           </p>
-          <div
-            aria-label="Approved question filters"
-            className="mt-3 flex flex-wrap gap-2"
-          >
-            <button
-              aria-pressed={!hasExplicitTags}
-              className={tagFilterClassName(!hasExplicitTags)}
-              disabled={quizControlsBusy}
-              onClick={() => updateTagFilter(null)}
-              type="button"
-            >
-              Recommended
-            </button>
-            <button
-              aria-pressed={hasExplicitTags && selectedTags.length === 0}
-              className={tagFilterClassName(
-                hasExplicitTags && selectedTags.length === 0,
-              )}
-              disabled={quizControlsBusy}
-              onClick={() => updateTagFilter([])}
-              type="button"
-            >
-              All approved
-            </button>
-            {availableTags.map((tag) => (
+          <div aria-label="Quiz type" className="mt-3 flex flex-wrap gap-2">
+            {(["grammar", "vocabulary"] as const).map((type) => (
               <button
-                aria-pressed={selectedTags.includes(tag)}
-                className={tagFilterClassName(selectedTags.includes(tag))}
+                aria-pressed={quizType === type}
+                className={tagFilterClassName(quizType === type)}
                 disabled={quizControlsBusy}
-                key={tag}
-                onClick={() => handleTagToggle(tag)}
+                key={type}
+                onClick={() => updateQuizType(type)}
                 type="button"
               >
-                {formatTagLabel(tag)}
+                {formatTagLabel(type)}
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-            {hasExplicitTags
-              ? selectedTags.length
-                ? "Showing approved questions for the selected tags."
-                : "Showing all approved questions."
-              : activeTags.length
-                ? "Showing questions based on your correction history."
-                : "No matching correction tags yet, so all approved questions are shown."}
-          </p>
         </section>
+
+        {quizType === "grammar" ? (
+          <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_12px_30px_rgb(32_143_202_/_5%)]">
+            <p className="text-sm font-semibold">Question tags</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+              Recommended uses your correction history and falls back to all
+              approved questions.
+            </p>
+            <div
+              aria-label="Approved question filters"
+              className="mt-3 flex flex-wrap gap-2"
+            >
+              <button
+                aria-pressed={!hasExplicitTags}
+                className={tagFilterClassName(!hasExplicitTags)}
+                disabled={quizControlsBusy}
+                onClick={() => updateTagFilter(null)}
+                type="button"
+              >
+                Recommended
+              </button>
+              <button
+                aria-pressed={hasExplicitTags && selectedTags.length === 0}
+                className={tagFilterClassName(
+                  hasExplicitTags && selectedTags.length === 0,
+                )}
+                disabled={quizControlsBusy}
+                onClick={() => updateTagFilter([])}
+                type="button"
+              >
+                All approved
+              </button>
+              {availableTags.map((tag) => (
+                <button
+                  aria-pressed={selectedTags.includes(tag)}
+                  className={tagFilterClassName(selectedTags.includes(tag))}
+                  disabled={quizControlsBusy}
+                  key={tag}
+                  onClick={() => handleTagToggle(tag)}
+                  type="button"
+                >
+                  {formatTagLabel(tag)}
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+              {hasExplicitTags
+                ? selectedTags.length
+                  ? "Showing approved questions for the selected tags."
+                  : "Showing all approved questions."
+                : activeTags.length
+                  ? "Showing questions based on your correction history."
+                  : "No matching correction tags yet, so all approved questions are shown."}
+            </p>
+          </section>
+        ) : null}
 
         {authMessage ? <Message message={authMessage} /> : null}
         {message ? <Message message={message} /> : null}
@@ -345,7 +391,7 @@ function QuizWorkspace() {
                 Practice queue
               </p>
               <h2 className="mt-1 text-xl font-semibold tracking-normal">
-                Multiple choice
+                {quizType === "vocabulary" ? "Vocabulary" : "Grammar"}
               </h2>
             </div>
             <button
@@ -384,15 +430,19 @@ function QuizWorkspace() {
                   {activeQuizIndex + 1} / {quizzes.length}
                 </span>
                 <span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs font-semibold text-[var(--secondary)]">
-                  {activeQuiz.tag}
+                  {activeQuiz.quizType === "vocabulary"
+                    ? "Vocabulary"
+                    : activeQuiz.tag}
                 </span>
               </div>
               <h3 className="mt-3 text-lg font-semibold tracking-normal">
                 {activeQuiz.questionEn}
               </h3>
-              <p className="mt-2 text-base leading-7 text-[var(--muted)]">
-                {activeQuiz.sentenceKo}
-              </p>
+              {activeQuiz.quizType === "grammar" ? (
+                <p className="mt-2 text-base leading-7 text-[var(--muted)]">
+                  {activeQuiz.sentenceKo}
+                </p>
+              ) : null}
               <div className="mt-4 grid gap-2">
                 {activeQuiz.choices.map((choice) => {
                   const isSelected = choice.id === selectedChoiceId;
@@ -555,7 +605,7 @@ function tagFilterClassName(isActive: boolean) {
   }`;
 }
 
-function formatTagLabel(tag: GrammarTag) {
+function formatTagLabel(tag: string) {
   return tag
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

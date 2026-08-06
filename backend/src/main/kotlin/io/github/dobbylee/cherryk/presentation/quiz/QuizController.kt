@@ -12,6 +12,7 @@ import io.github.dobbylee.cherryk.application.quiz.QuizRecommendationService
 import io.github.dobbylee.cherryk.application.quiz.RecommendedQuiz
 import io.github.dobbylee.cherryk.application.quiz.RecommendedQuizChoice
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.presentation.auth.CurrentUserResolver
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -38,6 +39,7 @@ class QuizController(
     fun recommend(
         @AuthenticationPrincipal principal: OidcUser?,
         @RequestParam(required = false) tags: String?,
+        @RequestParam(required = false) type: String?,
     ): QuizRecommendationResponse {
         val userId = authenticatedUserId(principal)
         val parsedTags =
@@ -45,9 +47,14 @@ class QuizController(
                 ?: if (tags != null) throw QuizInvalidRequestException(
                     "Quiz recommendation query is invalid.",
                 ) else null
+        val quizType =
+            type?.let(QuizType::fromDatabaseOrNull)
+                ?: if (type != null) throw QuizInvalidRequestException(
+                    "Quiz recommendation query is invalid.",
+                ) else QuizType.GRAMMAR
         val recommendation =
             try {
-                recommendationService.recommend(userId, parsedTags)
+                recommendationService.recommend(userId, parsedTags, quizType)
             } catch (exception: RuntimeException) {
                 throw QuizUnavailableException("Quiz recommendations are unavailable.", exception)
             }
@@ -135,10 +142,11 @@ data class QuizRecommendationResponse(
 
 data class QuizPracticeItemResponse(
     val id: String,
+    val quizType: String,
     val tag: String,
     val difficulty: String,
     val questionEn: String,
-    val sentenceKo: String,
+    val sentenceKo: String?,
     val choices: List<RecommendedQuizChoiceResponse>,
     val attemptCount: Int,
 ) {
@@ -151,6 +159,7 @@ data class QuizPracticeItemResponse(
             attemptCount: Int,
         ) = QuizPracticeItemResponse(
             id = quiz.id.toString(),
+            quizType = quiz.quizType.databaseValue,
             tag = quiz.tag.databaseValue,
             difficulty = quiz.difficulty.databaseValue,
             questionEn = quiz.questionEn,

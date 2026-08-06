@@ -16,9 +16,21 @@ describe("QuizDraftInputSchema", () => {
   it("rejects unbounded draft generation counts", () => {
     expect(
       QuizDraftInputSchema.safeParse({
+        quizType: "grammar",
         tag: "particle_object",
         difficulty: "beginner",
         count: 100,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires vocabulary drafts to use the word choice tag", () => {
+    expect(
+      QuizDraftInputSchema.safeParse({
+        quizType: "vocabulary",
+        tag: "particle_object",
+        difficulty: "beginner",
+        count: 1,
       }).success,
     ).toBe(false);
   });
@@ -47,6 +59,50 @@ describe("QuizRecommendationResponseSchema", () => {
           attemptCount: 0,
           correctCount: 0,
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts vocabulary definitions only when the Korean sentence is absent", () => {
+    const vocabularyQuiz = {
+      id: "42",
+      quizType: "vocabulary",
+      tag: "word_choice",
+      difficulty: "beginner",
+      questionEn: "A place where people can borrow books.",
+      sentenceKo: null,
+      choices: [
+        { id: "101", text: "도서관" },
+        { id: "102", text: "병원" },
+        { id: "103", text: "학교" },
+        { id: "104", text: "시장" },
+      ],
+      attemptCount: 0,
+    };
+    const response = {
+      quizzes: [vocabularyQuiz],
+      availableTags: ["word_choice"],
+      activeTags: [],
+      progress: {
+        solvedCount: 0,
+        totalCount: 1,
+        attemptCount: 0,
+        correctCount: 0,
+      },
+    };
+
+    expect(QuizRecommendationResponseSchema.safeParse(response).success).toBe(
+      true,
+    );
+    expect(
+      QuizRecommendationResponseSchema.safeParse({
+        ...response,
+        quizzes: [
+          {
+            ...vocabularyQuiz,
+            sentenceKo: "설명에 맞는 단어를 고르세요.",
+          },
+        ],
       }).success,
     ).toBe(false);
   });
@@ -167,6 +223,7 @@ describe("Spring admin quiz entity ids", () => {
         drafts: [
           {
             id: "42",
+            quizType: "grammar",
             tag: "particle_object",
             difficulty: "beginner",
             questionEn: "Choose the correct particle.",
@@ -208,6 +265,7 @@ describe("Spring admin quiz entity ids", () => {
         drafts: [
           {
             id: "42",
+            quizType: "grammar",
             tag: "particle_object",
             difficulty: "beginner",
             questionEn: "Choose the correct particle.",
@@ -233,6 +291,7 @@ describe("Spring quiz practice entity ids", () => {
         quizzes: [
           {
             id: "42",
+            quizType: "grammar",
             tag: "particle_object",
             difficulty: "beginner",
             questionEn: "Choose.",

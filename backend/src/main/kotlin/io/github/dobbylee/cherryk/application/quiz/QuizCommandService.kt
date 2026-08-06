@@ -38,6 +38,7 @@ data class QuizDraftUpdate(
             sentenceKo = sentenceKo ?: content.sentenceKo,
             choices = choices ?: content.choices,
             answerExplanationEn = answerExplanationEn ?: content.answerExplanationEn,
+            quizType = content.quizType,
         )
 }
 

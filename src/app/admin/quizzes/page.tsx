@@ -15,12 +15,14 @@ import {
 } from "@/lib/api/adminQuizzes";
 import { UserLevels, type UserLevel } from "@/lib/contracts/common";
 import { GrammarTags, type GrammarTag } from "@/lib/contracts/grammar-tags";
+import { type QuizType } from "@/lib/contracts/quiz";
 
 type FormStatus = "idle" | "loading";
 type ReviewAction = "save" | "approve" | "reject" | null;
 type MessageTone = "neutral" | "save" | "approve" | "reject" | "error";
 
 export default function AdminQuizzesPage() {
+  const [quizType, setQuizType] = useState<QuizType>("grammar");
   const [tag, setTag] = useState<GrammarTag>("particle_object");
   const [difficulty, setDifficulty] = useState<UserLevel>("beginner");
   const [count, setCount] = useState(3);
@@ -54,7 +56,8 @@ export default function AdminQuizzesPage() {
     try {
       const trimmedInstruction = instruction.trim();
       const response = await generateAdminQuizDrafts({
-        tag,
+        quizType,
+        tag: quizType === "vocabulary" ? "word_choice" : tag,
         difficulty,
         count,
         ...(trimmedInstruction ? { instruction: trimmedInstruction } : {}),
@@ -275,12 +278,30 @@ export default function AdminQuizzesPage() {
             </div>
 
             <div className="mt-4 grid gap-3">
-              <Field label="Tag" htmlFor="quiz-tag">
+              <Field label="Quiz type" htmlFor="quiz-type">
                 <select
                   className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                  id="quiz-type"
+                  onChange={(event) =>
+                    setQuizType(event.target.value as QuizType)
+                  }
+                  value={quizType}
+                >
+                  <option value="grammar">Grammar</option>
+                  <option value="vocabulary">Vocabulary</option>
+                </select>
+              </Field>
+
+              <Field
+                label={quizType === "vocabulary" ? "Tag (fixed)" : "Tag"}
+                htmlFor="quiz-tag"
+              >
+                <select
+                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                  disabled={quizType === "vocabulary"}
                   id="quiz-tag"
                   onChange={(event) => setTag(event.target.value as GrammarTag)}
-                  value={tag}
+                  value={quizType === "vocabulary" ? "word_choice" : tag}
                 >
                   {GrammarTags.map((option) => (
                     <option key={option} value={option}>
@@ -406,6 +427,7 @@ export default function AdminQuizzesPage() {
                         <Field label="Tag" htmlFor="draft-tag">
                           <select
                             className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                            disabled={activeDraft.quizType === "vocabulary"}
                             id="draft-tag"
                             onChange={(event) =>
                               updateActiveDraft({
@@ -455,18 +477,20 @@ export default function AdminQuizzesPage() {
                         />
                       </Field>
 
-                      <Field label="Korean sentence" htmlFor="draft-sentence">
-                        <textarea
-                          className="min-h-24 w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-lg leading-8 outline-none focus:border-[var(--accent)]"
-                          id="draft-sentence"
-                          onChange={(event) =>
-                            updateActiveDraft({
-                              sentenceKo: event.target.value,
-                            })
-                          }
-                          value={activeDraft.sentenceKo}
-                        />
-                      </Field>
+                      {activeDraft.quizType === "grammar" ? (
+                        <Field label="Korean sentence" htmlFor="draft-sentence">
+                          <textarea
+                            className="min-h-24 w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-lg leading-8 outline-none focus:border-[var(--accent)]"
+                            id="draft-sentence"
+                            onChange={(event) =>
+                              updateActiveDraft({
+                                sentenceKo: event.target.value,
+                              })
+                            }
+                            value={activeDraft.sentenceKo ?? ""}
+                          />
+                        </Field>
+                      ) : null}
 
                       <div>
                         <p className="text-sm font-semibold">Choices</p>
@@ -601,6 +625,9 @@ function QuizReviewPreview({ draft }: { draft: EditableAdminQuizDraft }) {
     <div className="grid gap-4">
       <div className="flex flex-wrap gap-2 text-xs font-semibold text-[var(--muted)]">
         <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1">
+          {formatLabel(draft.quizType)}
+        </span>
+        <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1">
           {formatLabel(draft.tag)}
         </span>
         <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1">
@@ -615,9 +642,11 @@ function QuizReviewPreview({ draft }: { draft: EditableAdminQuizDraft }) {
         <p className="mt-1 text-base font-semibold">{draft.questionEn}</p>
       </div>
 
-      <div className="rounded-md border border-[var(--line)] bg-white p-4 text-lg leading-8">
-        {draft.sentenceKo}
-      </div>
+      {draft.quizType === "grammar" ? (
+        <div className="rounded-md border border-[var(--line)] bg-white p-4 text-lg leading-8">
+          {draft.sentenceKo}
+        </div>
+      ) : null}
 
       <div className="grid gap-2">
         {draft.choices.map((choice, index) => (

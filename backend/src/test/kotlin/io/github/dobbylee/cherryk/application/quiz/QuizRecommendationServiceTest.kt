@@ -1,6 +1,7 @@
 package io.github.dobbylee.cherryk.application.quiz
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.junit.jupiter.api.Test
 import java.time.Instant
@@ -69,9 +70,43 @@ class QuizRecommendationServiceTest {
         )
     }
 
-    private fun quiz(id: Long) =
+    @Test
+    fun `scopes vocabulary recommendations and progress to vocabulary quizzes`() {
+        val grammar = quiz(1)
+        val vocabulary = quiz(2, QuizType.VOCABULARY)
+        val repository =
+            FakeQuizReadRepository(
+                quizzes = listOf(grammar, vocabulary),
+                summaries = listOf(summary(grammar.id), summary(vocabulary.id, correctCount = 1)),
+            )
+        val service = QuizRecommendationService(repository, QuizSelectionRandom { 0.5 })
+
+        val result =
+            service.recommend(
+                userId = 1,
+                tags = null,
+                quizType = QuizType.VOCABULARY,
+            )
+
+        assertEquals(listOf(vocabulary.id), result.quizzes.map { it.quiz.id })
+        assertEquals(
+            QuizProgress(
+                solvedCount = 1,
+                totalCount = 1,
+                attemptCount = 1,
+                correctCount = 1,
+            ),
+            result.progress,
+        )
+    }
+
+    private fun quiz(
+        id: Long,
+        quizType: QuizType = QuizType.GRAMMAR,
+    ) =
         RecommendedQuiz(
             id = id,
+            quizType = quizType,
             tag = GrammarTag.PARTICLE_OBJECT,
             difficulty = UserLevel.BEGINNER,
             questionEn = "Question $id",
@@ -102,7 +137,10 @@ private class FakeQuizReadRepository(
     private val summaries: List<QuizAttemptSummary>,
     private val topTags: List<GrammarTag> = emptyList(),
 ) : QuizReadRepository {
-    override fun findApprovedQuizzesByTags(tags: Set<GrammarTag>) = quizzes
+    override fun findApprovedQuizzesByTags(
+        quizType: QuizType,
+        tags: Set<GrammarTag>,
+    ) = quizzes.filter { it.quizType == quizType }
 
     override fun findAttemptSummaries(userId: Long) = summaries
 

@@ -60,6 +60,69 @@ class QuizLifecycleMigrationTest(
     }
 
     @Test
+    fun `V7 defaults existing inserts to grammar`() {
+        val successfulMigrationCount =
+            jdbcClient
+                .sql(
+                    """
+                    SELECT count(*)
+                    FROM flyway_schema_history
+                    WHERE success = true
+                      AND script = 'V7__add_vocabulary_quiz_type.sql'
+                    """.trimIndent(),
+                ).query(Int::class.java)
+                .single()
+        val grammarQuizId = insertQuiz()
+        val storedType =
+            jdbcClient
+                .sql("SELECT quiz_type FROM quiz_questions WHERE id = :id")
+                .param("id", grammarQuizId)
+                .query(String::class.java)
+                .single()
+
+        assertEquals(1, successfulMigrationCount)
+        assertEquals("grammar", storedType)
+    }
+
+    @Test
+    fun `V7 requires vocabulary quizzes to use the word choice tag`() {
+        assertFailsWith<DataIntegrityViolationException> {
+            jdbcClient
+                .sql(
+                    """
+                    INSERT INTO quiz_questions (
+                        quiz_type, tag, difficulty, content_fingerprint, status,
+                        question_en, sentence_ko, answer_explanation_en
+                    ) VALUES (
+                        'vocabulary', 'particle_object', 'beginner', :fingerprint, 'draft',
+                        'A place for books.', NULL, 'Library.'
+                    )
+                    """.trimIndent(),
+                ).param("fingerprint", "invalid-vocabulary-${UUID.randomUUID()}")
+                .update()
+        }
+    }
+
+    @Test
+    fun `V7 prevents vocabulary quizzes from storing a Korean sentence`() {
+        assertFailsWith<DataIntegrityViolationException> {
+            jdbcClient
+                .sql(
+                    """
+                    INSERT INTO quiz_questions (
+                        quiz_type, tag, difficulty, content_fingerprint, status,
+                        question_en, sentence_ko, answer_explanation_en
+                    ) VALUES (
+                        'vocabulary', 'word_choice', 'beginner', :fingerprint, 'draft',
+                        'A place for books.', '설명에 맞는 단어를 고르세요.', 'Library.'
+                    )
+                    """.trimIndent(),
+                ).param("fingerprint", "invalid-vocabulary-sentence-${UUID.randomUUID()}")
+                .update()
+        }
+    }
+
+    @Test
     fun `rejects an attempt whose selected choice belongs to another quiz`() {
         val userId = insertUser()
         val attemptedQuizId = insertQuiz(status = "approved")

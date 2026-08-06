@@ -10,10 +10,11 @@ data class AdminQuizDraftGenerationResponse(
 
 data class AdminQuizDraftResponse(
     val id: String,
+    val quizType: String,
     val tag: String,
     val difficulty: String,
     val questionEn: String,
-    val sentenceKo: String,
+    val sentenceKo: String?,
     val choices: List<AdminQuizDraftChoiceResponse>,
     val answerExplanationEn: String,
 ) {
@@ -21,6 +22,7 @@ data class AdminQuizDraftResponse(
         fun from(draft: AdminQuizDraft) =
             AdminQuizDraftResponse(
                 id = draft.id.toString(),
+                quizType = draft.content.quizType.databaseValue,
                 tag = draft.content.tag.databaseValue,
                 difficulty = draft.content.difficulty.databaseValue,
                 questionEn = draft.content.questionEn,

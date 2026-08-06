@@ -6,6 +6,7 @@ import {
 
 const editableDraft: EditableAdminQuizDraft = {
   id: "111",
+  quizType: "grammar",
   tag: "particle_object",
   difficulty: "beginner",
   questionEn: "Choose the correct particle.",
@@ -65,5 +66,23 @@ describe("buildAdminQuizUpdateRequest", () => {
         })),
       }),
     ).toBeNull();
+  });
+
+  it("omits the Korean sentence from vocabulary updates", () => {
+    expect(
+      buildAdminQuizUpdateRequest({
+        ...editableDraft,
+        quizType: "vocabulary",
+        tag: "word_choice",
+        questionEn: "A place where people can borrow books.",
+        sentenceKo: null,
+        choices: [
+          { text: "도서관", isCorrect: true },
+          { text: "병원", isCorrect: false },
+          { text: "학교", isCorrect: false },
+          { text: "시장", isCorrect: false },
+        ],
+      }),
+    ).not.toHaveProperty("sentenceKo");
   });
 });

@@ -1,6 +1,7 @@
 package io.github.dobbylee.cherryk.application.quiz
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import kotlin.random.Random
@@ -41,9 +42,10 @@ class QuizRecommendationService(
     fun recommend(
         userId: Long,
         tags: List<GrammarTag>?,
+        quizType: QuizType = QuizType.GRAMMAR,
     ): QuizRecommendation {
         val requestedTags = (tags ?: repository.findTopUserTags(userId)).distinct()
-        val approvedQuizzes = repository.findApprovedQuizzesByTags(emptySet())
+        val approvedQuizzes = repository.findApprovedQuizzesByTags(quizType, emptySet())
         val availableTagSet = approvedQuizzes.map(RecommendedQuiz::tag).toSet()
         val availableTags = GrammarTag.entries.filter(availableTagSet::contains)
         val activeTags = requestedTags.filter(availableTagSet::contains)

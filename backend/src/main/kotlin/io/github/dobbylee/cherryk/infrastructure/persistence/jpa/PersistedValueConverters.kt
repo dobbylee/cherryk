@@ -5,6 +5,7 @@ import io.github.dobbylee.cherryk.domain.correction.MistakeSeverity
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizSource
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
@@ -50,4 +51,11 @@ class QuizSourceConverter : AttributeConverter<QuizSource, String> {
     override fun convertToDatabaseColumn(attribute: QuizSource): String = attribute.databaseValue
 
     override fun convertToEntityAttribute(dbData: String): QuizSource = QuizSource.fromDatabase(dbData)
+}
+
+@Converter
+class QuizTypeConverter : AttributeConverter<QuizType, String> {
+    override fun convertToDatabaseColumn(attribute: QuizType): String = attribute.databaseValue
+
+    override fun convertToEntityAttribute(dbData: String): QuizType = QuizType.fromDatabase(dbData)
 }

@@ -103,6 +103,39 @@ describe("quiz API helpers", () => {
     });
   });
 
+  it("requests vocabulary recommendations separately", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(input).toBe("/api/v1/quizzes/recommend?type=vocabulary");
+      return Response.json({
+        quizzes: [],
+        availableTags: [],
+        activeTags: [],
+        progress: {
+          solvedCount: 0,
+          totalCount: 0,
+          attemptCount: 0,
+          correctCount: 0,
+        },
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchQuizRecommendations(undefined, "vocabulary"),
+    ).resolves.toEqual({
+      quizzes: [],
+      availableTags: [],
+      activeTags: [],
+      progress: {
+        solvedCount: 0,
+        totalCount: 0,
+        attemptCount: 0,
+        correctCount: 0,
+      },
+    });
+  });
+
   it("submits quiz attempts", async () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {

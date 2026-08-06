@@ -5,6 +5,7 @@ import io.github.dobbylee.cherryk.application.quiz.QuizReadRepository
 import io.github.dobbylee.cherryk.application.quiz.RecommendedQuiz
 import io.github.dobbylee.cherryk.application.quiz.RecommendedQuizChoice
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
@@ -15,7 +16,10 @@ import java.time.OffsetDateTime
 class JdbcQuizReadRepository(
     private val jdbcTemplate: NamedParameterJdbcTemplate,
 ) : QuizReadRepository {
-    override fun findApprovedQuizzesByTags(tags: Set<GrammarTag>): List<RecommendedQuiz> {
+    override fun findApprovedQuizzesByTags(
+        quizType: QuizType,
+        tags: Set<GrammarTag>,
+    ): List<RecommendedQuiz> {
         val tagFilter =
             if (tags.isEmpty()) {
                 ""
@@ -33,6 +37,7 @@ class JdbcQuizReadRepository(
                 """
                 SELECT
                     q.id AS quiz_id,
+                    q.quiz_type,
                     q.tag,
                     q.difficulty,
                     q.question_en,
@@ -42,13 +47,15 @@ class JdbcQuizReadRepository(
                 FROM quiz_questions q
                 INNER JOIN quiz_choices c ON c.quiz_question_id = q.id
                 WHERE q.status = 'approved'
+                  AND q.quiz_type = :quizType
                 $tagFilter
                 ORDER BY q.created_at ASC, c.sort_order ASC
                 """.trimIndent(),
-                parameters,
+                parameters.addValue("quizType", quizType.databaseValue),
             ) { resultSet, _ ->
                 ApprovedQuizRow(
                     quizId = resultSet.getLong("quiz_id"),
+                    quizType = QuizType.fromDatabase(resultSet.getString("quiz_type")),
                     tag = GrammarTag.fromDatabase(resultSet.getString("tag")),
                     difficulty = UserLevel.fromDatabase(resultSet.getString("difficulty")),
                     questionEn = resultSet.getString("question_en"),
@@ -71,6 +78,7 @@ class JdbcQuizReadRepository(
                 }
                 RecommendedQuiz(
                     id = first.quizId,
+                    quizType = first.quizType,
                     tag = first.tag,
                     difficulty = first.difficulty,
                     questionEn = first.questionEn,
@@ -124,10 +132,11 @@ class JdbcQuizReadRepository(
 
 private data class ApprovedQuizRow(
     val quizId: Long,
+    val quizType: QuizType,
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val questionEn: String,
-    val sentenceKo: String,
+    val sentenceKo: String?,
     val choiceId: Long,
     val choiceText: String,
 )

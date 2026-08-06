@@ -4,11 +4,13 @@ import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.springframework.stereotype.Service
 import java.time.Clock
 
 data class AdminQuizDraftRequest(
+    val quizType: QuizType,
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val count: Int,
@@ -67,6 +69,7 @@ class AdminQuizApplicationService(
             try {
                 provider.generate(
                     QuizDraftProviderInput(
+                        quizType = request.quizType,
                         tag = request.tag,
                         difficulty = request.difficulty,
                         count = request.count,

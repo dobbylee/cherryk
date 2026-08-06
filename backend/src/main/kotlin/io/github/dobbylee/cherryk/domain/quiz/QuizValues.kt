@@ -28,3 +28,20 @@ enum class QuizSource(
                 ?: throw IllegalArgumentException("Unknown quiz source: $value")
     }
 }
+
+enum class QuizType(
+    val databaseValue: String,
+) {
+    GRAMMAR("grammar"),
+    VOCABULARY("vocabulary"),
+    ;
+
+    companion object {
+        fun fromDatabase(value: String): QuizType =
+            entries.firstOrNull { it.databaseValue == value }
+                ?: throw IllegalArgumentException("Unknown quiz type: $value")
+
+        fun fromDatabaseOrNull(value: String): QuizType? =
+            entries.firstOrNull { it.databaseValue == value }
+    }
+}

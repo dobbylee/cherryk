@@ -3,13 +3,25 @@ import { EntityIdSchema, UserLevelSchema } from "./common";
 import { GrammarTagSchema, GrammarTags } from "./grammar-tags";
 
 export const QuizStatusSchema = z.enum(["draft", "approved"]);
+export const QuizTypeSchema = z.enum(["grammar", "vocabulary"]);
 
-export const QuizDraftInputSchema = z.object({
-  tag: GrammarTagSchema,
-  difficulty: UserLevelSchema,
-  count: z.number().int().min(1).max(20),
-  instruction: z.string().trim().max(1000).optional(),
-});
+export const QuizDraftInputSchema = z
+  .object({
+    quizType: QuizTypeSchema,
+    tag: GrammarTagSchema,
+    difficulty: UserLevelSchema,
+    count: z.number().int().min(1).max(20),
+    instruction: z.string().trim().max(1000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.quizType === "vocabulary" && value.tag !== "word_choice") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["tag"],
+        message: "Vocabulary quizzes must use the word_choice tag.",
+      });
+    }
+  });
 
 export const QuizChoiceDraftSchema = z.object({
   text: z.string().trim().min(1),
@@ -17,15 +29,17 @@ export const QuizChoiceDraftSchema = z.object({
 });
 
 export const QuizDraftQuestionSchema = z.object({
+  quizType: QuizTypeSchema,
   tag: GrammarTagSchema,
   difficulty: UserLevelSchema,
   questionEn: z.string().trim().min(1),
-  sentenceKo: z.string().trim().min(1),
+  sentenceKo: z.string().trim().min(1).nullable(),
   choices: z.array(QuizChoiceDraftSchema).length(4),
   answerExplanationEn: z.string().trim().min(1),
 });
 
 export const QuizRecommendationQuerySchema = z.object({
+  quizType: QuizTypeSchema.default("grammar"),
   tags: z.array(GrammarTagSchema).max(GrammarTags.length).default([]),
 });
 
@@ -36,15 +50,35 @@ export const RecommendedQuizChoiceSchema = z.object({
 
 export const RecommendedQuizSchema = z.object({
   id: EntityIdSchema,
+  quizType: QuizTypeSchema,
   tag: GrammarTagSchema,
   difficulty: UserLevelSchema,
   questionEn: z.string().trim().min(1),
-  sentenceKo: z.string().trim().min(1),
+  sentenceKo: z.string().trim().min(1).nullable(),
   choices: z.array(RecommendedQuizChoiceSchema).length(4),
 });
 
 export const QuizPracticeItemSchema = RecommendedQuizSchema.extend({
   attemptCount: z.number().int().nonnegative(),
+}).superRefine((value, ctx) => {
+  if (value.quizType === "grammar" && value.sentenceKo === null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sentenceKo"],
+      message: "Grammar quizzes must include a Korean sentence.",
+    });
+  }
+  if (
+    value.quizType === "vocabulary" &&
+    (value.tag !== "word_choice" || value.sentenceKo !== null)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["quizType"],
+      message:
+        "Vocabulary quizzes must use word_choice without a Korean sentence.",
+    });
+  }
 });
 
 export const QuizProgressSchema = z
@@ -102,6 +136,17 @@ export const AdminQuizDraftGenerationResponseSchema = z
   })
   .superRefine((value, ctx) => {
     value.drafts.forEach((draft, index) => {
+      if (
+        (draft.quizType === "grammar" && draft.sentenceKo === null) ||
+        (draft.quizType === "vocabulary" &&
+          (draft.tag !== "word_choice" || draft.sentenceKo !== null))
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["drafts", index, "quizType"],
+          message: "Quiz draft content does not match its quiz type.",
+        });
+      }
       const correctCount = draft.choices.filter(
         (choice) => choice.isCorrect,
       ).length;
@@ -178,6 +223,7 @@ export const AdminQuizDeleteResponseSchema = z.object({
 });
 
 export type QuizStatus = z.infer<typeof QuizStatusSchema>;
+export type QuizType = z.infer<typeof QuizTypeSchema>;
 export type QuizDraftInput = z.infer<typeof QuizDraftInputSchema>;
 export type QuizRecommendationQuery = z.infer<
   typeof QuizRecommendationQuerySchema

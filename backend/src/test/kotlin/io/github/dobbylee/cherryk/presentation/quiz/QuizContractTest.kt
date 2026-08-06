@@ -2,6 +2,7 @@ package io.github.dobbylee.cherryk.presentation.quiz
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.junit.jupiter.api.Test
 import org.springframework.core.io.ClassPathResource
@@ -46,6 +47,7 @@ class QuizContractTest {
                         listOf(
                             QuizPracticeItemResponse(
                                 id = "3001",
+                                quizType = "grammar",
                                 tag = "particle_location",
                                 difficulty = "beginner",
                                 questionEn = "Choose the particle for where an action happens.",
@@ -93,6 +95,7 @@ class QuizContractTest {
     fun `admin draft request accepts the shared TypeScript contract fixture`() {
         assertEquals(
             AdminQuizDraftCreateRequest(
+                quizType = QuizType.GRAMMAR,
                 tag = GrammarTag.PARTICLE_LOCATION,
                 difficulty = UserLevel.BEGINNER,
                 count = 1,
@@ -111,6 +114,7 @@ class QuizContractTest {
                         listOf(
                             AdminQuizDraftResponse(
                                 id = "3001",
+                                quizType = "grammar",
                                 tag = "particle_location",
                                 difficulty = "beginner",
                                 questionEn = "Choose the particle for where an action happens.",

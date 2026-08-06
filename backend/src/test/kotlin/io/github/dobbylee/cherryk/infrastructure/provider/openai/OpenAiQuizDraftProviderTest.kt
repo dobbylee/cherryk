@@ -3,6 +3,7 @@ package io.github.dobbylee.cherryk.infrastructure.provider.openai
 import io.github.dobbylee.cherryk.application.quiz.QuizDraftProviderException
 import io.github.dobbylee.cherryk.application.quiz.QuizDraftProviderInput
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.BeforeEach
@@ -61,6 +62,7 @@ class OpenAiQuizDraftProviderTest {
                 val requestJson =
                     objectMapper.readTree((request as MockClientHttpRequest).bodyAsString)
                 val providerInput = objectMapper.readTree(requestJson["input"].stringValue())
+                assertEquals("grammar", providerInput["quizType"].stringValue())
                 assertEquals("particle_object", providerInput["tag"].stringValue())
                 assertEquals("beginner", providerInput["difficulty"].stringValue())
                 assertEquals(1, providerInput["count"].asInt())
@@ -100,6 +102,79 @@ class OpenAiQuizDraftProviderTest {
         )
         assertEquals(emptyList(), retryWaits)
         server.verify()
+    }
+
+    @Test
+    fun `creates vocabulary questions from English definitions and Korean choices`() {
+        server
+            .expect(requestTo(RESPONSES_URL))
+            .andExpect { request ->
+                val requestJson = objectMapper.readTree((request as MockClientHttpRequest).bodyAsString)
+                val providerInput = objectMapper.readTree(requestJson["input"].stringValue())
+                assertEquals("vocabulary", providerInput["quizType"].stringValue())
+                assertEquals("word_choice", providerInput["tag"].stringValue())
+                val questionSchema =
+                    requestJson["text"]["format"]["schema"]["properties"]["questions"]["items"]
+                assertTrue(questionSchema["properties"].has("questionEn"))
+                assertTrue(!questionSchema["properties"].has("sentenceKo"))
+            }
+            .andRespond(
+                withSuccess(
+                    response(vocabularyOutput()),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val quiz =
+            provider
+                .generate(
+                    input(
+                        quizType = QuizType.VOCABULARY,
+                        tag = GrammarTag.WORD_CHOICE,
+                    ),
+                ).single()
+
+        assertEquals(QuizType.VOCABULARY, quiz.quizType)
+        assertEquals("A place where people can borrow books.", quiz.questionEn)
+        assertEquals(null, quiz.sentenceKo)
+        assertEquals(setOf("도서관", "병원", "학교", "시장"), quiz.choices.map { it.text }.toSet())
+        assertEquals("도서관", quiz.choices.single { it.correct }.text)
+        server.verify()
+    }
+
+    @Test
+    fun `rejects vocabulary output that leaks Korean in the definition or uses English choices`() {
+        listOf(
+            vocabularyOutput().replace(
+                "A place where people can borrow books.",
+                "도서관 means library.",
+            ),
+            vocabularyOutput().replace("도서관", "library"),
+        ).forEach { output ->
+            val builder = RestClient.builder()
+            val localServer = MockRestServiceServer.bindTo(builder).build()
+            localServer
+                .expect(requestTo(RESPONSES_URL))
+                .andRespond(withSuccess(response(output), MediaType.APPLICATION_JSON))
+            val localProvider =
+                OpenAiQuizDraftProvider(
+                    restClient = builder.build(),
+                    properties = properties(),
+                    objectMapper = objectMapper,
+                )
+
+            assertFailsWith<QuizDraftProviderException> {
+                localProvider.generate(
+                    input(
+                        quizType = QuizType.VOCABULARY,
+                        tag = GrammarTag.WORD_CHOICE,
+                    ),
+                )
+            }.also { exception ->
+                assertEquals("invalid_response", exception.code)
+            }
+            localServer.verify()
+        }
     }
 
     @Test
@@ -314,11 +389,14 @@ class OpenAiQuizDraftProviderTest {
     private fun input(
         count: Int = 1,
         instruction: String? = null,
+        quizType: QuizType = QuizType.GRAMMAR,
+        tag: GrammarTag = GrammarTag.PARTICLE_OBJECT,
     ) = QuizDraftProviderInput(
-        tag = GrammarTag.PARTICLE_OBJECT,
+        tag = tag,
         difficulty = UserLevel.BEGINNER,
         count = count,
         instruction = instruction,
+        quizType = quizType,
     )
 
     private fun properties(
@@ -344,6 +422,18 @@ class OpenAiQuizDraftProviderTest {
             "correctAnswer": "를",
             "distractors": ["은", "에", "이"],
             "explanationEn": "Use 를 because 사과 is the object of 먹어요."
+          }]
+        }
+        """.trimIndent()
+
+    private fun vocabularyOutput() =
+        """
+        {
+          "questions": [{
+            "questionEn": "A place where people can borrow books.",
+            "correctAnswer": "도서관",
+            "distractors": ["병원", "학교", "시장"],
+            "explanationEn": "The Korean word 도서관 means library."
           }]
         }
         """.trimIndent()

@@ -12,8 +12,10 @@ import io.github.dobbylee.cherryk.application.quiz.QuizDraftProviderInput
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import io.github.dobbylee.cherryk.infrastructure.persistence.jpa.JpaQuizCommandStore
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -123,6 +125,52 @@ class AdminQuizEndpointIntegrationTest(
         )
         assertEquals(4, choiceCount(draftId.toLong()))
         assertEquals(1, provider.callCount)
+    }
+
+    @Test
+    fun `admin generates vocabulary drafts without a Korean sentence`() {
+        provider.result =
+            listOf(
+                QuizContent(
+                    tag = GrammarTag.WORD_CHOICE,
+                    difficulty = UserLevel.BEGINNER,
+                    questionEn = "A place where people can borrow books.",
+                    sentenceKo = null,
+                    choices =
+                        listOf(
+                            QuizChoiceContent("도서관", true, 0),
+                            QuizChoiceContent("병원", false, 1),
+                            QuizChoiceContent("학교", false, 2),
+                            QuizChoiceContent("시장", false, 3),
+                        ),
+                    answerExplanationEn = "Admin endpoint test: 도서관 means library.",
+                    quizType = QuizType.VOCABULARY,
+                ),
+            )
+
+        mockMvc
+            .perform(
+                post(GENERATE_PATH)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                          "quizType": "vocabulary",
+                          "tag": "word_choice",
+                          "difficulty": "beginner",
+                          "count": 1
+                        }
+                        """.trimIndent(),
+                    ).with(adminUser())
+                    .with(csrf()),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.drafts[0].quizType").value("vocabulary"))
+            .andExpect(jsonPath("$.drafts[0].questionEn").value("A place where people can borrow books."))
+            .andExpect(jsonPath("$.drafts[0].sentenceKo").value(nullValue()))
+            .andExpect(jsonPath("$.drafts[0].choices[0].text").value("도서관"))
+
+        assertEquals(QuizType.VOCABULARY, provider.lastInput?.quizType)
+        assertEquals(GrammarTag.WORD_CHOICE, provider.lastInput?.tag)
     }
 
     @Test
@@ -662,7 +710,7 @@ class ControllableQuizDraftProvider : QuizDraftProvider {
 
 private data class StoredQuiz(
     val status: String,
-    val sentenceKo: String,
+    val sentenceKo: String?,
 )
 
 private const val ADMIN_QUIZ_PATH = "/api/v1/admin/quizzes"

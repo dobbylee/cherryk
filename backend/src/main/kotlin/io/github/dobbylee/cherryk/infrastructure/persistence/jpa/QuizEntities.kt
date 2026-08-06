@@ -5,6 +5,7 @@ import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizSource
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
@@ -24,12 +25,13 @@ import java.time.Instant
 @Table(name = "quiz_questions")
 class QuizEntity(
     tag: GrammarTag,
+    quizType: QuizType = QuizType.GRAMMAR,
     difficulty: UserLevel,
     contentFingerprint: String,
     supersedesQuizId: Long? = null,
     status: QuizStatus,
     questionEn: String,
-    sentenceKo: String,
+    sentenceKo: String?,
     answerExplanationEn: String,
     source: QuizSource = QuizSource.AI_DRAFT,
     createdAt: Instant = Instant.now(),
@@ -44,6 +46,11 @@ class QuizEntity(
     @field:Convert(converter = GrammarTagConverter::class)
     @field:Column(nullable = false, columnDefinition = "text")
     var tag: GrammarTag = tag
+        protected set
+
+    @field:Convert(converter = QuizTypeConverter::class)
+    @field:Column(name = "quiz_type", nullable = false, columnDefinition = "text")
+    var quizType: QuizType = quizType
         protected set
 
     @field:Convert(converter = UserLevelConverter::class)
@@ -72,8 +79,8 @@ class QuizEntity(
     var questionEn: String = questionEn
         protected set
 
-    @field:Column(name = "sentence_ko", nullable = false, columnDefinition = "text")
-    var sentenceKo: String = sentenceKo
+    @field:Column(name = "sentence_ko", columnDefinition = "text")
+    var sentenceKo: String? = sentenceKo
         protected set
 
     @field:Column(name = "answer_explanation_en", nullable = false, columnDefinition = "text")
@@ -147,6 +154,7 @@ class QuizEntity(
                         )
                     },
             answerExplanationEn = answerExplanationEn,
+            quizType = quizType,
         )
 
     fun editDraft(
@@ -224,6 +232,7 @@ class QuizEntity(
         ): QuizEntity =
             QuizEntity(
                 tag = content.tag,
+                quizType = content.quizType,
                 difficulty = content.difficulty,
                 contentFingerprint = content.fingerprint(),
                 supersedesQuizId = supersedesQuizId,

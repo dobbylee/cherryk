@@ -18,13 +18,16 @@ data class QuizContent(
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val questionEn: String,
-    val sentenceKo: String,
+    val sentenceKo: String?,
     val choices: List<QuizChoiceContent>,
     val answerExplanationEn: String,
+    val quizType: QuizType = QuizType.GRAMMAR,
 ) {
     init {
         require(questionEn.isNotBlank()) { "Quiz question must not be blank." }
-        require(sentenceKo.isNotBlank()) { "Quiz sentence must not be blank." }
+        require(quizType != QuizType.GRAMMAR || !sentenceKo.isNullOrBlank()) {
+            "Grammar quiz sentence must not be blank."
+        }
         require(answerExplanationEn.isNotBlank()) { "Quiz explanation must not be blank." }
         require(choices.size == 4) { "Quiz must contain exactly four choices." }
         require(choices.count(QuizChoiceContent::correct) == 1) {
@@ -33,14 +36,38 @@ data class QuizContent(
         require(choices.map(QuizChoiceContent::sortOrder).toSet() == (0..3).toSet()) {
             "Quiz choice sortOrder values must be exactly zero through three."
         }
+        require(quizType != QuizType.VOCABULARY || tag == GrammarTag.WORD_CHOICE) {
+            "Vocabulary quizzes must use the word_choice tag."
+        }
+        if (quizType == QuizType.VOCABULARY) {
+            require(isEnglishVocabularyDefinition(questionEn)) {
+                "Vocabulary definitions must be written in English without revealing Korean text."
+            }
+            require(sentenceKo == null) {
+                "Vocabulary quizzes must not include a Korean sentence."
+            }
+            require(choices.all { isKoreanVocabularyChoice(it.text) }) {
+                "Vocabulary quiz choices must be Korean words."
+            }
+        }
     }
 
     fun fingerprint(): String =
         QuizContentFingerprint.create(
             QuizFingerprintInput(
-                tag = tag.databaseValue,
+                tag =
+                    if (quizType == QuizType.VOCABULARY) {
+                        "${quizType.databaseValue}:${tag.databaseValue}"
+                    } else {
+                        tag.databaseValue
+                    },
                 difficulty = difficulty.databaseValue,
-                sentenceKo = sentenceKo,
+                sentenceKo =
+                    if (quizType == QuizType.VOCABULARY) {
+                        questionEn
+                    } else {
+                        requireNotNull(sentenceKo)
+                    },
                 choices =
                     choices.map { choice ->
                         QuizFingerprintChoice(
@@ -51,3 +78,14 @@ data class QuizContent(
             ),
         )
 }
+
+fun isEnglishVocabularyDefinition(value: String): Boolean =
+    value.any { it in 'A'..'Z' || it in 'a'..'z' } && value.none(::isHangulCharacter)
+
+fun isKoreanVocabularyChoice(value: String): Boolean =
+    value.any(::isHangulCharacter) && value.none { it in 'A'..'Z' || it in 'a'..'z' }
+
+private fun isHangulCharacter(character: Char): Boolean =
+    character in '\u1100'..'\u11ff' ||
+        character in '\u3130'..'\u318f' ||
+        character in '\uac00'..'\ud7af'

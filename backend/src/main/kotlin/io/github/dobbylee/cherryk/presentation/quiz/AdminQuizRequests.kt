@@ -5,10 +5,12 @@ import io.github.dobbylee.cherryk.application.quiz.AdminQuizUpdate
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import tools.jackson.databind.JsonNode
 
 data class AdminQuizDraftCreateRequest(
+    val quizType: QuizType,
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val count: Int,
@@ -16,6 +18,7 @@ data class AdminQuizDraftCreateRequest(
 ) {
     fun toApplicationRequest() =
         AdminQuizDraftRequest(
+            quizType = quizType,
             tag = tag,
             difficulty = difficulty,
             count = count,
@@ -27,10 +30,19 @@ data class AdminQuizDraftCreateRequest(
             if (!payload.isObject) {
                 return null
             }
+            val quizType =
+                if (payload.has("quizType")) {
+                    payload.textValue("quizType")?.let(QuizType::fromDatabaseOrNull) ?: return null
+                } else {
+                    QuizType.GRAMMAR
+                }
             val tag =
                 payload.textValue("tag")
                     ?.let(GrammarTag::fromDatabaseOrNull)
                     ?: return null
+            if (quizType == QuizType.VOCABULARY && tag != GrammarTag.WORD_CHOICE) {
+                return null
+            }
             val difficultyValue = payload.textValue("difficulty") ?: return null
             val difficulty =
                 UserLevel.entries.firstOrNull { it.databaseValue == difficultyValue }
@@ -46,7 +58,7 @@ data class AdminQuizDraftCreateRequest(
                 } else {
                     null
                 }
-            return AdminQuizDraftCreateRequest(tag, difficulty, count, instruction)
+            return AdminQuizDraftCreateRequest(quizType, tag, difficulty, count, instruction)
         }
     }
 }

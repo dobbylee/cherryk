@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "apiError": {
     "error": {
       "code": "validation_failed",
@@ -40,12 +40,14 @@
     "note": "Please review the extracted spacing."
   },
   "quizRecommendationQuery": {
+    "quizType": "grammar",
     "tags": ["particle_location"]
   },
   "quizRecommendationResponse": {
     "quizzes": [
       {
         "id": "3001",
+        "quizType": "grammar",
         "tag": "particle_location",
         "difficulty": "beginner",
         "questionEn": "Choose the particle for where an action happens.",
@@ -90,6 +92,7 @@
     "explanationEn": "Use 에서 for the place where an action happens."
   },
   "adminQuizDraftRequest": {
+    "quizType": "grammar",
     "tag": "particle_location",
     "difficulty": "beginner",
     "count": 1,
@@ -99,6 +102,7 @@
     "drafts": [
       {
         "id": "3001",
+        "quizType": "grammar",
         "tag": "particle_location",
         "difficulty": "beginner",
         "questionEn": "Choose the particle for where an action happens.",

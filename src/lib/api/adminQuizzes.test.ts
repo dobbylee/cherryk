@@ -19,6 +19,7 @@ describe("admin quiz API helpers", () => {
         expect([...headers.keys()]).toEqual(["content-type"]);
         expect(init?.body).toBe(
           JSON.stringify({
+            quizType: "grammar",
             tag: "particle_object",
             difficulty: "beginner",
             count: 2,
@@ -32,6 +33,7 @@ describe("admin quiz API helpers", () => {
 
     await expect(
       generateAdminQuizDrafts({
+        quizType: "grammar",
         tag: "particle_object",
         difficulty: "beginner",
         count: 2,

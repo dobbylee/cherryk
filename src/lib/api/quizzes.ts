@@ -1,13 +1,19 @@
 import type { GrammarTag } from "@/lib/contracts/grammar-tags";
-import type { QuizAttemptRequest } from "@/lib/contracts/quiz";
+import type { QuizAttemptRequest, QuizType } from "@/lib/contracts/quiz";
 import {
   QuizAttemptResponseSchema,
   QuizRecommendationResponseSchema,
 } from "@/lib/contracts/quiz";
 import { fetchJson } from "./client";
 
-export function fetchQuizRecommendations(tags?: GrammarTag[]) {
+export function fetchQuizRecommendations(
+  tags?: GrammarTag[],
+  quizType: QuizType = "grammar",
+) {
   const query = new URLSearchParams();
+  if (quizType !== "grammar") {
+    query.set("type", quizType);
+  }
   if (tags !== undefined) {
     query.set("tags", tags.join(","));
   }

@@ -8,7 +8,9 @@ import io.github.dobbylee.cherryk.application.quiz.QuizCommandService
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -104,6 +106,27 @@ class QuizEndpointIntegrationTest(
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.quizzes.length()").value(2))
             .andExpect(jsonPath("$.activeTags.length()").value(0))
+    }
+
+    @Test
+    fun `vocabulary recommendations are isolated and omit the Korean sentence`() {
+        val user = createUser()
+        createQuiz(GrammarTag.PARTICLE_OBJECT, approved = true)
+        val vocabulary =
+            createQuiz(
+                tag = GrammarTag.WORD_CHOICE,
+                approved = true,
+                quizType = QuizType.VOCABULARY,
+            )
+
+        mockMvc
+            .perform(get("$RECOMMEND_PATH?type=vocabulary").with(oidcUser(user.subject)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.quizzes.length()").value(1))
+            .andExpect(jsonPath("$.quizzes[0].id").value(vocabulary.id.toString()))
+            .andExpect(jsonPath("$.quizzes[0].quizType").value("vocabulary"))
+            .andExpect(jsonPath("$.quizzes[0].sentenceKo").value(nullValue()))
+            .andExpect(jsonPath("$.progress.totalCount").value(1))
     }
 
     @Test
@@ -245,22 +268,40 @@ class QuizEndpointIntegrationTest(
     private fun createQuiz(
         tag: GrammarTag,
         approved: Boolean,
+        quizType: QuizType = QuizType.GRAMMAR,
     ): EndpointQuizFixture {
         val marker = UUID.randomUUID().toString()
+        val vocabularyMarker = marker.filter(Char::isDigit).take(8)
         val content =
             QuizContent(
                 tag = tag,
                 difficulty = UserLevel.BEGINNER,
-                questionEn = "Choose the correct answer.",
-                sentenceKo = "저는 $marker( ) 먹어요.",
+                questionEn =
+                    if (quizType == QuizType.VOCABULARY) {
+                        "A place where people can borrow books, reference $marker."
+                    } else {
+                        "Choose the correct answer."
+                    },
+                sentenceKo =
+                    if (quizType == QuizType.VOCABULARY) null else "저는 $marker( ) 먹어요.",
                 choices =
-                    listOf(
-                        QuizChoiceContent("은-$marker", false, 0),
-                        QuizChoiceContent("을-$marker", true, 1),
-                        QuizChoiceContent("에-$marker", false, 2),
-                        QuizChoiceContent("이-$marker", false, 3),
-                    ),
+                    if (quizType == QuizType.VOCABULARY) {
+                        listOf(
+                            QuizChoiceContent("병원$vocabularyMarker", false, 0),
+                            QuizChoiceContent("도서관$vocabularyMarker", true, 1),
+                            QuizChoiceContent("학교$vocabularyMarker", false, 2),
+                            QuizChoiceContent("시장$vocabularyMarker", false, 3),
+                        )
+                    } else {
+                        listOf(
+                            QuizChoiceContent("은-$marker", false, 0),
+                            QuizChoiceContent("을-$marker", true, 1),
+                            QuizChoiceContent("에-$marker", false, 2),
+                            QuizChoiceContent("이-$marker", false, 3),
+                        )
+                    },
                 answerExplanationEn = "Quiz endpoint test: Use 을 for $marker.",
+                quizType = quizType,
             )
         val created = commands.createDraft(content, NOW)
         if (approved) {

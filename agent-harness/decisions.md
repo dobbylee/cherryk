@@ -58,6 +58,9 @@ code alone. Exact dependency versions live in manifests.
 ## Quiz Domain
 
 - `Quiz` owns exactly four choices; `QuizAttempt` is a separate append-only aggregate.
+- Model grammar and vocabulary as explicit quiz types. Vocabulary quizzes use an
+  English definition as the question, exactly four Korean word choices, and the
+  existing `word_choice` tag for compatibility with tag-based quiz history.
 - Only approved quizzes are user-visible. Approved content is immutable; changes use a new draft and retire the previous quiz after approval.
 - Preserve current fingerprint and personalized recommendation behavior during migration.
 - Keep admin command DTOs separate from user read DTOs.

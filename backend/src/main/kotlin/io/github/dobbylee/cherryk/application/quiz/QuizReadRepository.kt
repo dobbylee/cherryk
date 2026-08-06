@@ -1,11 +1,15 @@
 package io.github.dobbylee.cherryk.application.quiz
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import java.time.Instant
 
 interface QuizReadRepository {
-    fun findApprovedQuizzesByTags(tags: Set<GrammarTag>): List<RecommendedQuiz>
+    fun findApprovedQuizzesByTags(
+        quizType: QuizType,
+        tags: Set<GrammarTag>,
+    ): List<RecommendedQuiz>
 
     fun findAttemptSummaries(userId: Long): List<QuizAttemptSummary>
 
@@ -14,10 +18,11 @@ interface QuizReadRepository {
 
 data class RecommendedQuiz(
     val id: Long,
+    val quizType: QuizType = QuizType.GRAMMAR,
     val tag: GrammarTag,
     val difficulty: UserLevel,
     val questionEn: String,
-    val sentenceKo: String,
+    val sentenceKo: String?,
     val choices: List<RecommendedQuizChoice>,
 )
 
