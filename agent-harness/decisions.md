@@ -81,6 +81,19 @@ code alone. Exact dependency versions live in manifests.
   contains only exercise content; generated Korean instruction prefixes are
   removed before persistence. `unnatural` is the explicit exception because it
   has no separate exercise stem and may repeat the instruction in Korean.
+- Keep exact content fingerprints and learning-target identity as separate
+  duplicate guards. Vocabulary identity is the normalized correct Korean word;
+  `sentence_order` and `unnatural` identity is the normalized correct choice;
+  other grammar identity is the normalized exercise plus correct choice, scoped
+  by quiz type and tag. Ordinary generation and edits reserve append-only target
+  history even if a draft is later rejected or a quiz retired. An unchanged
+  target in an explicit revision remains allowed.
+- Select vocabulary answers from the database-owned, difficulty-tiered target
+  catalog before calling OpenAI. The model writes the definition, distractors,
+  and explanation for those exact targets; it does not choose the target words.
+  Never send the accumulated target history to the model. Grammar retries may
+  include only the current bounded batch exclusions, while PostgreSQL remains
+  authoritative for full-history duplicate rejection.
 - Only approved quizzes are user-visible. Approved content is immutable; changes use a new draft and retire the previous quiz after approval.
 - Preserve current fingerprint and personalized recommendation behavior during migration.
 - Keep admin command DTOs separate from user read DTOs.

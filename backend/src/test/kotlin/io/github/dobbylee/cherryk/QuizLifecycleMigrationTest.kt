@@ -1,5 +1,6 @@
 package io.github.dobbylee.cherryk
 
+import io.github.dobbylee.cherryk.domain.quiz.learningTargetDigest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -82,6 +83,119 @@ class QuizLifecycleMigrationTest(
 
         assertEquals(1, successfulMigrationCount)
         assertEquals("grammar", storedType)
+    }
+
+    @Test
+    fun `V8 installs durable learning target history and a tiered vocabulary pool`() {
+        val successfulMigrationCount =
+            jdbcClient
+                .sql(
+                    """
+                    SELECT count(*)
+                    FROM flyway_schema_history
+                    WHERE success = true
+                      AND script = 'V8__quiz_learning_targets_and_vocabulary_pool.sql'
+                    """.trimIndent(),
+                ).query(Int::class.java)
+                .single()
+        val targetsByDifficulty =
+            jdbcClient
+                .sql(
+                    """
+                    SELECT difficulty, count(*)
+                    FROM vocabulary_targets
+                    GROUP BY difficulty
+                    ORDER BY difficulty
+                    """.trimIndent(),
+                ).query { resultSet, _ ->
+                    resultSet.getString("difficulty") to resultSet.getInt(2)
+                }.list()
+                .toMap()
+        val invalidTargetCount =
+            jdbcClient
+                .sql(
+                    """
+                    SELECT count(*)
+                    FROM vocabulary_targets
+                    WHERE word_ko !~ '[가-힣]'
+                       OR word_ko ~ '[A-Za-z]'
+                       OR normalized_word <> lower(
+                            regexp_replace(btrim(normalize(word_ko, NFC)), '[[:space:]]+', ' ', 'g')
+                          )
+                       OR target_digest <> encode(
+                            sha256(convert_to(normalized_word, 'UTF8')),
+                            'hex'
+                          )
+                       OR reservation_key IS NOT NULL
+                       OR reserved_at IS NOT NULL
+                    """.trimIndent(),
+                ).query(Int::class.java)
+                .single()
+
+        assertEquals(1, successfulMigrationCount)
+        assertEquals(
+            mapOf(
+                "beginner" to 81,
+                "intermediate" to 89,
+                "lower_intermediate" to 85,
+            ),
+            targetsByDifficulty,
+        )
+        assertEquals(0, invalidTargetCount)
+    }
+
+    @Test
+    fun `learning target history survives quiz deletion and remains unique`() {
+        val quizId = insertQuiz()
+        insertChoice(quizId, correct = true, sortOrder = 0)
+        val targetKey = "migration-target-${UUID.randomUUID()}"
+        jdbcClient
+            .sql(
+                """
+                INSERT INTO quiz_learning_targets (
+                    quiz_question_id, quiz_type, tag, target_key, target_digest
+                ) VALUES (
+                    :quizId, 'grammar', 'particle_object', :targetKey, :targetDigest
+                )
+                """.trimIndent(),
+            ).param("quizId", quizId)
+            .param("targetKey", targetKey)
+            .param("targetDigest", learningTargetDigest(targetKey))
+            .update()
+
+        jdbcClient
+            .sql("DELETE FROM quiz_questions WHERE id = :quizId")
+            .param("quizId", quizId)
+            .update()
+
+        assertEquals(
+            1,
+            jdbcClient
+                .sql(
+                    """
+                    SELECT count(*)
+                    FROM quiz_learning_targets
+                    WHERE target_key = :targetKey
+                      AND quiz_question_id IS NULL
+                    """.trimIndent(),
+            ).param("targetKey", targetKey)
+                .query(Int::class.java)
+                .single(),
+        )
+        assertFailsWith<DataIntegrityViolationException> {
+            jdbcClient
+                .sql(
+                    """
+                    INSERT INTO quiz_learning_targets (
+                        quiz_type, tag, target_key, target_digest
+                    ) VALUES (
+                        'grammar', 'particle_object', :targetKey, :targetDigest
+                    )
+                    """.trimIndent(),
+                ).param("targetKey", targetKey)
+                .param("targetDigest", learningTargetDigest(targetKey))
+                .update()
+        }
     }
 
     @Test

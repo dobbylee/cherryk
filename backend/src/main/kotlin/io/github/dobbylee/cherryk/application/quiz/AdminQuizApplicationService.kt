@@ -5,6 +5,8 @@ import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
 import io.github.dobbylee.cherryk.domain.quiz.QuizType
+import io.github.dobbylee.cherryk.domain.quiz.learningTarget
+import io.github.dobbylee.cherryk.domain.quiz.normalizeLearningTarget
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -62,35 +64,128 @@ class AdminQuizApplicationException(
 class AdminQuizApplicationService(
     private val provider: QuizDraftProvider,
     private val commands: QuizCommandService,
+    private val vocabularyTargets: VocabularyTargetRepository,
     private val clock: Clock,
 ) {
     fun generateDrafts(request: AdminQuizDraftRequest): List<AdminQuizDraft> {
-        val contents =
-            try {
-                provider.generate(
+        val candidateContents = mutableListOf<QuizContent>()
+        val candidateFingerprints = mutableSetOf<String>()
+        val candidateLearningTargets = mutableSetOf<String>()
+        val vocabularyClaims = mutableListOf<VocabularyTargetClaim>()
+        val retryExclusions = linkedSetOf<String>()
+
+        return try {
+            var generationRound = 0
+            while (generationRound < MAX_GENERATION_ROUNDS) {
+                generationRound += 1
+                val remainingCount = request.count - candidateContents.size
+                if (remainingCount == 0) {
+                    break
+                }
+                val vocabularyTargetsForRound =
+                    if (request.quizType == QuizType.VOCABULARY) {
+                        vocabularyTargets
+                            .claimUnusedTargets(request.difficulty, remainingCount)
+                            .also { claim ->
+                                if (claim.words.isNotEmpty()) {
+                                    vocabularyClaims += claim
+                                }
+                            }.words
+                    } else {
+                        emptyList()
+                    }
+                if (request.quizType == QuizType.VOCABULARY && vocabularyTargetsForRound.isEmpty()) {
+                    break
+                }
+                val generationCount =
+                    if (request.quizType == QuizType.VOCABULARY) {
+                        vocabularyTargetsForRound.size
+                    } else {
+                        remainingCount
+                    }
+                val input =
                     QuizDraftProviderInput(
                         quizType = request.quizType,
                         tag = request.tag,
                         difficulty = request.difficulty,
-                        count = request.count,
+                        count = generationCount,
                         instruction = request.instruction,
-                    ),
-                )
-            } catch (exception: QuizDraftProviderException) {
-                if (exception.code == "invalid_response") {
-                    throw AdminQuizApplicationException(
-                        code = "invalid_ai_output",
-                        message = "AI quiz draft output is invalid.",
+                        vocabularyTargets = vocabularyTargetsForRound,
+                        avoidLearningTargets = retryExclusions.toList(),
                     )
+                val contents = generateContents(input)
+                validateProviderContents(contents, input)
+                commands.findNovelDrafts(contents).forEach { content ->
+                    val fingerprint = content.fingerprint()
+                    val learningTargetIdentity = learningTargetIdentity(content)
+                    if (
+                        candidateFingerprints.add(fingerprint) &&
+                        candidateLearningTargets.add(learningTargetIdentity)
+                    ) {
+                        candidateContents += content
+                    }
                 }
-                throw exception
-        }
-        val now = clock.instant()
+                contents.forEach { content ->
+                    retryExclusions +=
+                        content
+                            .learningTarget()
+                            .promptLabel
+                            .trim()
+                            .take(MAX_RETRY_EXCLUSION_LENGTH)
+                }
+                while (retryExclusions.size > MAX_RETRY_EXCLUSIONS) {
+                    retryExclusions.remove(retryExclusions.first())
+                }
+            }
 
-        return commands.createDrafts(contents, now).map { created ->
-            AdminQuizDraft(
-                id = created.result.quizId,
-                content = created.content,
+            commands.createDrafts(candidateContents, clock.instant()).map { created ->
+                AdminQuizDraft(
+                    id = created.result.quizId,
+                    content = created.content,
+                )
+            }
+        } finally {
+            vocabularyClaims.forEach { claim ->
+                vocabularyTargets.releaseClaim(claim.reservationKey)
+            }
+        }
+    }
+
+    private fun generateContents(input: QuizDraftProviderInput): List<QuizContent> =
+        try {
+            provider.generate(input)
+        } catch (exception: QuizDraftProviderException) {
+            if (exception.code == "invalid_response") {
+                throw AdminQuizApplicationException(
+                    code = "invalid_ai_output",
+                    message = "AI quiz draft output is invalid.",
+                )
+            }
+            throw exception
+        }
+
+    private fun validateProviderContents(
+        contents: List<QuizContent>,
+        input: QuizDraftProviderInput,
+    ) {
+        val hasExpectedShape =
+            contents.size == input.count &&
+                contents.all { content ->
+                    content.quizType == input.quizType &&
+                        content.tag == input.tag &&
+                        content.difficulty == input.difficulty
+                }
+        val hasExpectedVocabularyTargets =
+            input.quizType != QuizType.VOCABULARY ||
+                contents.map { content ->
+                    normalizeLearningTarget(
+                        content.choices.single(QuizChoiceContent::correct).text,
+                    )
+                } == input.vocabularyTargets.map(::normalizeLearningTarget)
+        if (!hasExpectedShape || !hasExpectedVocabularyTargets) {
+            throw AdminQuizApplicationException(
+                code = "invalid_ai_output",
+                message = "AI quiz draft output is invalid.",
             )
         }
     }
@@ -112,7 +207,7 @@ class AdminQuizApplicationService(
             } catch (exception: QuizDuplicateException) {
                 throw AdminQuizApplicationException(
                     code = "quiz_duplicate",
-                    message = "An identical quiz already exists.",
+                    message = "A quiz with the same content or learning target already exists.",
                 )
             }
 
@@ -153,3 +248,14 @@ class AdminQuizApplicationService(
                 }
         }
 }
+
+private const val MAX_GENERATION_ROUNDS = 3
+private const val MAX_RETRY_EXCLUSIONS = 40
+private const val MAX_RETRY_EXCLUSION_LENGTH = 200
+
+private fun learningTargetIdentity(content: QuizContent): String =
+    listOf(
+        content.quizType.databaseValue,
+        content.tag.databaseValue,
+        content.learningTarget().digest,
+    ).joinToString("\u001f")

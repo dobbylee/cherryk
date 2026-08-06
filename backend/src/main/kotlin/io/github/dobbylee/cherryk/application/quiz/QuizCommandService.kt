@@ -72,6 +72,8 @@ interface QuizCommandStore {
 
     fun prepareDraftBatch(contents: List<QuizContent>)
 
+    fun findNovelDrafts(contents: List<QuizContent>): List<QuizContent>
+
     fun createRevision(
         approvedQuizId: Long,
         now: Instant,
@@ -93,7 +95,8 @@ interface QuizCommandStore {
     fun rejectDraft(quizId: Long): QuizCommandResult
 }
 
-class QuizDuplicateException : RuntimeException("An identical quiz already exists.")
+class QuizDuplicateException :
+    RuntimeException("A quiz with the same content or learning target already exists.")
 
 data class CreatedQuizDraft(
     val content: QuizContent,
@@ -126,6 +129,10 @@ class QuizCommandService(
             }
         }
     }
+
+    @Transactional(readOnly = true)
+    fun findNovelDrafts(contents: List<QuizContent>): List<QuizContent> =
+        store.findNovelDrafts(contents)
 
     @Transactional
     fun createRevision(

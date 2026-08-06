@@ -76,6 +76,10 @@ class AdminQuizEndpointIntegrationTest(
             .list()
             .forEach { id ->
                 jdbcClient
+                    .sql("DELETE FROM quiz_learning_targets WHERE quiz_question_id = :id")
+                    .param("id", id)
+                    .update()
+                jdbcClient
                     .sql("DELETE FROM quiz_questions WHERE id = :id")
                     .param("id", id)
                     .update()
@@ -171,6 +175,60 @@ class AdminQuizEndpointIntegrationTest(
 
         assertEquals(QuizType.VOCABULARY, provider.lastInput?.quizType)
         assertEquals(GrammarTag.WORD_CHOICE, provider.lastInput?.tag)
+        assertEquals(listOf("도서관"), provider.lastInput?.vocabularyTargets)
+    }
+
+    @Test
+    fun `vocabulary generation consumes distinct pool targets and does not reuse a rejection`() {
+        provider.resultFactory = ::vocabularyContents
+        val generatedTargets = mutableListOf<String>()
+        try {
+            val firstResponse =
+                mockMvc
+                    .perform(vocabularyGenerateRequest(count = 2))
+                    .andExpect(status().isOk)
+                    .andExpect(jsonPath("$.drafts.length()").value(2))
+                    .andReturn()
+                    .response
+            val firstDrafts = objectMapper.readTree(firstResponse.contentAsString).get("drafts")
+            val firstIds = firstDrafts.toList().map { it.get("id").stringValue() }
+            val firstTargets = firstDrafts.toList().map(::correctAnswer)
+            generatedTargets += firstTargets
+
+            mockMvc
+                .perform(
+                    delete("$ADMIN_QUIZ_PATH/${firstIds.first()}")
+                        .with(adminUser())
+                        .with(csrf()),
+                ).andExpect(status().isOk)
+
+            val secondResponse =
+                mockMvc
+                    .perform(vocabularyGenerateRequest(count = 2))
+                    .andExpect(status().isOk)
+                    .andExpect(jsonPath("$.drafts.length()").value(2))
+                    .andReturn()
+                    .response
+            val secondDrafts = objectMapper.readTree(secondResponse.contentAsString).get("drafts")
+            val secondTargets = secondDrafts.toList().map(::correctAnswer)
+            generatedTargets += secondTargets
+
+            assertEquals(4, (firstTargets + secondTargets).toSet().size)
+            assertTrue(firstTargets.first() !in secondTargets)
+        } finally {
+            generatedTargets.forEach { target ->
+                jdbcClient
+                    .sql(
+                        """
+                        DELETE FROM quiz_learning_targets
+                        WHERE quiz_type = 'vocabulary'
+                          AND tag = 'word_choice'
+                          AND target_key = :target
+                        """.trimIndent(),
+                    ).param("target", target)
+                    .update()
+            }
+        }
     }
 
     @Test
@@ -311,6 +369,34 @@ class AdminQuizEndpointIntegrationTest(
     }
 
     @Test
+    fun `vocabulary target claims are released when provider generation fails`() {
+        provider.failure =
+            QuizDraftProviderException(
+                code = "invalid_response",
+                message = "Invalid vocabulary output.",
+            )
+
+        mockMvc
+            .perform(vocabularyGenerateRequest(count = 2))
+            .andExpect(status().isBadGateway)
+            .andExpect(jsonPath("$.error.code").value("invalid_ai_output"))
+
+        assertEquals(
+            0,
+            jdbcClient
+                .sql(
+                    """
+                    SELECT count(*)
+                    FROM vocabulary_targets
+                    WHERE reservation_key IS NOT NULL
+                       OR reserved_at IS NOT NULL
+                    """.trimIndent(),
+                ).query(Int::class.java)
+                .single(),
+        )
+    }
+
+    @Test
     fun `duplicate generated drafts are skipped`() {
         mockMvc.perform(generateRequest()).andExpect(status().isOk)
         mockMvc
@@ -318,7 +404,8 @@ class AdminQuizEndpointIntegrationTest(
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.drafts.length()").value(0))
 
-        assertEquals(2, provider.callCount)
+        assertEquals(4, provider.callCount)
+        assertTrue(provider.lastInput?.avoidLearningTargets?.isNotEmpty() == true)
         assertEquals(
             1,
             jdbcClient
@@ -345,7 +432,7 @@ class AdminQuizEndpointIntegrationTest(
         commandStore.failOnCreateAttempt = 2
 
         mockMvc
-            .perform(generateRequest())
+            .perform(generateRequest(count = 2))
             .andExpect(status().isInternalServerError)
             .andExpect(jsonPath("$.error.code").value("server_error"))
 
@@ -467,11 +554,26 @@ class AdminQuizEndpointIntegrationTest(
             .toLong()
     }
 
-    private fun generateRequest() =
+    private fun generateRequest(count: Int = 1) =
         post(GENERATE_PATH)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(validGenerateRequest())
+            .content(validGenerateRequest(count))
             .with(adminUser())
+            .with(csrf())
+
+    private fun vocabularyGenerateRequest(count: Int) =
+        post(GENERATE_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                """
+                {
+                  "quizType": "vocabulary",
+                  "tag": "word_choice",
+                  "difficulty": "beginner",
+                  "count": $count
+                }
+                """.trimIndent(),
+            ).with(adminUser())
             .with(csrf())
 
     private fun adminUser(email: String = "admin@example.com") =
@@ -483,12 +585,12 @@ class AdminQuizEndpointIntegrationTest(
                 .claim("email_verified", true)
         }
 
-    private fun validGenerateRequest() =
+    private fun validGenerateRequest(count: Int = 1) =
         """
         {
           "tag": "particle_object",
           "difficulty": "beginner",
-          "count": 1
+          "count": $count
         }
         """.trimIndent()
 
@@ -600,6 +702,32 @@ class AdminQuizEndpointIntegrationTest(
             answerExplanationEn = "Admin endpoint test: $marker",
         )
 
+    private fun vocabularyContents(input: QuizDraftProviderInput): List<QuizContent> =
+        input.vocabularyTargets.map { target ->
+            QuizContent(
+                tag = GrammarTag.WORD_CHOICE,
+                difficulty = input.difficulty,
+                questionEn = "An English definition for the selected Korean word.",
+                sentenceKo = null,
+                choices =
+                    listOf(
+                        QuizChoiceContent(target, true, 0),
+                        QuizChoiceContent("하늘", false, 1),
+                        QuizChoiceContent("바다", false, 2),
+                        QuizChoiceContent("산", false, 3),
+                    ),
+                answerExplanationEn = "Admin endpoint test: vocabulary $target",
+                quizType = QuizType.VOCABULARY,
+            )
+        }
+
+    private fun correctAnswer(draft: tools.jackson.databind.JsonNode): String =
+        draft
+            .get("choices")
+            .single { choice -> choice.get("isCorrect").booleanValue() }
+            .get("text")
+            .stringValue()
+
     private companion object {
         val NOW: Instant = Instant.parse("2026-07-25T06:00:00Z")
     }
@@ -642,6 +770,9 @@ class ControllableQuizCommandStore(
     override fun prepareDraftBatch(contents: List<QuizContent>) =
         delegate.prepareDraftBatch(contents)
 
+    override fun findNovelDrafts(contents: List<QuizContent>): List<QuizContent> =
+        delegate.findNovelDrafts(contents)
+
     override fun createRevision(
         approvedQuizId: Long,
         now: Instant,
@@ -670,6 +801,7 @@ class ControllableQuizCommandStore(
 
 class ControllableQuizDraftProvider : QuizDraftProvider {
     var result: List<QuizContent> = emptyList()
+    var resultFactory: ((QuizDraftProviderInput) -> List<QuizContent>)? = null
     var failure: RuntimeException? = null
     var callCount = 0
         private set
@@ -680,7 +812,7 @@ class ControllableQuizDraftProvider : QuizDraftProvider {
         callCount += 1
         lastInput = input
         failure?.let { throw it }
-        return result
+        return resultFactory?.invoke(input) ?: result
     }
 
     fun reset() {
@@ -703,6 +835,7 @@ class ControllableQuizDraftProvider : QuizDraftProvider {
                 ),
             )
         failure = null
+        resultFactory = null
         callCount = 0
         lastInput = null
     }

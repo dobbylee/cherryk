@@ -5,6 +5,7 @@ import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
+import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -149,6 +150,40 @@ class QuizCommandServiceIntegrationTest(
     }
 
     @Test
+    fun `concurrent drafts with one learning target create only one quiz`() {
+        val first = content("concurrent-learning-target-${UUID.randomUUID()}")
+        val second =
+            first.copy(
+                choices =
+                    first.choices.map { choice ->
+                        if (choice.sortOrder == 0) choice.copy(text = "는-${UUID.randomUUID()}") else choice
+                    },
+            )
+        val executor = Executors.newFixedThreadPool(2)
+        val barrier = CyclicBarrier(2)
+
+        try {
+            val firstRequest =
+                executor.submit<List<CreatedQuizDraft>> {
+                    barrier.await()
+                    service.createDrafts(listOf(first), NOW)
+                }
+            val secondRequest =
+                executor.submit<List<CreatedQuizDraft>> {
+                    barrier.await()
+                    service.createDrafts(listOf(second), NOW)
+                }
+
+            val created = firstRequest.get(10, TimeUnit.SECONDS) + secondRequest.get(10, TimeUnit.SECONDS)
+
+            assertEquals(1, created.size)
+        } finally {
+            executor.shutdownNow()
+            deleteQuizzes(findQuizIds(first, second))
+        }
+    }
+
+    @Test
     fun `approving a revision retires its prior approved quiz atomically`() {
         val ids = mutableListOf<Long>()
         try {
@@ -184,7 +219,7 @@ class QuizCommandServiceIntegrationTest(
     }
 
     @Test
-    fun `failed revision approval restores the prior approved quiz`() {
+    fun `revision edit rejects a learning target already used by another quiz`() {
         val ids = mutableListOf<Long>()
         try {
             val original = service.createDraft(content("original"), NOW)
@@ -200,25 +235,24 @@ class QuizCommandServiceIntegrationTest(
                     service.createRevision(original.quizId, NOW.plusSeconds(4)),
                 )
             ids += revision.quizId
-            service.updateDraft(
-                quizId = revision.quizId,
-                update =
-                    QuizDraftUpdate(
-                        tag = duplicateContent().tag,
-                        difficulty = duplicateContent().difficulty,
-                        sentenceKo = duplicateContent().sentenceKo,
-                        choices = duplicateContent().choices,
-                    ),
-                now = NOW.plusSeconds(5),
-            )
-
             assertFailsWith<QuizDuplicateException> {
-                service.approveDraft(revision.quizId, NOW.plusSeconds(6))
+                service.updateDraft(
+                    quizId = revision.quizId,
+                    update =
+                        QuizDraftUpdate(
+                            tag = duplicateContent().tag,
+                            difficulty = duplicateContent().difficulty,
+                            sentenceKo = duplicateContent().sentenceKo,
+                            choices = duplicateContent().choices,
+                        ),
+                    now = NOW.plusSeconds(5),
+                )
             }
 
             assertEquals("approved", findQuiz(original.quizId).status)
             assertEquals("draft", findQuiz(revision.quizId).status)
             assertEquals("approved", findQuiz(duplicate.quizId).status)
+            assertEquals("Choose the correct particle.", findQuiz(revision.quizId).questionEn)
         } finally {
             deleteQuizzes(ids)
         }
@@ -235,6 +269,134 @@ class QuizCommandServiceIntegrationTest(
                 QuizCommandResult.Failure(QuizCommandFailure.INVALID_REVISION_TARGET),
                 service.createRevision(draft.quizId, NOW.plusSeconds(1)),
             )
+        } finally {
+            deleteQuizzes(ids)
+        }
+    }
+
+    @Test
+    fun `revision can change away from and return to its superseded learning target`() {
+        val ids = mutableListOf<Long>()
+        val originalContent = content("revision-original-${UUID.randomUUID()}")
+        val alternateContent = content("revision-alternate-${UUID.randomUUID()}")
+        try {
+            val original = service.createDraft(originalContent, NOW)
+            ids += original.quizId
+            service.approveDraft(original.quizId, NOW.plusSeconds(1))
+            val revision =
+                assertIs<QuizCommandResult.Success>(
+                    service.createRevision(original.quizId, NOW.plusSeconds(2)),
+                )
+            ids += revision.quizId
+
+            assertIs<QuizCommandResult.Success>(
+                service.updateDraft(
+                    quizId = revision.quizId,
+                    update = alternateContent.asUpdate(),
+                    now = NOW.plusSeconds(3),
+                ),
+            )
+            assertIs<QuizCommandResult.Success>(
+                service.updateDraft(
+                    quizId = revision.quizId,
+                    update = originalContent.asUpdate(),
+                    now = NOW.plusSeconds(4),
+                ),
+            )
+
+            assertEquals(originalContent.sentenceKo, sentence(revision.quizId))
+        } finally {
+            deleteQuizzes(ids)
+        }
+    }
+
+    @Test
+    fun `long grammar learning targets use a fixed width history identity`() {
+        val longContent =
+            content("long-${UUID.randomUUID()}").copy(
+                sentenceKo = "가".repeat(10_000),
+            )
+        val ids = mutableListOf<Long>()
+        try {
+            val created = service.createDraft(longContent, NOW)
+            ids += created.quizId
+
+            assertEquals(
+                64,
+                jdbcClient
+                    .sql(
+                        """
+                        SELECT char_length(target_digest)
+                        FROM quiz_learning_targets
+                        WHERE quiz_question_id = :quizId
+                        """.trimIndent(),
+                    ).param("quizId", created.quizId)
+                    .query(Int::class.java)
+                    .single(),
+            )
+        } finally {
+            deleteQuizzes(ids)
+        }
+    }
+
+    @Test
+    fun `vocabulary target history blocks reworded and rejected duplicates`() {
+        val first = vocabularyContent("A place where people can borrow books.")
+        val reworded = vocabularyContent("A public building that lends books.")
+        try {
+            val created = service.createDrafts(listOf(first), NOW).single()
+
+            assertEquals(emptyList(), service.createDrafts(listOf(reworded), NOW.plusSeconds(1)))
+            assertEquals(
+                QuizStatus.DRAFT,
+                assertIs<QuizCommandResult.Success>(service.rejectDraft(created.result.quizId)).status,
+            )
+            assertEquals(emptyList(), service.createDrafts(listOf(reworded), NOW.plusSeconds(2)))
+            assertEquals(
+                1,
+                jdbcClient
+                    .sql(
+                        """
+                        SELECT count(*)
+                        FROM quiz_learning_targets
+                        WHERE quiz_type = 'vocabulary'
+                          AND tag = 'word_choice'
+                          AND target_key = '도서관'
+                          AND quiz_question_id IS NULL
+                        """.trimIndent(),
+                    ).query(Int::class.java)
+                    .single(),
+            )
+        } finally {
+            jdbcClient
+                .sql(
+                    """
+                    DELETE FROM quiz_learning_targets
+                    WHERE quiz_type = 'vocabulary'
+                      AND tag = 'word_choice'
+                      AND target_key = '도서관'
+                    """.trimIndent(),
+                ).update()
+        }
+    }
+
+    @Test
+    fun `grammar target history ignores reworded instructions and distractors`() {
+        val first = content("same-learning-target")
+        val reworded =
+            first.copy(
+                questionEn = "Pick the right answer.",
+                choices =
+                    first.choices.map { choice ->
+                        if (choice.sortOrder == 0) choice.copy(text = "는-same-learning-target") else choice
+                    },
+            )
+        val ids = mutableListOf<Long>()
+        try {
+            val created = service.createDrafts(listOf(first), NOW).single()
+            ids += created.result.quizId
+
+            assertEquals(emptyList(), service.createDrafts(listOf(reworded), NOW.plusSeconds(1)))
         } finally {
             deleteQuizzes(ids)
         }
@@ -257,6 +419,33 @@ class QuizCommandServiceIntegrationTest(
         )
 
     private fun duplicateContent() = content("duplicate")
+
+    private fun QuizContent.asUpdate() =
+        QuizDraftUpdate(
+            tag = tag,
+            difficulty = difficulty,
+            questionEn = questionEn,
+            sentenceKo = sentenceKo,
+            choices = choices,
+            answerExplanationEn = answerExplanationEn,
+        )
+
+    private fun vocabularyContent(questionEn: String) =
+        QuizContent(
+            tag = GrammarTag.WORD_CHOICE,
+            difficulty = UserLevel.BEGINNER,
+            questionEn = questionEn,
+            sentenceKo = null,
+            choices =
+                listOf(
+                    QuizChoiceContent("도서관", true, 0),
+                    QuizChoiceContent("병원", false, 1),
+                    QuizChoiceContent("학교", false, 2),
+                    QuizChoiceContent("시장", false, 3),
+                ),
+            answerExplanationEn = "Library.",
+            quizType = QuizType.VOCABULARY,
+        )
 
     private fun findQuiz(id: Long): StoredQuiz =
         jdbcClient
@@ -325,6 +514,10 @@ class QuizCommandServiceIntegrationTest(
 
     private fun deleteQuizzes(ids: List<Long>) {
         ids.asReversed().forEach { id ->
+            jdbcClient
+                .sql("DELETE FROM quiz_learning_targets WHERE quiz_question_id = :id")
+                .param("id", id)
+                .update()
             jdbcClient
                 .sql("DELETE FROM quiz_questions WHERE id = :id")
                 .param("id", id)

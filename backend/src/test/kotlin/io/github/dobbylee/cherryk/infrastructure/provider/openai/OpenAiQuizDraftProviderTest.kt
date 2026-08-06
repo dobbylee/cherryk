@@ -113,6 +113,8 @@ class OpenAiQuizDraftProviderTest {
                 val providerInput = objectMapper.readTree(requestJson["input"].stringValue())
                 assertEquals("vocabulary", providerInput["quizType"].stringValue())
                 assertEquals("word_choice", providerInput["tag"].stringValue())
+                assertEquals("도서관", providerInput["vocabularyTargets"][0].stringValue())
+                assertEquals(0, providerInput["avoidLearningTargets"].size())
                 val questionSchema =
                     requestJson["text"]["format"]["schema"]["properties"]["questions"]["items"]
                 assertTrue(questionSchema["properties"].has("questionEn"))
@@ -175,6 +177,35 @@ class OpenAiQuizDraftProviderTest {
             }
             localServer.verify()
         }
+    }
+
+    @Test
+    fun `rejects a vocabulary answer that differs from the server selected target`() {
+        server
+            .expect(requestTo(RESPONSES_URL))
+            .andRespond(
+                withSuccess(
+                    response(
+                        vocabularyOutput().replace(
+                            "\"correctAnswer\": \"도서관\"",
+                            "\"correctAnswer\": \"선생님\"",
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        assertFailsWith<QuizDraftProviderException> {
+            provider.generate(
+                input(
+                    quizType = QuizType.VOCABULARY,
+                    tag = GrammarTag.WORD_CHOICE,
+                ),
+            )
+        }.also { exception ->
+            assertEquals("invalid_response", exception.code)
+        }
+        server.verify()
     }
 
     @Test
@@ -547,6 +578,20 @@ class OpenAiQuizDraftProviderTest {
         }
     }
 
+    @Test
+    fun `bounds vocabulary target length before making a provider request`() {
+        assertFailsWith<IllegalArgumentException> {
+            QuizDraftProviderInput(
+                tag = GrammarTag.WORD_CHOICE,
+                difficulty = UserLevel.BEGINNER,
+                count = 1,
+                quizType = QuizType.VOCABULARY,
+                vocabularyTargets = listOf("가".repeat(51)),
+            )
+        }
+        server.verify()
+    }
+
     private fun input(
         count: Int = 1,
         instruction: String? = null,
@@ -558,6 +603,12 @@ class OpenAiQuizDraftProviderTest {
         count = count,
         instruction = instruction,
         quizType = quizType,
+        vocabularyTargets =
+            if (quizType == QuizType.VOCABULARY) {
+                listOf("도서관")
+            } else {
+                emptyList()
+            },
     )
 
     private fun properties(

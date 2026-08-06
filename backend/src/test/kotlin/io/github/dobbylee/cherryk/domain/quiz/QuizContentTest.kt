@@ -55,6 +55,64 @@ class QuizContentTest {
     }
 
     @Test
+    fun `vocabulary learning targets use only the normalized correct Korean word`() {
+        val library = vocabularyContent()
+        val reworded =
+            vocabularyContent(
+                questionEn = "A building that lends books to readers.",
+                choices =
+                    vocabularyChoices().map { choice ->
+                        if (choice.correct) choice.copy(text = "  도서관  ") else choice
+                    },
+            )
+
+        assertEquals(library.learningTarget().key, reworded.learningTarget().key)
+        assertEquals("도서관", library.learningTarget().promptLabel)
+    }
+
+    @Test
+    fun `learning targets normalize canonically equivalent Hangul`() {
+        val composed =
+            vocabularyContent(
+                choices =
+                    vocabularyChoices().map { choice ->
+                        if (choice.correct) choice.copy(text = "가") else choice
+                    },
+            )
+        val decomposed =
+            vocabularyContent(
+                choices =
+                    vocabularyChoices().map { choice ->
+                        if (choice.correct) choice.copy(text = "가") else choice
+                    },
+            )
+
+        assertEquals(composed.learningTarget().key, decomposed.learningTarget().key)
+        assertEquals(composed.learningTarget().digest, decomposed.learningTarget().digest)
+    }
+
+    @Test
+    fun `sentence order and unnatural learning targets use the correct sentence`() {
+        listOf(GrammarTag.SENTENCE_ORDER, GrammarTag.UNNATURAL).forEach { tag ->
+            val first = grammarContent(tag = tag, sentenceKo = "다음 중 자연스러운 문장을 고르세요.")
+            val second = grammarContent(tag = tag, sentenceKo = "다른 안내문")
+
+            assertEquals(first.learningTarget().key, second.learningTarget().key)
+            assertEquals("저는 학교에 가요.", first.learningTarget().promptLabel)
+        }
+    }
+
+    @Test
+    fun `other grammar learning targets use the exercise and correct answer`() {
+        val first = grammarContent()
+        val rewordedQuestion = first.copy(questionEn = "Pick the right answer.")
+        val differentExercise = first.copy(sentenceKo = "저는 회사에 가요.")
+
+        assertEquals(first.learningTarget().key, rewordedQuestion.learningTarget().key)
+        assertNotEquals(first.learningTarget().key, differentExercise.learningTarget().key)
+    }
+
+    @Test
     fun `grammar fingerprints remain backward compatible`() {
         val grammar =
             QuizContent(
@@ -100,4 +158,22 @@ class QuizContentTest {
             QuizChoiceContent("학교", correct = false, sortOrder = 2),
             QuizChoiceContent("시장", correct = false, sortOrder = 3),
         )
+
+    private fun grammarContent(
+        tag: GrammarTag = GrammarTag.PARTICLE_OBJECT,
+        sentenceKo: String = "저는 학교에 가요.",
+    ) = QuizContent(
+        tag = tag,
+        difficulty = UserLevel.BEGINNER,
+        questionEn = "Choose.",
+        sentenceKo = sentenceKo,
+        choices =
+            listOf(
+                QuizChoiceContent("저는 집에 가요.", false, 0),
+                QuizChoiceContent("저는 학교에 가요.", true, 1),
+                QuizChoiceContent("저는 공원에 가요.", false, 2),
+                QuizChoiceContent("저는 회사에 가요.", false, 3),
+            ),
+        answerExplanationEn = "The sentence is correct.",
+    )
 }
