@@ -2,10 +2,16 @@
 
 ## Flyway migration history
 
-Flyway exclusively owns the Spring schema. `B1` through `V6` are immutable
+Flyway exclusively owns the Spring schema. `B1` through `V9` are immutable
 Production history and must remain available so new databases can be recreated and
 existing databases can validate checksums. The one-time database-adoption and
 pre-V4 command-line tooling was retired after the Production migration completed.
+
+`V9__remove_legacy_auth_tables.sql` removes the retired Better Auth `accounts`,
+`auth_sessions`, and `verifications` tables only after checking that every legacy
+row belongs to the supported Google provider and has the exact Spring OIDC identity
+mapping. Spring continues to use `user_identities`, `spring_session`, and
+`spring_session_attributes`.
 
 `V4__bigint_identity_primary_keys.sql` preserves application rows and relationships
 while converting entity primary and foreign keys to PostgreSQL

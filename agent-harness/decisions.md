@@ -40,6 +40,11 @@ code alone. Exact dependency versions live in manifests.
   a guarded Flyway migration before the legacy auth runtime was retired.
   Runtime identity resolution uses `user_identities` only and never merges by
   email alone.
+- The legacy-auth rollback retention period is complete. Remove `accounts`,
+  `auth_sessions`, and `verifications` only through a guarded forward Flyway
+  migration that fails when a legacy provider is unsupported or a Google
+  account is missing its exact `user_identities` mapping. Preserve the earlier
+  migrations so empty databases still replay the historical transition.
 - Preserve application users and data; the migration intentionally required one re-login instead of migrating Better Auth sessions.
 - Keep admin authorization as verified Google identity plus `ADMIN_EMAILS` until role management is justified.
 
@@ -51,6 +56,10 @@ code alone. Exact dependency versions live in manifests.
 - V4 is incompatible with the UUID-based Next backend. Apply it only after writes stop and a Neon restore point exists; rollback must restore both the database and application route.
 - Neon projects do not move regions in place. Relocate Preview and Production separately with a write freeze, recoverable dump/restore, parity checks, and an environment rollback to the retained source project.
 - Treat each regional target as authoritative only when its verification and route/environment rollback rehearsal finish. After real target writes resume, an endpoint or environment-file swap is not a valid rollback without reverse migration or reconciliation.
+- Clean up expired external rollback resources only after resolving their exact
+  identifiers with read-only inventory. Keep the current deployment's immediate
+  previous image and protected Compose backup until its health and public smoke
+  checks pass; do not remove the automatic rollback mechanism itself.
 - Treat `neon_auth` as Neon-managed platform state rather than CherryK application data. Regional archives exclude that schema because CherryK authentication is owned by Spring OIDC.
 - During a Production migration window, enable the same `write-frozen` maintenance
   mode at both the Vercel API boundary and the Spring security boundary. Block the

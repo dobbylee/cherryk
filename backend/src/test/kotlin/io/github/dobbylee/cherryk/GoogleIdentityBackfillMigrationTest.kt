@@ -20,7 +20,7 @@ class GoogleIdentityBackfillMigrationTest {
             migrateThroughV5(postgres)
             postgres.createConnection("").use(::insertLegacyAccounts)
 
-            migrateThroughLatest(postgres)
+            migrateThroughV6(postgres)
 
             postgres.createConnection("").use { connection ->
                 assertEquals(
@@ -96,7 +96,7 @@ class GoogleIdentityBackfillMigrationTest {
             }
 
             assertFailsWith<FlywayException> {
-                migrateThroughLatest(postgres)
+                migrateThroughV6(postgres)
             }
         } finally {
             postgres.stop()
@@ -112,10 +112,11 @@ class GoogleIdentityBackfillMigrationTest {
             .migrate()
     }
 
-    private fun migrateThroughLatest(postgres: PostgreSQLContainer) {
+    private fun migrateThroughV6(postgres: PostgreSQLContainer) {
         Flyway
             .configure()
             .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+            .target(MigrationVersion.fromVersion("6"))
             .load()
             .migrate()
     }
