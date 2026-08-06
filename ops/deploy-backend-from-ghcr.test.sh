@@ -39,7 +39,7 @@ run_fixture() (
 $target_sha
 $valid_digest
 dobbylee
-ghs_validtoken
+ghs_valid-token.segment
 EOF
 )
 
@@ -76,7 +76,7 @@ if (
   deploy_sha=bad
   image_digest=$valid_digest
   registry_user=dobbylee
-  github_token=ghs_validtoken
+  github_token=ghs_valid-token.segment
   validate_inputs
 ); then
   fail_test "invalid SHA was accepted"
@@ -88,7 +88,7 @@ if (
   deploy_sha=$target_sha
   image_digest=sha256:bad
   registry_user=dobbylee
-  github_token=ghs_validtoken
+  github_token=ghs_valid-token.segment
   validate_inputs
 ); then
   fail_test "invalid digest was accepted"
@@ -100,10 +100,22 @@ if (
   deploy_sha=$target_sha
   image_digest=$valid_digest
   registry_user='bad user'
-  github_token=ghs_validtoken
+  github_token=ghs_valid-token.segment
   validate_inputs
 ); then
   fail_test "invalid registry user was accepted"
+fi
+
+if (
+  # shellcheck source=ops/deploy-backend-from-ghcr.sh
+  source "$wrapper_script"
+  deploy_sha=$target_sha
+  image_digest=$valid_digest
+  registry_user=dobbylee
+  github_token='bad token"'
+  validate_inputs
+); then
+  fail_test "unsafe token characters were accepted"
 fi
 
 echo "GHCR deployment wrapper tests passed"

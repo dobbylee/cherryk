@@ -24,7 +24,7 @@ validate_inputs() {
   [[ $deploy_sha =~ ^[0-9a-f]{40}$ ]] || { fail "Invalid deploy SHA"; return; }
   [[ $image_digest =~ ^sha256:[0-9a-f]{64}$ ]] || { fail "Invalid image digest"; return; }
   [[ $registry_user =~ $registry_user_pattern ]] || { fail "Invalid registry user"; return; }
-  [[ $github_token =~ ^[A-Za-z0-9_]+$ ]] || { fail "Invalid GitHub token"; return; }
+  [[ $github_token =~ ^[A-Za-z0-9._-]+$ ]] || { fail "Invalid GitHub token"; return; }
 }
 
 prepare_credentials() {
