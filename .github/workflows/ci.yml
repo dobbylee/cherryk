@@ -17,8 +17,6 @@ jobs:
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      SPRING_BACKEND_ORIGIN: https://api-preview.cherryk.kr
     steps:
       # v7.0.0
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -39,4 +37,9 @@ jobs:
             backend/*.gradle.kts
             backend/gradle/wrapper/gradle-wrapper.properties
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          SPRING_BACKEND_ORIGIN: https://api-preview.cherryk.kr
+      - run: pnpm build:backend
+      - run: pnpm compose:check
