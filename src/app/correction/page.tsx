@@ -11,7 +11,6 @@ import {
 } from "react";
 import { AppHeader } from "@/app/_components/app-header";
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   CameraIcon,
   CopyIcon,
@@ -191,7 +190,7 @@ export default function CorrectionPage() {
           user={user}
         />
 
-        <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="pt-1">
           <div className="min-w-0">
             <p className="section-eyebrow">Correction studio</p>
             <h1 className="page-title mt-2">Make your Korean clearer</h1>
@@ -200,10 +199,6 @@ export default function CorrectionPage() {
               edit everything before asking for a correction.
             </p>
           </div>
-          <Link className="button-secondary w-full shrink-0 sm:w-auto" href="/">
-            <ArrowLeftIcon className="h-4 w-4" />
-            Back to home
-          </Link>
         </div>
 
         {authMessage ? <ErrorMessage message={authMessage} /> : null}

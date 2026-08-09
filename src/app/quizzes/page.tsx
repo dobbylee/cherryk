@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Suspense,
@@ -13,7 +12,6 @@ import {
 } from "react";
 import { AppHeader } from "@/app/_components/app-header";
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   CheckIcon,
   QuizIcon,
@@ -296,7 +294,7 @@ function QuizWorkspace() {
           user={user}
         />
 
-        <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="pt-1">
           <div className="min-w-0">
             <p className="section-eyebrow">MCQ practice</p>
             <h1 className="page-title mt-2">Turn feedback into fluency</h1>
@@ -305,10 +303,6 @@ function QuizWorkspace() {
               answer comes with clear feedback.
             </p>
           </div>
-          <Link className="button-secondary w-full shrink-0 sm:w-auto" href="/">
-            <ArrowLeftIcon className="h-4 w-4" />
-            Back to home
-          </Link>
         </div>
 
         <section className="surface-card p-5 sm:p-6">
