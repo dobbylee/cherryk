@@ -58,7 +58,13 @@ case "$invocation" in
     fi
     ;;
   *cherryk:snapshot-tables*) printf 'public.users\tr\tp\tf\tf\n' ;;
-  *cherryk:snapshot-columns*) printf 'public.users\t1\tid\tbigint\tt\t\n' ;;
+  *cherryk:snapshot-columns*)
+    [[ $invocation == *'row_number() OVER'* ]] || {
+      echo "Live column order is not normalized" >&2
+      exit 1
+    }
+    printf 'public.users\t1\tid\tbigint\tt\t\n'
+    ;;
   *cherryk:snapshot-constraints*) printf 'public.users\tusers_pkey\tp\tPRIMARY KEY (id)\n' ;;
   *cherryk:snapshot-indexes*) printf 'public.users\tusers_pkey\tCREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)\n' ;;
   *cherryk:snapshot-sequences*) printf 'public.users_id_seq\t1\t1\t9223372036854775807\t1\tf\t1\n' ;;

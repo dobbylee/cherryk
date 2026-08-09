@@ -132,7 +132,10 @@ write_snapshot() {
     run_query "$url" \
       "/* cherryk:snapshot-columns */
        SELECT n.nspname || '.' || c.relname,
-              a.attnum,
+              row_number() OVER (
+                PARTITION BY c.oid
+                ORDER BY a.attnum
+              ) AS ordinal_position,
               a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
               a.attnotnull,
