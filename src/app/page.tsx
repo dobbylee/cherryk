@@ -6,7 +6,6 @@ import {
   ArrowRightIcon,
   CameraIcon,
   CheckIcon,
-  GoogleIcon,
   QuizIcon,
   SparkIcon,
   StreakIcon,
@@ -18,51 +17,32 @@ import type { AuthUser } from "@/lib/contracts/auth";
 export default function HomePage() {
   const {
     message,
-    refresh,
     signIn,
     signOut,
     status: authStatus,
     user,
   } = useAuthSession();
-  const authenticationUnavailable =
-    authStatus === "unavailable" && user === null;
 
   return (
     <main className="app-shell">
       <div className="app-container flex flex-col gap-5 sm:gap-7">
         <AppHeader
           authBusy={authStatus === "loading"}
+          loginUnavailable={authStatus === "unavailable"}
+          onLogin={() => void signIn()}
           onLogout={() => void signOut()}
           user={user}
         />
 
-        {message ? <ErrorMessage message={message} /> : null}
+        {message && user ? <ErrorMessage message={message} /> : null}
 
-        {user ? (
-          <LearnerDashboard user={user} />
-        ) : (
-          <GuestHome
-            authStatus={authStatus}
-            authenticationUnavailable={authenticationUnavailable}
-            onContinue={() =>
-              void (authenticationUnavailable ? refresh() : signIn())
-            }
-          />
-        )}
+        {user ? <LearnerDashboard user={user} /> : <GuestHome />}
       </div>
     </main>
   );
 }
 
-function GuestHome({
-  authStatus,
-  authenticationUnavailable,
-  onContinue,
-}: {
-  authStatus: "loading" | "authenticated" | "signed-out" | "unavailable";
-  authenticationUnavailable: boolean;
-  onContinue: () => void;
-}) {
+function GuestHome() {
   return (
     <>
       <section className="surface-card-elevated overflow-hidden">
@@ -70,42 +50,11 @@ function GuestHome({
           <div className="flex flex-col justify-center px-5 py-8 sm:px-9 sm:py-12 lg:px-12 lg:py-16">
             <p className="section-eyebrow">Korean learning, made clear</p>
             <h1 className="mt-4 max-w-2xl text-[clamp(2.4rem,8vw,4.6rem)] leading-[0.98] font-[740] tracking-[-0.055em] text-[var(--foreground)]">
-              Build better Korean,
-              <span className="block text-[var(--accent)]">
-                one small win at a time.
-              </span>
+              Build better Korean.
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
-              Turn your own writing or handwriting into a clear correction,
-              understand what changed in English, then practice it with reviewed
-              questions.
+            <p className="mt-5 max-w-lg text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
+              Write, review, and practice in one focused flow.
             </p>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button
-                className="button-primary min-w-52"
-                disabled={authStatus === "loading"}
-                onClick={onContinue}
-                type="button"
-              >
-                {authStatus === "loading" ? (
-                  <span
-                    aria-hidden="true"
-                    className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-                  />
-                ) : (
-                  <GoogleIcon className="h-5 w-5 rounded-full bg-white p-0.5" />
-                )}
-                {authStatus === "loading"
-                  ? "Checking your account..."
-                  : authenticationUnavailable
-                    ? "Retry account check"
-                    : "Continue with Google"}
-              </button>
-              <p className="text-xs leading-5 text-[var(--muted)] sm:max-w-48">
-                Your practice stays connected across devices.
-              </p>
-            </div>
 
             <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--line)] pt-5 text-sm font-semibold text-[var(--foreground-soft)]">
               <span className="inline-flex items-center gap-2">

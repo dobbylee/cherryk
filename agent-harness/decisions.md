@@ -75,6 +75,10 @@ evidence belongs under `local/`.
   may reserve space and reusable presentation boundaries for them, but it must not
   fabricate activity data or bypass the current authenticated API contract before
   those product behaviors are implemented.
+- Keep the signed-out home usable when the passive session check is unavailable.
+  Suppress the passive authentication error there and disable header sign-in while
+  the authentication boundary is unavailable instead of retrying a known failing
+  maintenance endpoint.
 
 ## Quiz Domain
 

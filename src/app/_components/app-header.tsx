@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { LogoMark } from "@/app/_components/icons";
+import { GoogleIcon, LogoMark } from "@/app/_components/icons";
 import type { AuthUser } from "@/lib/contracts/auth";
 
 const navigationItems = [
@@ -14,10 +14,14 @@ const navigationItems = [
 
 export function AppHeader({
   authBusy,
+  loginUnavailable = false,
+  onLogin,
   onLogout,
   user,
 }: {
   authBusy: boolean;
+  loginUnavailable?: boolean;
+  onLogin?: () => void;
   onLogout?: () => void;
   user: AuthUser | null;
 }) {
@@ -98,9 +102,27 @@ export function AppHeader({
           })}
         </nav>
       ) : (
-        <p className="hidden text-sm font-medium text-[var(--muted)] sm:ml-auto sm:block">
-          Learn Korean with clarity.
-        </p>
+        <span
+          className="justify-self-end sm:ml-auto"
+          title={
+            loginUnavailable ? "Sign-in is temporarily unavailable." : undefined
+          }
+        >
+          <button
+            aria-label={
+              loginUnavailable
+                ? "Sign in is temporarily unavailable"
+                : "Sign in with Google"
+            }
+            className="button-secondary px-3.5"
+            disabled={authBusy || loginUnavailable}
+            onClick={onLogin}
+            type="button"
+          >
+            <GoogleIcon className="h-5 w-5 rounded-full bg-white p-0.5" />
+            Sign in
+          </button>
+        </span>
       )}
 
       {user && onLogout ? (
