@@ -130,6 +130,69 @@ await fetch("/api/maintenance/bypass", { method: "DELETE" });
 
 Remove or rotate the bypass token after the maintenance window.
 
+## PostgreSQL 18 Production migration
+
+Neon PostgreSQL 18 is GA, but the current Production project remains on PostgreSQL
+17 until the isolated migration gate completes. Use separate PostgreSQL 18 Preview
+and Production projects in Singapore; a branch of the PostgreSQL 17 project cannot
+change the project's major version. Never reuse the Preview database for Production.
+
+Use PostgreSQL 18 client tools and direct, unpooled Neon endpoints. Put both
+connections in a `chmod 600` libpq service file so database passwords never appear
+in process arguments, commits, or reports. The protected file uses standard
+`[service]` sections with `host`, `port`, `dbname`, `user`, `password`, and
+`sslmode=require` entries. Before writing the target, confirm that it is a distinct,
+empty PostgreSQL 18 database:
+
+```bash
+export PGSERVICEFILE='/protected/path/pg_service.conf'
+export SOURCE_DATABASE_SERVICE='cherryk_pg17_source'
+export TARGET_DATABASE_SERVICE='cherryk_pg18_target'
+ops/verify-postgresql-18-migration.sh preflight
+```
+
+During the authorized migration window, enable the dual-boundary write freeze and
+confirm public API requests return maintenance `503`. Create a protected local
+archive rather than piping a potentially long transfer, exclude Neon-managed auth,
+and restore atomically into the empty target:
+
+```bash
+archive=$(mktemp /protected/path/cherryk-pg17.XXXXXX.dump)
+chmod 600 "$archive"
+pg_dump \
+  --dbname="service=$SOURCE_DATABASE_SERVICE" \
+  --format=custom \
+  --file="$archive" \
+  --no-owner \
+  --no-privileges \
+  --exclude-schema=neon_auth \
+  --verbose
+pg_restore \
+  --dbname="service=$TARGET_DATABASE_SERVICE" \
+  --no-owner \
+  --no-privileges \
+  --exit-on-error \
+  --single-transaction \
+  --verbose \
+  "$archive"
+ops/verify-postgresql-18-migration.sh parity
+```
+
+The parity check is read-only and compares database locale provider/version,
+public schema structure, constraints, indexes, complete sequence state, Flyway
+history, table row counts, and order-independent hashes of every public table. It
+intentionally prints hashes rather than row contents.
+
+Before cutover, start the exact Production backend image against the target and
+verify Flyway validation, Hibernate validation, authentication/session, correction,
+quiz, and admin behavior through the maintenance bypass. Resolve the root-owned OCI
+Compose environment file read-only, preserve its current database configuration,
+then change only that resolved `DATABASE_URL`/credential set and replace the backend.
+Keep the PostgreSQL 17 source untouched. A failed health, parity, or product check
+rolls back by restoring the preserved database configuration and replacing the
+backend again. Disable maintenance only after the public health and product smoke
+checks pass; retain the source and archive through the agreed rollback window.
+
 ## OpenAI correction
 
 Configure the correction adapter with:
