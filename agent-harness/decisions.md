@@ -64,6 +64,18 @@ evidence belongs under `local/`.
 - Defer Google Cloud Vision, speech-provider selection, and pronunciation assessment
   until representative quality, latency, and cost measurements justify them.
 
+## Product UI
+
+- Use a calm, high-contrast, mobile-first learning interface: warm white surfaces,
+  deep blue-teal primary actions, restrained supporting color, generous whitespace,
+  and explicit borders for controls and state changes. Keep shared page structure,
+  typography, focus treatment, and button hierarchy consistent across learner and
+  operator surfaces.
+- Treat streak tracking and guest MCQ as independent future modules. The dashboard
+  may reserve space and reusable presentation boundaries for them, but it must not
+  fabricate activity data or bypass the current authenticated API contract before
+  those product behaviors are implemented.
+
 ## Quiz Domain
 
 - `Quiz` owns exactly four choices and one answer; `QuizAttempt` is a separate append-only

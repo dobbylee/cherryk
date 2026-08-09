@@ -240,25 +240,24 @@ export default function AdminQuizzesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <header className="flex flex-col gap-3 border-b border-[var(--line)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <main className="app-shell">
+      <div className="app-container flex flex-col gap-5 sm:gap-6">
+        <header className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-bold text-[var(--accent)]">
-              Operator workflow
+            <p className="section-eyebrow">Operator workspace</p>
+            <h1 className="page-title mt-2">Quiz review</h1>
+            <p className="page-description mt-2 max-w-xl">
+              Generate, inspect, and approve learner-safe practice content.
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal sm:text-3xl">
-              Quiz review
-            </h1>
           </div>
-          <div className="flex gap-3 text-sm font-semibold text-[var(--accent-strong)]">
-            <Link href="/">Back to app</Link>
-          </div>
+          <Link className="button-secondary w-full sm:w-auto" href="/">
+            Back to app
+          </Link>
         </header>
 
         {message ? (
           <div
-            className={`rounded-md border bg-white px-3 py-2 text-sm font-semibold ${messageToneClassName(messageTone)}`}
+            className={`rounded-xl border px-3 py-2 text-sm font-semibold ${messageToneClassName(messageTone)}`}
             role="status"
           >
             {message}
@@ -267,12 +266,12 @@ export default function AdminQuizzesPage() {
 
         <section className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
           <form
-            className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)]"
+            className="surface-card h-fit p-5"
             onSubmit={handleGenerateDrafts}
           >
             <div className="border-b border-[var(--line)] pb-4">
-              <p className="text-sm font-bold text-[var(--accent)]">AI draft</p>
-              <h2 className="mt-1 text-xl font-semibold tracking-normal">
+              <p className="section-eyebrow">AI draft</p>
+              <h2 className="mt-2 text-xl font-bold tracking-[-0.025em]">
                 Generate drafts
               </h2>
             </div>
@@ -280,7 +279,7 @@ export default function AdminQuizzesPage() {
             <div className="mt-4 grid gap-3">
               <Field label="Quiz type" htmlFor="quiz-type">
                 <select
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                  className="form-control h-11 px-3 text-sm"
                   id="quiz-type"
                   onChange={(event) =>
                     setQuizType(event.target.value as QuizType)
@@ -297,7 +296,7 @@ export default function AdminQuizzesPage() {
                 htmlFor="quiz-tag"
               >
                 <select
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                  className="form-control h-11 px-3 text-sm"
                   disabled={quizType === "vocabulary"}
                   id="quiz-tag"
                   onChange={(event) => setTag(event.target.value as GrammarTag)}
@@ -313,7 +312,7 @@ export default function AdminQuizzesPage() {
 
               <Field label="Difficulty" htmlFor="quiz-difficulty">
                 <select
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                  className="form-control h-11 px-3 text-sm"
                   id="quiz-difficulty"
                   onChange={(event) =>
                     setDifficulty(event.target.value as UserLevel)
@@ -330,7 +329,7 @@ export default function AdminQuizzesPage() {
 
               <Field label="Count" htmlFor="quiz-count">
                 <input
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
+                  className="form-control h-11 px-3 text-base"
                   id="quiz-count"
                   max={20}
                   min={1}
@@ -342,7 +341,7 @@ export default function AdminQuizzesPage() {
 
               <Field label="Instruction" htmlFor="quiz-instruction">
                 <textarea
-                  className="min-h-24 w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-sm leading-6 outline-none focus:border-[var(--accent)]"
+                  className="form-control min-h-24 resize-y p-3 text-sm leading-6"
                   id="quiz-instruction"
                   onChange={(event) => setInstruction(event.target.value)}
                   value={instruction}
@@ -350,7 +349,7 @@ export default function AdminQuizzesPage() {
               </Field>
 
               <button
-                className="h-11 rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
+                className="button-primary w-full"
                 disabled={
                   !isValidDraftCount(count) ||
                   draftStatus === "loading" ||
@@ -364,12 +363,10 @@ export default function AdminQuizzesPage() {
           </form>
 
           <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)]">
+            <div className="surface-card h-fit p-5">
               <div className="border-b border-[var(--line)] pb-4">
-                <p className="text-sm font-bold text-[var(--accent)]">
-                  Draft queue
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-normal">
+                <p className="section-eyebrow">Draft queue</p>
+                <h2 className="mt-2 text-xl font-bold tracking-[-0.025em]">
                   Generated
                 </h2>
               </div>
@@ -377,10 +374,10 @@ export default function AdminQuizzesPage() {
                 {drafts.length ? (
                   drafts.map((draft, index) => (
                     <button
-                      className={`rounded-md border bg-white p-3 text-left ${
+                      className={`min-h-16 rounded-xl border bg-white p-3 text-left ${
                         draft.id === activeDraftId
-                          ? "border-[var(--accent)]"
-                          : "border-[var(--line)]"
+                          ? "border-[var(--accent)] bg-[var(--accent-faint)] shadow-[0_0_0_1px_var(--accent)]"
+                          : "border-[var(--line-strong)] hover:border-[var(--accent)]"
                       }`}
                       disabled={reviewAction !== null}
                       key={draft.id}
@@ -407,14 +404,12 @@ export default function AdminQuizzesPage() {
             </div>
 
             <form
-              className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)]"
+              className="surface-card-elevated p-5 sm:p-6"
               onSubmit={handleSaveDraft}
             >
               <div className="border-b border-[var(--line)] pb-4">
-                <p className="text-sm font-bold text-[var(--accent)]">
-                  Native review
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-normal">
+                <p className="section-eyebrow">Native review</p>
+                <h2 className="mt-2 text-xl font-bold tracking-[-0.025em]">
                   Edit and approve
                 </h2>
               </div>
@@ -426,7 +421,7 @@ export default function AdminQuizzesPage() {
                       <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="Tag" htmlFor="draft-tag">
                           <select
-                            className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                            className="form-control h-11 px-3 text-sm"
                             disabled={activeDraft.quizType === "vocabulary"}
                             id="draft-tag"
                             onChange={(event) =>
@@ -446,7 +441,7 @@ export default function AdminQuizzesPage() {
 
                         <Field label="Difficulty" htmlFor="draft-difficulty">
                           <select
-                            className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                            className="form-control h-11 px-3 text-sm"
                             id="draft-difficulty"
                             onChange={(event) =>
                               updateActiveDraft({
@@ -466,7 +461,7 @@ export default function AdminQuizzesPage() {
 
                       <Field label="Question" htmlFor="draft-question">
                         <input
-                          className="h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none focus:border-[var(--accent)]"
+                          className="form-control h-11 px-3 text-base"
                           id="draft-question"
                           onChange={(event) =>
                             updateActiveDraft({
@@ -480,7 +475,7 @@ export default function AdminQuizzesPage() {
                       {activeDraft.quizType === "grammar" ? (
                         <Field label="Korean sentence" htmlFor="draft-sentence">
                           <textarea
-                            className="min-h-24 w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-lg leading-8 outline-none focus:border-[var(--accent)]"
+                            className="form-control min-h-24 resize-y p-3 text-lg leading-8"
                             id="draft-sentence"
                             onChange={(event) =>
                               updateActiveDraft({
@@ -497,7 +492,7 @@ export default function AdminQuizzesPage() {
                         <div className="mt-2 grid gap-2">
                           {activeDraft.choices.map((choice, index) => (
                             <div
-                              className="grid gap-2 rounded-md border border-[var(--line)] bg-white p-2 sm:grid-cols-[36px_minmax(0,1fr)] sm:items-center"
+                              className="grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-2 sm:grid-cols-[36px_minmax(0,1fr)] sm:items-center"
                               key={index}
                             >
                               <input
@@ -508,7 +503,7 @@ export default function AdminQuizzesPage() {
                                 type="radio"
                               />
                               <input
-                                className="h-10 rounded-md border border-[var(--line)] px-3 text-base outline-none focus:border-[var(--accent)]"
+                                className="form-control h-10 px-3 text-base"
                                 onChange={(event) =>
                                   updateActiveChoice(index, {
                                     text: event.target.value,
@@ -523,7 +518,7 @@ export default function AdminQuizzesPage() {
 
                       <Field label="Explanation" htmlFor="draft-explanation">
                         <textarea
-                          className="min-h-24 w-full resize-y rounded-md border border-[var(--line)] bg-white p-3 text-sm leading-6 outline-none focus:border-[var(--accent)]"
+                          className="form-control min-h-24 resize-y p-3 text-sm leading-6"
                           id="draft-explanation"
                           onChange={(event) =>
                             updateActiveDraft({
@@ -540,7 +535,7 @@ export default function AdminQuizzesPage() {
 
                   <div className="grid gap-2 sm:grid-cols-3">
                     <button
-                      className="h-11 rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
+                      className="button-secondary w-full"
                       disabled={
                         !isEditing ||
                         draftStatus === "loading" ||
@@ -552,7 +547,7 @@ export default function AdminQuizzesPage() {
                       {reviewAction === "save" ? "Saving..." : "Save changes"}
                     </button>
                     <button
-                      className="h-11 rounded-md border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
+                      className="button-secondary w-full"
                       disabled={
                         isEditing ||
                         draftStatus === "loading" ||
@@ -569,7 +564,7 @@ export default function AdminQuizzesPage() {
                       Edit
                     </button>
                     <button
-                      className="h-11 rounded-md border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      className="button-danger w-full"
                       disabled={
                         draftStatus === "loading" || reviewAction !== null
                       }
@@ -579,7 +574,7 @@ export default function AdminQuizzesPage() {
                       {reviewAction === "reject" ? "Rejecting..." : "Reject"}
                     </button>
                     <button
-                      className="h-11 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:opacity-60"
+                      className="button-primary w-full"
                       disabled={
                         draftStatus === "loading" || reviewAction !== null
                       }
@@ -643,7 +638,7 @@ function QuizReviewPreview({ draft }: { draft: EditableAdminQuizDraft }) {
       </div>
 
       {draft.quizType === "grammar" ? (
-        <div className="rounded-md border border-[var(--line)] bg-white p-4 text-lg leading-8">
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-4 text-lg leading-8">
           {draft.sentenceKo}
         </div>
       ) : null}
@@ -651,10 +646,10 @@ function QuizReviewPreview({ draft }: { draft: EditableAdminQuizDraft }) {
       <div className="grid gap-2">
         {draft.choices.map((choice, index) => (
           <div
-            className={`rounded-md border px-3 py-2 text-sm ${
+            className={`rounded-xl border px-3 py-2.5 text-sm ${
               choice.isCorrect
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] font-semibold"
-                : "border-[var(--line)] bg-white"
+                ? "border-[var(--success)] bg-[var(--success-bg)] font-semibold text-[var(--success)]"
+                : "border-[var(--line-strong)] bg-white"
             }`}
             key={index}
           >
@@ -683,14 +678,14 @@ function formatLabel(value: string) {
 
 function messageToneClassName(tone: MessageTone) {
   if (tone === "save" || tone === "approve") {
-    return "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]";
+    return "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]";
   }
 
   if (tone === "reject" || tone === "error") {
-    return "border-red-300 bg-red-50 text-red-700";
+    return "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]";
   }
 
-  return "border-[var(--line)] text-[var(--muted)]";
+  return "border-[var(--line)] bg-white text-[var(--muted)]";
 }
 
 function isValidDraftCount(count: number) {

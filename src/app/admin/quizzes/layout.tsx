@@ -32,17 +32,12 @@ function AdminAccessMessage({ error }: { error: AdminAuthError }) {
     : "This Google account does not have admin access.";
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-4 py-10 text-[var(--foreground)]">
-      <section className="mx-auto grid max-w-lg gap-4 border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[0_18px_44px_rgb(32_143_202_/_8%)]">
-        <p className="text-sm font-bold text-[var(--accent)]">
-          Operator workflow
-        </p>
-        <h1 className="text-2xl font-semibold">Admin access</h1>
+    <main className="app-shell grid min-h-screen place-items-center px-4 py-10">
+      <section className="surface-card-elevated grid w-full max-w-lg gap-4 p-6 sm:p-8">
+        <p className="section-eyebrow">Operator workspace</p>
+        <h1 className="text-2xl font-bold tracking-[-0.03em]">Admin access</h1>
         <p className="text-sm leading-6 text-[var(--muted)]">{message}</p>
-        <Link
-          className="flex h-11 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)]"
-          href="/"
-        >
+        <Link className="button-primary w-full" href="/">
           {isSignedOut ? "Go to sign in" : "Back to app"}
         </Link>
       </section>

@@ -3,9 +3,12 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CherryK",
+  title: {
+    default: "CherryK — Learn Korean with clarity",
+    template: "%s · CherryK",
+  },
   description:
-    "A Korean learning app for writing correction, handwriting OCR, and reviewed MCQ practice.",
+    "Turn Korean writing and handwriting into clear corrections and reviewed practice.",
 };
 
 export default function RootLayout({

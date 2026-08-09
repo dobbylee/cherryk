@@ -12,6 +12,14 @@ import {
   type FormEvent,
 } from "react";
 import { AppHeader } from "@/app/_components/app-header";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  QuizIcon,
+  RefreshIcon,
+  SparkIcon,
+} from "@/app/_components/icons";
 import { SessionUnavailable } from "@/app/_components/session-unavailable";
 import { useAuthSession } from "@/app/_hooks/use-auth-session";
 import { fetchQuizRecommendations, submitQuizAttempt } from "@/lib/api/quizzes";
@@ -280,40 +288,50 @@ function QuizWorkspace() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+    <main className="app-shell">
+      <div className="app-container flex max-w-5xl flex-col gap-5 sm:gap-6">
         <AppHeader
           authBusy={authStatus === "loading"}
           onLogout={handleLogout}
           user={user}
         />
 
-        <div className="flex items-start justify-between gap-3 sm:items-center">
+        <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[var(--accent)]">Quiz</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-normal">
-              Practice Korean
-            </h2>
+            <p className="section-eyebrow">MCQ practice</p>
+            <h1 className="page-title mt-2">Turn feedback into fluency</h1>
+            <p className="page-description mt-3 max-w-2xl">
+              Practice with reviewed grammar and vocabulary questions. Every
+              answer comes with clear feedback.
+            </p>
           </div>
-          <Link
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] shadow-sm hover:bg-[var(--accent-soft)]"
-            href="/"
-          >
-            All tools
+          <Link className="button-secondary w-full shrink-0 sm:w-auto" href="/">
+            <ArrowLeftIcon className="h-4 w-4" />
+            Back to home
           </Link>
         </div>
 
-        <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_12px_30px_rgb(32_143_202_/_5%)]">
-          <p className="text-sm font-semibold">Quiz type</p>
-          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-            Practice grammar in context or choose the Korean word that matches
-            an English definition.
-          </p>
-          <div aria-label="Quiz type" className="mt-3 flex flex-wrap gap-2">
+        <section className="surface-card p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+              <SparkIcon className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold">Choose a practice mode</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                Practice grammar in context or match Korean words to English
+                definitions.
+              </p>
+            </div>
+          </div>
+          <div
+            aria-label="Quiz type"
+            className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-[var(--background-strong)] p-1.5"
+          >
             {(["grammar", "vocabulary"] as const).map((type) => (
               <button
                 aria-pressed={quizType === type}
-                className={tagFilterClassName(quizType === type)}
+                className={quizTypeClassName(quizType === type)}
                 disabled={quizControlsBusy}
                 key={type}
                 onClick={() => updateQuizType(type)}
@@ -326,15 +344,15 @@ function QuizWorkspace() {
         </section>
 
         {quizType === "grammar" ? (
-          <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_12px_30px_rgb(32_143_202_/_5%)]">
-            <p className="text-sm font-semibold">Question tags</p>
+          <section className="surface-card p-5 sm:p-6">
+            <p className="text-sm font-bold">Focus your practice</p>
             <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
               Recommended uses your correction history and falls back to all
               approved questions.
             </p>
             <div
               aria-label="Approved question filters"
-              className="mt-3 flex flex-wrap gap-2"
+              className="mt-4 flex flex-wrap gap-2"
             >
               <button
                 aria-pressed={!hasExplicitTags}
@@ -369,7 +387,7 @@ function QuizWorkspace() {
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+            <p className="mt-4 border-t border-[var(--line)] pt-3 text-xs leading-5 text-[var(--muted)]">
               {hasExplicitTags
                 ? selectedTags.length
                   ? "Showing approved questions for the selected tags."
@@ -384,18 +402,23 @@ function QuizWorkspace() {
         {authMessage ? <Message message={authMessage} /> : null}
         {message ? <Message message={message} /> : null}
 
-        <section className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)] sm:p-5">
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
-            <div>
-              <p className="text-sm font-bold text-[var(--accent)]">
-                Practice queue
-              </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-normal">
-                {quizType === "vocabulary" ? "Vocabulary" : "Grammar"}
-              </h2>
+        <section className="surface-card-elevated overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--panel-soft)] px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                <QuizIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-bold tracking-[0.08em] text-[var(--accent-strong)] uppercase">
+                  Practice set
+                </p>
+                <h2 className="mt-0.5 text-lg font-bold tracking-[-0.02em]">
+                  {quizType === "vocabulary" ? "Vocabulary" : "Grammar"}
+                </h2>
+              </div>
             </div>
             <button
-              className="h-10 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-semibold text-[var(--foreground)] hover:border-[var(--accent)] disabled:opacity-60"
+              className="button-secondary px-3"
               disabled={
                 authStatus === "loading" ||
                 quizStatus === "loading" ||
@@ -404,151 +427,211 @@ function QuizWorkspace() {
               onClick={handleLoadRecommendedQuizzes}
               type="button"
             >
+              <RefreshIcon className="h-4 w-4" />
               {quizStatus === "loading" ? "Loading..." : "New set"}
             </button>
           </div>
 
-          <div
-            className="mt-4 grid grid-cols-3 gap-2"
-            aria-label="Quiz progress"
-          >
-            <ProgressStat
-              label="Solved"
-              value={`${progress.solvedCount} / ${progress.totalCount}`}
-            />
-            <ProgressStat
-              label="Attempts"
-              value={String(progress.attemptCount)}
-            />
-            <ProgressStat label="Accuracy" value={formatAccuracy(progress)} />
-          </div>
+          <div className="p-5 sm:p-6 lg:p-8">
+            <div
+              className="grid grid-cols-3 divide-x divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-[var(--panel-soft)]"
+              aria-label="Quiz progress"
+            >
+              <ProgressStat
+                label="Solved"
+                value={`${progress.solvedCount} / ${progress.totalCount}`}
+              />
+              <ProgressStat
+                label="Attempts"
+                value={String(progress.attemptCount)}
+              />
+              <ProgressStat label="Accuracy" value={formatAccuracy(progress)} />
+            </div>
 
-          {activeQuiz ? (
-            <form className="mt-5" onSubmit={handleQuizAttempt}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold text-[var(--muted)]">
-                  {activeQuizIndex + 1} / {quizzes.length}
-                </span>
-                <span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs font-semibold text-[var(--secondary)]">
-                  {activeQuiz.quizType === "vocabulary"
-                    ? "Vocabulary"
-                    : activeQuiz.tag}
-                </span>
-              </div>
-              <h3 className="mt-3 text-lg font-semibold tracking-normal">
-                {activeQuiz.questionEn}
-              </h3>
-              {activeQuiz.quizType === "grammar" ? (
-                <p className="mt-2 text-base leading-7 text-[var(--muted)]">
-                  {activeQuiz.sentenceKo}
-                </p>
-              ) : null}
-              <div className="mt-4 grid gap-2">
-                {activeQuiz.choices.map((choice) => {
-                  const isSelected = choice.id === selectedChoiceId;
-                  const isCorrectChoice =
-                    quizAttempt?.correctChoiceId === choice.id;
-                  const isWrongSelected =
-                    quizAttempt && isSelected && !isCorrectChoice;
+            {activeQuiz ? (
+              <form className="mt-6" onSubmit={handleQuizAttempt}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-[var(--muted)]">
+                    Question {activeQuizIndex + 1} of {quizzes.length}
+                  </span>
+                  <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)]">
+                    {activeQuiz.quizType === "vocabulary"
+                      ? "Vocabulary"
+                      : formatTagLabel(activeQuiz.tag)}
+                  </span>
+                </div>
+                <div
+                  aria-hidden="true"
+                  className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--background-strong)]"
+                >
+                  <span
+                    className="block h-full rounded-full bg-[var(--accent)] transition-[width]"
+                    style={{
+                      width: `${((activeQuizIndex + 1) / quizzes.length) * 100}%`,
+                    }}
+                  />
+                </div>
+                <h3 className="mt-6 text-xl leading-8 font-bold tracking-[-0.025em] sm:text-2xl">
+                  {activeQuiz.questionEn}
+                </h3>
+                {activeQuiz.quizType === "grammar" ? (
+                  <p className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--panel-soft)] p-4 text-lg leading-8 text-[var(--foreground-soft)] sm:p-5">
+                    {activeQuiz.sentenceKo}
+                  </p>
+                ) : null}
+                <div
+                  aria-label="Answer choices"
+                  className="mt-5 grid gap-2.5"
+                  role="group"
+                >
+                  {activeQuiz.choices.map((choice, choiceIndex) => {
+                    const isSelected = choice.id === selectedChoiceId;
+                    const isCorrectChoice =
+                      quizAttempt?.correctChoiceId === choice.id;
+                    const isWrongSelected =
+                      quizAttempt && isSelected && !isCorrectChoice;
+                    const answerFeedback = isCorrectChoice
+                      ? "Correct answer"
+                      : isWrongSelected
+                        ? "Your answer, incorrect"
+                        : null;
 
-                  return (
-                    <button
-                      className={`min-h-11 rounded-md border bg-white px-3 py-2 text-left text-sm font-semibold ${
-                        isCorrectChoice
-                          ? "border-[var(--accent)] text-[var(--accent-strong)]"
-                          : isWrongSelected
-                            ? "border-[var(--danger-line)] text-[var(--danger)]"
-                            : isSelected
-                              ? "border-[var(--accent)] text-[var(--foreground)]"
-                              : "border-[var(--line)] text-[var(--foreground)]"
-                      }`}
-                      disabled={
-                        !!quizAttempt ||
-                        authStatus === "loading" ||
-                        quizStatus === "loading" ||
-                        quizAttemptStatus === "loading"
-                      }
-                      key={choice.id}
-                      onClick={() => setSelectedChoiceId(choice.id)}
-                      type="button"
-                    >
-                      {choice.text}
-                    </button>
-                  );
-                })}
-              </div>
-              {quizAttempt ? (
-                <div
-                  className="mt-4 rounded-md border border-[var(--line)] bg-white p-3"
-                  role="status"
-                >
-                  <p className="text-sm font-semibold">
-                    {quizAttempt.isCorrect ? "Correct" : "Review"}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    {quizAttempt.explanationEn}
-                  </p>
+                    return (
+                      <button
+                        aria-label={
+                          answerFeedback
+                            ? `${choice.text}. ${answerFeedback}.`
+                            : choice.text
+                        }
+                        aria-pressed={isSelected}
+                        className={`group flex min-h-14 items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left text-sm font-semibold sm:px-4 ${
+                          isCorrectChoice
+                            ? "border-[var(--success)] bg-[var(--success-bg)] text-[var(--success)]"
+                            : isWrongSelected
+                              ? "border-[var(--danger)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                              : isSelected
+                                ? "border-[var(--accent)] bg-[var(--accent-faint)] text-[var(--foreground)] shadow-[0_0_0_1px_var(--accent)]"
+                                : "border-[var(--line-strong)] text-[var(--foreground)] hover:border-[var(--accent)] hover:bg-[var(--accent-faint)]"
+                        }`}
+                        disabled={
+                          !!quizAttempt ||
+                          authStatus === "loading" ||
+                          quizStatus === "loading" ||
+                          quizAttemptStatus === "loading"
+                        }
+                        key={choice.id}
+                        onClick={() => setSelectedChoiceId(choice.id)}
+                        type="button"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
+                            isCorrectChoice
+                              ? "border-[var(--success-line)] bg-white"
+                              : isWrongSelected
+                                ? "border-[var(--danger-line)] bg-white"
+                                : isSelected
+                                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                                  : "border-[var(--line)] bg-[var(--panel-soft)] text-[var(--secondary)]"
+                          }`}
+                        >
+                          {String.fromCharCode(65 + choiceIndex)}
+                        </span>
+                        <span className="min-w-0 flex-1">{choice.text}</span>
+                        {answerFeedback ? (
+                          <span className="flex shrink-0 items-center gap-1 text-xs font-bold">
+                            {isCorrectChoice ? (
+                              <CheckIcon className="h-4 w-4" />
+                            ) : null}
+                            {isCorrectChoice ? "Correct" : "Incorrect"}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
-              ) : null}
-              {quizAttempt && activeQuizIndex >= quizzes.length - 1 ? (
-                <div
-                  className="mt-4 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] p-3"
-                  role="status"
-                >
-                  <p className="text-sm font-semibold text-[var(--accent-strong)]">
-                    Practice complete
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    You finished all {quizzes.length} questions in this set.
-                  </p>
-                </div>
-              ) : null}
-              <div className="mt-4 flex gap-2">
-                <button
-                  className="h-11 flex-1 rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
-                  disabled={
-                    !selectedChoiceId ||
-                    !!quizAttempt ||
-                    authStatus === "loading" ||
-                    quizStatus === "loading" ||
-                    quizAttemptStatus === "loading"
-                  }
-                  type="submit"
-                >
-                  {quizAttemptStatus === "loading" ? "Checking..." : "Check"}
-                </button>
-                {activeQuizIndex >= quizzes.length - 1 && quizAttempt ? (
-                  <button
-                    className="h-11 min-w-28 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] disabled:opacity-60"
-                    disabled={quizStatus === "loading"}
-                    onClick={handleLoadRecommendedQuizzes}
-                    type="button"
+                {quizAttempt ? (
+                  <div
+                    className={`mt-4 ${
+                      quizAttempt.isCorrect ? "status-success" : "status-error"
+                    }`}
+                    role="status"
                   >
-                    {quizStatus === "loading" ? "Loading..." : "Practice again"}
-                  </button>
-                ) : (
+                    <p className="font-bold">
+                      {quizAttempt.isCorrect ? "Correct" : "Let’s review"}
+                    </p>
+                    <p className="mt-1.5 leading-6">
+                      {quizAttempt.explanationEn}
+                    </p>
+                  </div>
+                ) : null}
+                {quizAttempt && activeQuizIndex >= quizzes.length - 1 ? (
+                  <div className="status-success mt-3" role="status">
+                    <p className="font-bold">Practice complete</p>
+                    <p className="mt-1 leading-6">
+                      You finished all {quizzes.length} questions in this set.
+                    </p>
+                  </div>
+                ) : null}
+                <div className="mt-5 grid grid-cols-2 gap-2">
                   <button
-                    className="h-11 min-w-24 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-28"
+                    className="button-secondary w-full"
                     disabled={
-                      !quizAttempt ||
-                      activeQuizIndex >= quizzes.length - 1 ||
+                      !selectedChoiceId ||
+                      !!quizAttempt ||
                       authStatus === "loading" ||
                       quizStatus === "loading" ||
                       quizAttemptStatus === "loading"
                     }
-                    onClick={handleNextQuiz}
-                    type="button"
+                    type="submit"
                   >
-                    Next
+                    {quizAttemptStatus === "loading"
+                      ? "Checking..."
+                      : "Check answer"}
                   </button>
-                )}
+                  {activeQuizIndex >= quizzes.length - 1 && quizAttempt ? (
+                    <button
+                      className="button-primary w-full"
+                      disabled={quizStatus === "loading"}
+                      onClick={handleLoadRecommendedQuizzes}
+                      type="button"
+                    >
+                      <RefreshIcon className="h-4 w-4" />
+                      {quizStatus === "loading"
+                        ? "Loading..."
+                        : "Practice again"}
+                    </button>
+                  ) : (
+                    <button
+                      className="button-primary w-full"
+                      disabled={
+                        !quizAttempt ||
+                        activeQuizIndex >= quizzes.length - 1 ||
+                        authStatus === "loading" ||
+                        quizStatus === "loading" ||
+                        quizAttemptStatus === "loading"
+                      }
+                      onClick={handleNextQuiz}
+                      type="button"
+                    >
+                      Next question
+                      <ArrowRightIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </form>
+            ) : quizStatus === "loading" ? (
+              <div className="flex items-center gap-3 py-8" role="status">
+                <span
+                  aria-hidden="true"
+                  className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+                />
+                <p className="text-sm font-semibold text-[var(--muted)]">
+                  Loading approved questions...
+                </p>
               </div>
-            </form>
-          ) : quizStatus === "loading" ? (
-            <p className="mt-5 text-sm text-[var(--muted)]" role="status">
-              Loading approved questions...
-            </p>
-          ) : null}
+            ) : null}
+          </div>
         </section>
       </div>
     </main>
@@ -557,10 +640,17 @@ function QuizWorkspace() {
 
 function LoadingPage() {
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <p className="text-sm text-[var(--muted)]" role="status">
-          Checking session...
+    <main className="app-shell grid min-h-screen place-items-center px-4">
+      <div
+        className="surface-card flex items-center gap-3 px-5 py-4"
+        role="status"
+      >
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+        />
+        <p className="text-sm font-semibold text-[var(--muted)]">
+          Preparing your practice...
         </p>
       </div>
     </main>
@@ -569,10 +659,7 @@ function LoadingPage() {
 
 function Message({ message }: { message: string }) {
   return (
-    <div
-      className="rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm text-[var(--muted)]"
-      role="status"
-    >
+    <div className="status-neutral" role="status">
       {message}
     </div>
   );
@@ -580,9 +667,9 @@ function Message({ message }: { message: string }) {
 
 function ProgressStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[var(--line)] bg-white px-2 py-3 text-center">
+    <div className="px-2 py-3 text-center sm:px-4 sm:py-4">
       <p className="text-xs font-semibold text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-base font-semibold text-[var(--foreground)]">
+      <p className="mt-1 text-base font-bold text-[var(--foreground)] sm:text-lg">
         {value}
       </p>
     </div>
@@ -598,10 +685,18 @@ function formatAccuracy(progress: QuizProgress) {
 }
 
 function tagFilterClassName(isActive: boolean) {
-  return `rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
+  return `min-h-10 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
     isActive
-      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-      : "border-[var(--line)] bg-white text-[var(--secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)] shadow-[inset_0_0_0_1px_var(--accent)]"
+      : "border-[var(--line-strong)] bg-white text-[var(--secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent-faint)]"
+  }`;
+}
+
+function quizTypeClassName(isActive: boolean) {
+  return `min-h-11 rounded-lg px-3 text-sm font-bold ${
+    isActive
+      ? "bg-white text-[var(--accent-strong)] shadow-sm"
+      : "text-[var(--muted)] hover:bg-white/70 hover:text-[var(--foreground)]"
   }`;
 }
 

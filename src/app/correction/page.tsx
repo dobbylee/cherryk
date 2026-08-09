@@ -10,6 +10,14 @@ import {
   type FormEvent,
 } from "react";
 import { AppHeader } from "@/app/_components/app-header";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CameraIcon,
+  CopyIcon,
+  QuizIcon,
+  SparkIcon,
+} from "@/app/_components/icons";
 import { SessionUnavailable } from "@/app/_components/session-unavailable";
 import { useAuthSession } from "@/app/_hooks/use-auth-session";
 import { submitCorrection } from "@/lib/api/corrections";
@@ -175,26 +183,26 @@ export default function CorrectionPage() {
     ocrStatus === "loading";
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+    <main className="app-shell">
+      <div className="app-container flex max-w-5xl flex-col gap-5 sm:gap-6">
         <AppHeader
           authBusy={authStatus === "loading"}
           onLogout={handleLogout}
           user={user}
         />
 
-        <div className="flex items-start justify-between gap-3 sm:items-center">
+        <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[var(--accent)]">Correction</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-normal sm:whitespace-nowrap sm:text-2xl">
-              Write or confirm OCR text
-            </h2>
+            <p className="section-eyebrow">Correction studio</p>
+            <h1 className="page-title mt-2">Make your Korean clearer</h1>
+            <p className="page-description mt-3 max-w-2xl">
+              Write directly or extract a handwriting draft. You can review and
+              edit everything before asking for a correction.
+            </p>
           </div>
-          <Link
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-semibold text-[var(--accent-strong)] shadow-sm hover:bg-[var(--accent-soft)]"
-            href="/"
-          >
-            All tools
+          <Link className="button-secondary w-full shrink-0 sm:w-auto" href="/">
+            <ArrowLeftIcon className="h-4 w-4" />
+            Back to home
           </Link>
         </div>
 
@@ -202,21 +210,63 @@ export default function CorrectionPage() {
         {message ? <ErrorMessage message={message} /> : null}
 
         <form
-          className="border border-[var(--line)] bg-[var(--panel)] shadow-[0_18px_44px_rgb(32_143_202_/_7%)]"
+          className="surface-card-elevated overflow-hidden"
           onSubmit={handleCorrection}
         >
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-4">
-            <p className="text-sm font-bold text-[var(--accent)]">
-              Correction workspace
-            </p>
-            <span className="shrink-0 rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--panel-soft)] px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                <SparkIcon className="h-4 w-4" />
+              </span>
+              <p className="text-sm font-bold text-[var(--foreground)]">
+                Your correction workspace
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--secondary)]">
               {inputSource === "image_ocr" ? "OCR input" : "Text input"}
             </span>
           </div>
 
-          <div className="grid gap-4 p-4">
-            <div className="border-b border-dashed border-[var(--line)] pb-4">
-              <span className="text-sm font-semibold">Handwriting image</span>
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="p-5 sm:p-6 lg:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-bold" htmlFor="korean-text">
+                  Korean text
+                </label>
+                <span
+                  className="text-xs font-semibold text-[var(--muted)]"
+                  id="korean-text-count"
+                >
+                  {text.length} / 4,000
+                </span>
+              </div>
+              <textarea
+                aria-describedby="korean-text-help korean-text-count"
+                className="form-control mt-3 min-h-64 resize-y p-4 text-lg leading-8 sm:min-h-72"
+                id="korean-text"
+                maxLength={4000}
+                onChange={(event) => setText(event.target.value)}
+                placeholder="Write a Korean sentence you want to improve..."
+                value={text}
+              />
+              <p
+                className="mt-2 text-xs leading-5 text-[var(--muted)]"
+                id="korean-text-help"
+              >
+                Your meaning stays intact. CherryK makes only the corrections
+                needed for natural Korean.
+              </p>
+            </div>
+
+            <aside className="border-t border-[var(--line)] bg-[var(--panel-soft)] p-5 sm:p-6 lg:border-t-0 lg:border-l">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                <CameraIcon className="h-5 w-5" />
+              </span>
+              <h2 className="mt-4 text-base font-bold">Use handwriting</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                Upload a clear photo, then check the extracted draft before you
+                continue.
+              </p>
               <input
                 accept="image/*"
                 aria-label="Choose handwriting photo"
@@ -227,86 +277,86 @@ export default function CorrectionPage() {
                 ref={ocrInputRef}
                 type="file"
               />
-              <div className="mt-2 flex min-w-0 items-center gap-3">
+              <div className="mt-4 grid min-w-0 gap-2">
                 <button
-                  className="h-10 shrink-0 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-semibold text-[var(--foreground)] hover:border-[var(--accent)] disabled:cursor-wait disabled:opacity-60"
+                  className="button-secondary w-full"
                   disabled={uploadBusy}
                   onClick={() => ocrInputRef.current?.click()}
                   type="button"
                 >
-                  Choose photo
+                  <CameraIcon className="h-4 w-4" />
+                  {ocrStatus === "loading"
+                    ? "Reading photo..."
+                    : "Choose photo"}
                 </button>
-                <span className="min-w-0 truncate text-sm text-[var(--muted)]">
+                <span className="min-w-0 truncate text-xs text-[var(--muted)]">
                   {selectedImageName ?? "No image selected"}
                 </span>
               </div>
               {ocrStatus === "loading" ? (
                 <div
                   aria-live="polite"
-                  className="mt-3 flex items-center gap-2 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent-strong)]"
+                  className="status-neutral mt-3 flex items-center gap-2 font-semibold text-[var(--accent-strong)]"
                   role="status"
                 >
                   <span
                     aria-hidden="true"
                     className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
                   />
-                  Extracting text from image...
+                  Extracting Korean text...
                 </div>
               ) : ocrNote ? (
-                <p className="mt-2 text-sm text-[var(--muted)]">{ocrNote}</p>
+                <p className="status-neutral mt-3">{ocrNote}</p>
               ) : null}
-            </div>
+            </aside>
+          </div>
 
-            <div>
-              <label className="text-sm font-semibold" htmlFor="korean-text">
-                Korean text
-              </label>
-              <textarea
-                className="mt-3 min-h-52 w-full resize-y rounded-md border border-[var(--line)] bg-white p-4 text-lg leading-8 outline-none focus:border-[var(--accent)]"
-                id="korean-text"
-                onChange={(event) => setText(event.target.value)}
-                value={text}
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                className="h-11 rounded-md border border-[var(--accent)] bg-white px-5 text-sm font-semibold text-[var(--accent-strong)] shadow-[inset_0_0_0_1px_rgb(255_255_255_/_75%)] hover:bg-[var(--accent-soft)] disabled:opacity-60"
-                disabled={
-                  authStatus === "loading" ||
-                  correctionStatus === "loading" ||
-                  ocrStatus === "loading" ||
-                  !text.trim()
-                }
-                type="submit"
-              >
-                {correctionStatus === "loading" ? "Correcting..." : "Correct"}
-              </button>
-            </div>
+          <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p className="text-xs leading-5 text-[var(--muted)]">
+              Review your input first—you can always edit the draft above.
+            </p>
+            <button
+              className="button-primary w-full sm:w-auto sm:min-w-44"
+              disabled={
+                authStatus === "loading" ||
+                correctionStatus === "loading" ||
+                ocrStatus === "loading" ||
+                !text.trim()
+              }
+              type="submit"
+            >
+              {correctionStatus === "loading" ? (
+                "Correcting..."
+              ) : (
+                <>
+                  Review correction
+                  <ArrowRightIcon className="h-4 w-4" />
+                </>
+              )}
+            </button>
           </div>
         </form>
 
         {correction ? (
-          <section className="scroll-mt-4 grid gap-4" ref={resultRef}>
-            <article className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)]">
+          <section className="grid scroll-mt-4 gap-4" ref={resultRef}>
+            <article className="surface-card-elevated p-5 sm:p-7">
               <div className="flex flex-col gap-3 border-b border-[var(--line)] pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-bold text-[var(--accent)]">
-                    Result
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-normal">
-                    Correction result
+                  <p className="section-eyebrow">Correction result</p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em]">
+                    Your revised Korean
                   </h2>
                 </div>
                 <button
-                  className="h-10 rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)]"
+                  className="button-secondary w-full sm:w-auto"
                   onClick={handleCopyCorrectedText}
                   type="button"
                 >
+                  <CopyIcon className="h-4 w-4" />
                   {hasCopiedCorrection ? "Copied" : "Copy text"}
                 </button>
               </div>
-              <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2">
+              <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2">
                 <ResultBlock label="Original" value={correction.originalText} />
                 <ResultBlock
                   correctionChanges={correction.mistakes}
@@ -322,26 +372,24 @@ export default function CorrectionPage() {
               </dl>
             </article>
 
-            <article className="border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[0_18px_44px_rgb(32_143_202_/_7%)]">
+            <article className="surface-card p-5 sm:p-7">
               <div className="border-b border-[var(--line)] pb-4">
-                <p className="text-sm font-bold text-[var(--accent)]">
-                  Review notes
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-normal">
-                  Mistakes
+                <p className="section-eyebrow">Review notes</p>
+                <h2 className="mt-2 text-xl font-bold tracking-[-0.025em]">
+                  What changed and why
                 </h2>
               </div>
               <div className="mt-4 grid gap-3">
                 {correction.mistakes.map((mistake, index) => (
                   <div
-                    className="border-l-2 border-[var(--line)] pl-3"
+                    className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-4"
                     key={`${mistake.tag}-${index}`}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-[var(--line)] bg-white px-2 py-1 text-xs font-semibold text-[var(--secondary)]">
+                      <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)]">
                         {mistake.tag}
                       </span>
-                      <span className="text-xs text-[var(--muted)]">
+                      <span className="text-xs font-semibold text-[var(--muted)]">
                         {mistake.severity}
                       </span>
                     </div>
@@ -355,10 +403,14 @@ export default function CorrectionPage() {
                 ))}
               </div>
               <div className="mt-5 border-t border-[var(--line)] pt-4">
+                <div className="flex items-center gap-2">
+                  <QuizIcon className="h-5 w-5 text-[var(--accent)]" />
+                  <p className="text-sm font-bold">Practice this lesson</p>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {correction.recommendedTags.map((tag) => (
                     <span
-                      className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--secondary)]"
+                      className="mt-3 rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--secondary)]"
                       key={tag}
                     >
                       {tag}
@@ -366,7 +418,7 @@ export default function CorrectionPage() {
                   ))}
                 </div>
                 <Link
-                  className="mt-4 flex h-11 items-center justify-center rounded-md border border-[var(--accent)] bg-white px-4 text-sm font-semibold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)]"
+                  className="button-primary mt-4 w-full sm:w-fit"
                   href={{
                     pathname: "/quizzes",
                     query: correction.recommendedTags.length
@@ -375,6 +427,7 @@ export default function CorrectionPage() {
                   }}
                 >
                   Practice related MCQ
+                  <ArrowRightIcon className="h-4 w-4" />
                 </Link>
               </div>
             </article>
@@ -387,10 +440,17 @@ export default function CorrectionPage() {
 
 function LoadingPage() {
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <p className="text-sm text-[var(--muted)]" role="status">
-          Checking session...
+    <main className="app-shell grid min-h-screen place-items-center px-4">
+      <div
+        className="surface-card flex items-center gap-3 px-5 py-4"
+        role="status"
+      >
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+        />
+        <p className="text-sm font-semibold text-[var(--muted)]">
+          Preparing your workspace...
         </p>
       </div>
     </main>
@@ -399,10 +459,7 @@ function LoadingPage() {
 
 function ErrorMessage({ message }: { message: string }) {
   return (
-    <div
-      className="rounded-md border border-[var(--danger-line)] bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger)]"
-      role="status"
-    >
+    <div className="status-error" role="status">
       {message}
     </div>
   );
@@ -433,10 +490,10 @@ function ResultBlock({
     : null;
 
   return (
-    <div className="border-t border-[var(--line)] pt-3">
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-4">
       <dt className="font-semibold">{label}</dt>
       <dd
-        className={`mt-2 leading-7 ${
+        className={`mt-2 whitespace-pre-wrap leading-7 ${
           tone === "accent"
             ? "text-lg font-semibold text-[var(--foreground)]"
             : "text-[var(--muted)]"

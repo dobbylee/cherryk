@@ -2,31 +2,58 @@
 
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #142433;
-  --muted: #607588;
+  --background: #f5f8f8;
+  --background-strong: #edf3f4;
+  --foreground: #16313b;
+  --foreground-soft: #34525d;
+  --muted: #5d7078;
+  --muted-light: #8a9aa0;
   --panel: #ffffff;
-  --line: #cbe8f8;
-  --accent: #126f9f;
-  --accent-strong: #0e5d87;
-  --accent-soft: #eef9ff;
-  --secondary: #1e6f96;
-  --tag-bg: #eef9ff;
-  --danger: #9f1239;
-  --danger-bg: #fff1f2;
-  --danger-line: #fecdd3;
+  --panel-soft: #f8fbfb;
+  --line: #d7e2e4;
+  --line-strong: #758c93;
+  --accent: #087b93;
+  --accent-strong: #075f73;
+  --accent-soft: #e7f5f7;
+  --accent-faint: #f3fafb;
+  --secondary: #426774;
+  --warm: #98451f;
+  --warm-soft: #fff2eb;
+  --success: #22745e;
+  --success-bg: #e9f7f1;
+  --success-line: #b8dfcf;
+  --danger: #a33d52;
+  --danger-bg: #fff2f4;
+  --danger-line: #f0c4cd;
+  --shadow-sm: 0 1px 2px rgb(20 50 60 / 4%), 0 6px 18px rgb(20 50 60 / 4%);
+  --shadow-md: 0 18px 48px rgb(20 50 60 / 8%);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+  background: var(--background);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(200 235 239 / 34%), transparent 26rem),
+    radial-gradient(
+      circle at 94% 14%,
+      rgb(255 229 215 / 24%),
+      transparent 22rem
+    ),
+    var(--background);
   color: var(--foreground);
   font-family:
+    "Pretendard Variable",
+    Pretendard,
     Inter,
     ui-sans-serif,
     system-ui,
@@ -34,6 +61,8 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -41,6 +70,14 @@ textarea,
 input,
 select {
   font: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
@@ -51,4 +88,232 @@ a {
 a[href],
 button:not(:disabled) {
   cursor: pointer;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 3px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: #c8e9ee;
+  color: var(--foreground);
+}
+
+.app-shell {
+  min-height: 100vh;
+  color: var(--foreground);
+}
+
+.app-container {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 1rem;
+}
+
+.surface-card {
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-card-elevated {
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: var(--shadow-md);
+}
+
+.section-eyebrow {
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  line-height: 1.25rem;
+  text-transform: uppercase;
+}
+
+.page-title {
+  color: var(--foreground);
+  font-size: clamp(1.75rem, 5vw, 2.65rem);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.page-description {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+
+.button-primary,
+.button-secondary,
+.button-quiet,
+.button-danger {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+.button-primary {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 6px 16px rgb(8 123 147 / 18%);
+}
+
+.button-primary:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  transform: translateY(-1px);
+}
+
+.button-secondary {
+  border: 1px solid var(--line-strong);
+  background: white;
+  color: var(--foreground);
+}
+
+.button-secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-faint);
+  color: var(--accent-strong);
+}
+
+.button-quiet {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--secondary);
+}
+
+.button-quiet:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.button-danger {
+  border: 1px solid var(--danger-line);
+  background: white;
+  color: var(--danger);
+}
+
+.button-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.button-primary:disabled,
+.button-secondary:disabled,
+.button-quiet:disabled,
+.button-danger:disabled {
+  opacity: 0.5;
+  transform: none;
+}
+
+.form-control {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.75rem;
+  background: white;
+  color: var(--foreground);
+  outline: none;
+}
+
+.form-control::placeholder {
+  color: var(--muted);
+}
+
+.form-control:hover:not(:disabled) {
+  border-color: #8bb2bb;
+}
+
+.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(8 123 147 / 11%);
+}
+
+.form-control:disabled {
+  background: var(--background-strong);
+  color: var(--muted);
+}
+
+.status-error,
+.status-neutral,
+.status-success {
+  border-radius: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.status-error {
+  border: 1px solid var(--danger-line);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.status-neutral {
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+}
+
+.status-success {
+  border: 1px solid var(--success-line);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+@media (min-width: 640px) {
+  .app-container {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    padding: 1.75rem 2rem 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
