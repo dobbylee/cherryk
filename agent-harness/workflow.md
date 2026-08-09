@@ -42,3 +42,8 @@ instead of adding a duplicate.
   after completed migration work remained duplicated as active guidance across
   all three layers (severity `2`, recurrence `2`, detectability `2`, rule fit `2`;
   total `8`).
+- Keep the `preview` branch as a CI lane, disable automatic non-Production Vercel
+  deployments, and provision a complete isolated Preview only for hosted-integration
+  risk. This replaced a repeatedly read-only Preview that returned maintenance
+  errors and could not verify authentication or product flows (severity `2`,
+  recurrence `2`, detectability `2`, rule fit `2`; total `8`).

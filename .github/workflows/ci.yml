@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Find successful Preview verification
+      - name: Find successful preview-branch CI
         id: preview-verification
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,13 +41,13 @@ jobs:
                 reuse=true
               fi
             else
-              echo "Preview verification lookup failed; running the full gate on main" >&2
+              echo "Preview-branch CI lookup failed; running the full gate on main" >&2
             fi
           fi
 
           echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
           if [[ "$reuse" == true ]]; then
-            echo "Reusing successful Preview CI for $GITHUB_SHA"
+            echo "Reusing successful preview-branch CI for $GITHUB_SHA"
           else
             echo "Running the full verification gate for $GITHUB_SHA"
           fi
@@ -81,7 +81,9 @@ jobs:
       - run: pnpm build
         if: steps.preview-verification.outputs.reuse != 'true'
         env:
-          SPRING_BACKEND_ORIGIN: https://api-preview.cherryk.kr
+          # This job validates the build artifact without hosting it. Vercel
+          # supplies the real origin only for an explicitly deployed environment.
+          SPRING_BACKEND_ORIGIN: http://127.0.0.1:8080
       - run: pnpm build:backend
         if: steps.preview-verification.outputs.reuse != 'true'
       - run: pnpm compose:check

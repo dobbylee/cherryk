@@ -10,6 +10,7 @@ import io.github.dobbylee.cherryk.presentation.auth.AuthController
 import io.github.dobbylee.cherryk.presentation.auth.CurrentUserResolver
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
@@ -89,6 +90,13 @@ class SecurityConfigurationTest(
                     ),
                 ),
             )
+    }
+
+    @Test
+    fun `local login endpoint is unavailable by default`() {
+        mockMvc
+            .perform(get(LocalAuthenticationFilter.LOCAL_LOGIN_PATH))
+            .andExpect(status().isNotFound)
     }
 
     @Test
@@ -188,7 +196,16 @@ class SecurityTestConfiguration {
         ProvisioningOidcUserService(identityResolver)
 
     @Bean
-    fun adminAuthorizationManager() = AdminAuthorizationManager("admin@example.com")
+    fun adminAuthorizationManager(
+        @Value("\${cherryk.security.local-login-enabled:false}")
+        localLoginEnabled: Boolean,
+        @Value("\${cherryk.security.secure-cookies:true}")
+        secureCookies: Boolean,
+    ) = AdminAuthorizationManager(
+        "admin@example.com",
+        localLoginEnabled,
+        secureCookies,
+    )
 
     @Bean
     fun clientRegistrationRepository(): ClientRegistrationRepository =

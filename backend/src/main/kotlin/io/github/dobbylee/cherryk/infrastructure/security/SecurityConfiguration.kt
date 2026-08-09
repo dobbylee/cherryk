@@ -1,5 +1,6 @@
 package io.github.dobbylee.cherryk.infrastructure.security
 
+import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
 import io.github.dobbylee.cherryk.presentation.apiError
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
@@ -11,6 +12,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.authentication.InsufficientAuthenticationException
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
@@ -21,6 +23,7 @@ import tools.jackson.databind.ObjectMapper
 class SecurityConfiguration(
     private val objectMapper: ObjectMapper,
     private val oidcUserService: ProvisioningOidcUserService,
+    private val identityResolver: OidcIdentityResolver,
     private val adminAuthorizationManager: AdminAuthorizationManager,
     @Value("\${cherryk.security.secure-cookies:true}")
     private val secureCookies: Boolean,
@@ -28,6 +31,12 @@ class SecurityConfiguration(
     private val maintenanceMode: String,
     @Value("\${cherryk.maintenance.bypass-token:}")
     private val maintenanceBypassToken: String,
+    @Value("\${cherryk.security.local-login-enabled:false}")
+    private val localLoginEnabled: Boolean,
+    @Value("\${cherryk.security.local-login-email:local@cherryk.invalid}")
+    private val localLoginEmail: String,
+    @Value("\${cherryk.security.local-login-display-name:Local Learner}")
+    private val localLoginDisplayName: String,
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -131,6 +140,16 @@ class SecurityConfiguration(
                         }
                     }
             }
+
+        http.addFilterBefore(
+            LocalAuthenticationFilter(
+                enabled = localLoginEnabled && !secureCookies,
+                identityResolver = identityResolver,
+                email = localLoginEmail,
+                displayName = localLoginDisplayName,
+            ),
+            OAuth2AuthorizationRequestRedirectFilter::class.java,
+        )
 
         return http.build()
     }

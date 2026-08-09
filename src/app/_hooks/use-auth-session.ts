@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchCurrentUser, loginWithGoogle, logout } from "@/lib/api/auth";
+import { fetchCurrentUser, login, logout } from "@/lib/api/auth";
 import { resolveAuthSession } from "@/lib/authSession";
 import type { AuthUser } from "@/lib/contracts/auth";
 import { invalidateLatestRequest, runLatestRequest } from "@/lib/latestRequest";
@@ -56,13 +56,12 @@ export function useAuthSession() {
       message: null,
     }));
     try {
-      loginWithGoogle();
+      login();
     } catch (error) {
       setSession((current) => ({
         ...current,
         status: "unavailable",
-        message:
-          error instanceof Error ? error.message : "Google sign-in failed.",
+        message: error instanceof Error ? error.message : "Sign-in failed.",
       }));
     }
   }, []);

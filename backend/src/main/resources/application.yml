@@ -57,6 +57,9 @@ cherryk:
   security:
     admin-emails: ${ADMIN_EMAILS:}
     secure-cookies: ${SESSION_COOKIE_SECURE:true}
+    local-login-enabled: ${CHERRYK_LOCAL_LOGIN_ENABLED:false}
+    local-login-email: ${CHERRYK_LOCAL_LOGIN_EMAIL:local@cherryk.invalid}
+    local-login-display-name: ${CHERRYK_LOCAL_LOGIN_DISPLAY_NAME:Local Learner}
   correction:
     openai:
       api-key: ${OPENAI_API_KEY:}

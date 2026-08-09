@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: ${CHERRYK_LOCAL_DATABASE_URL:jdbc:postgresql://localhost:5434/cherryk}
+    username: ${CHERRYK_LOCAL_DATABASE_USERNAME:cherryk}
+    password: ${CHERRYK_LOCAL_DATABASE_PASSWORD:cherryk}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:local-development-client}
+            client-secret: ${GOOGLE_CLIENT_SECRET:local-development-secret}
+
+server:
+  address: 127.0.0.1
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+cherryk:
+  security:
+    admin-emails: ${ADMIN_EMAILS:local@cherryk.invalid}
+    secure-cookies: false
+    local-login-enabled: true

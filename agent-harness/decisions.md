@@ -10,19 +10,25 @@ evidence belongs under `local/`.
   container on OCI. Keep Production PostgreSQL on Neon in AWS Singapore, near OCI
   Chuncheon.
 - Expose Production Spring at `api.cherryk.kr` behind Nginx. Do not operate a
-  permanent Preview backend or route Preview to Production; backend Preview uses a
-  temporary container and isolated Neon branch.
+  permanent Preview frontend, backend, or database, and never route Preview to
+  Production. For hosted-integration risk, create an on-demand exact-SHA Vercel
+  Preview with a temporary backend and isolated Neon database, then remove all
+  Preview runtime resources after verification.
 - While CherryK has one developer, use local, `preview`, and `main`. Push reviewed
-  work to `preview`, run the full gate and real Preview verification, then
-  fast-forward the same green commit to `main`. Do not require feature branches or
-  pull requests at this stage.
+  work to `preview` and use its full CI result as the normal gate. Require the
+  on-demand full-stack Preview only for authentication/session, database/data
+  migration, API routing, and deployment-infrastructure changes; other changes may
+  proceed from local verification and green CI. Fast-forward the same green commit
+  to `main`. Do not require feature branches or pull requests at this stage.
 - Keep Vercel Git-driven. After successful `main` verification, GitHub publishes an
   immutable ARM64 image to GHCR and the Production-only OCI runner invokes only the
   root-owned, serialized, health-gated deployment wrapper. Restrict the GitHub
   `Production` environment to `main` and never run general CI on that runner.
 - Keep `Verify` as the required `main` check. Reuse the exact successful
-  push-triggered `preview` result; run the full gate when the SHA has no matching
-  success, the lookup fails, or the run is manual.
+  push-triggered `preview` branch CI result; run the full gate when the SHA has no
+  matching success, the lookup fails, or the run is manual. Automatic Vercel Git
+  deployments are Production-only; create non-Production deployments manually
+  when the on-demand gate applies.
 - Preserve stable `/api/v1` contracts and do not use dual writes. Do not add Redis,
   JWT, WebFlux, coroutines, microservices, or self-hosted PostgreSQL without measured
   need and a new decision.
@@ -39,6 +45,11 @@ evidence belongs under `local/`.
 - Flyway alone changes schema and Hibernate stays on `ddl-auto=validate`. Use JPA
   for aggregate writes/simple CRUD and SQL projections for query-heavy reads. Keep
   BIGINT identity keys internal and opaque string IDs in JSON.
+- Adopt a newer Neon GA PostgreSQL major only through a deliberate compatibility
+  and data-migration rollout. Local and integration tests may validate the target
+  major first, but changing a Docker image never implies that Production was
+  upgraded; Production requires an isolated target, restore, parity checks, and a
+  health-gated cutover.
 - Baseline an existing Neon database only after equivalence checks; never enable
   automatic Production baselining.
 - Treat `neon_auth` as Neon-managed state; CherryK backups exclude it because
@@ -79,6 +90,11 @@ evidence belongs under `local/`.
   Suppress the passive authentication error there and disable header sign-in while
   the authentication boundary is unavailable instead of retrying a known failing
   maintenance endpoint.
+- Allow DB-backed internal testing without external OAuth only through the
+  explicit local Spring profile or local-login flag paired with insecure local
+  HTTP cookies. Keep the endpoint disabled by default, route only loopback
+  frontends to it, and persist the local learner through the same user/session
+  boundaries as Google OIDC.
 
 ## Quiz Domain
 

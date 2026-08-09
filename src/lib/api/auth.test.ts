@@ -10,7 +10,7 @@ vi.mock("./client", () => ({
   fetchNoContent: mocks.fetchNoContent,
 }));
 
-import { loginWithGoogle, logout } from "./auth";
+import { login, loginPathForHostname, logout } from "./auth";
 
 describe("auth API helpers", () => {
   beforeEach(() => {
@@ -18,14 +18,32 @@ describe("auth API helpers", () => {
     vi.unstubAllGlobals();
   });
 
-  it("starts Google login through Spring", () => {
+  it("starts local login on localhost", () => {
     vi.stubGlobal("window", {
-      location: { assign: mocks.locationAssign },
+      location: { assign: mocks.locationAssign, hostname: "localhost" },
     });
 
-    loginWithGoogle();
+    login();
+
+    expect(mocks.locationAssign).toHaveBeenCalledWith("/api/auth/login/local");
+  });
+
+  it("starts Google login outside local development", () => {
+    vi.stubGlobal("window", {
+      location: { assign: mocks.locationAssign, hostname: "cherryk.kr" },
+    });
+
+    login();
 
     expect(mocks.locationAssign).toHaveBeenCalledWith("/api/auth/login/google");
+  });
+
+  it("limits local login routing to loopback hostnames", () => {
+    expect(loginPathForHostname("127.0.0.1")).toBe("/api/auth/login/local");
+    expect(loginPathForHostname("[::1]")).toBe("/api/auth/login/local");
+    expect(loginPathForHostname("localhost.attacker.test")).toBe(
+      "/api/auth/login/google",
+    );
   });
 
   it("logs out through Spring", async () => {

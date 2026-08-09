@@ -24,12 +24,42 @@ From the repository root:
 
 ```bash
 cp .env.example .env.local
+pnpm dev:local
+```
+
+`pnpm dev:local` starts an isolated Spring PostgreSQL service on local port 5434,
+starts the Spring backend with the `local` profile, waits for its health endpoint,
+and then starts Next. On loopback hostnames the header sign-in button uses the
+local-only login endpoint, creating a persisted learner without requiring Google
+credentials. The local profile also makes that learner an admin by default so
+operator screens can be tested.
+
+The separate `backend_postgres18_data` volume intentionally avoids reusing local
+databases that predate Flyway history. Legacy local database data is not required
+by this workflow.
+
+Local Compose and backend integration tests target PostgreSQL 18. Production Neon
+remains on its currently deployed major until a separate, verified Neon project
+migration is completed; changing this repository's Docker image does not upgrade
+Production.
+
+The local login endpoint is disabled by default in the base configuration and is
+enabled only when the local profile or explicit `CHERRYK_LOCAL_LOGIN_ENABLED` flag
+is paired with insecure local HTTP session cookies. Non-loopback frontend hosts
+continue to use Google OAuth.
+
+To run both backend and database as containers instead, use:
+
+```bash
 docker compose --env-file .env.local --profile backend up --build -d
 SPRING_BACKEND_ORIGIN=http://localhost:8080 pnpm dev
 ```
 
-The backend container uses the profile-scoped PostgreSQL service and applies Flyway
-migrations on startup. Hibernate validates the resulting schema.
+Both backend modes apply Flyway migrations on startup. Hibernate validates the
+resulting schema. The repository `compose.yaml` is local-development-only and
+binds its published ports to loopback. Production uses the separate root-owned
+`/opt/cherryk/compose.yaml`; repository-local database and local-login settings are
+not copied into it.
 
 ## Deployment topology
 
@@ -38,8 +68,13 @@ The Vercel-hosted Next.js application is frontend-only. It rewrites `/api/v1/*` 
 `https://api.cherryk.kr`, backed by one Spring container behind the OCI Nginx proxy
 and the Production Neon database in Singapore.
 
-Preview must never use the Production container or database. Backend Preview
-verification uses a separately configured temporary container and Neon branch.
+The `preview` branch is a CI verification lane, not a permanent hosted environment.
+Automatic non-Production Vercel deployments are disabled. Changes involving
+authentication/session behavior, database or data migration, API routing, or
+deployment infrastructure require an on-demand exact-SHA Vercel Preview connected
+to a temporary backend and isolated Neon database. Preview must never use the
+Production container or database, and all temporary runtime resources are removed
+after verification.
 
 The `Deploy Backend` GitHub Actions workflow runs only after the `CI` workflow
 succeeds for a `main` push. GitHub's ARM64 runner publishes an immutable image to

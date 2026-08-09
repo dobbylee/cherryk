@@ -14,12 +14,12 @@ describe("Spring admin access helper", () => {
     await expect(
       requireAdminAccount(
         request,
-        "https://api-preview.cherryk.kr",
+        "https://api.example.test",
         resolveSpringAccess,
       ),
     ).resolves.toBeUndefined();
     expect(resolveSpringAccess).toHaveBeenCalledWith(
-      "https://api-preview.cherryk.kr",
+      "https://api.example.test",
       request.headers,
     );
   });
@@ -40,14 +40,12 @@ describe("Spring admin access helper", () => {
     );
 
     await expect(
-      requireAdminAccount(springRequest, "https://api-preview.cherryk.kr"),
+      requireAdminAccount(springRequest, "https://api.example.test"),
     ).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url.toString()).toBe(
-      "https://api-preview.cherryk.kr/api/v1/admin/access",
-    );
+    expect(url.toString()).toBe("https://api.example.test/api/v1/admin/access");
     expect(init).toMatchObject({
       cache: "no-store",
       headers: { cookie: "CHERRYK_SESSION=spring-session" },
@@ -63,10 +61,7 @@ describe("Spring admin access helper", () => {
       "SPRING_BACKEND_ORIGIN is required",
     );
     await expect(
-      requireAdminAccount(
-        request,
-        "https://api-preview.cherryk.kr/unexpected-path",
-      ),
+      requireAdminAccount(request, "https://api.example.test/unexpected-path"),
     ).rejects.toThrow(
       "SPRING_BACKEND_ORIGIN must be an HTTPS origin without credentials, path, query, or fragment.",
     );
@@ -82,7 +77,7 @@ describe("Spring admin access helper", () => {
       await expect(
         requireAdminAccount(
           request,
-          "https://api-preview.cherryk.kr",
+          "https://api.example.test",
           async () => springAccess,
         ),
       ).rejects.toMatchObject({ code, message });

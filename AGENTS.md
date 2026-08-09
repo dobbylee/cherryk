@@ -29,8 +29,17 @@ task detail, while resolved versions and structure come from manifests and code.
 
 ## Delivery
 
-- Implement and verify on `preview`.
-- After real Preview verification, fast-forward that commit to `main` and push `main` for Production.
+- Implement on `preview` and use its full CI result as the normal pre-Production
+  gate. The branch is a verification lane, not a permanently hosted environment.
+- Require an on-demand full-stack Preview only for changes whose risk depends on
+  hosted integration, including authentication/session behavior, database or data
+  migration, API routing, and deployment infrastructure. It must use a temporary
+  backend and isolated non-Production database, and it must be removed after
+  verification.
+- After the required local/CI and, when applicable, on-demand Preview verification,
+  fast-forward that exact commit to `main` and push `main` for Production.
+- Never route Preview to Production or treat a frontend-only/read-only deployment as
+  full-stack verification.
 - Do not use Vercel Promote to Production.
 
 ## Required Review

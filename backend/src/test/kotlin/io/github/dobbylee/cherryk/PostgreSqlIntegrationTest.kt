@@ -62,4 +62,4 @@ private object DrizzleBaselinePostgresContainer {
             .apply { start() }
 }
 
-const val TEST_POSTGRES_IMAGE = "postgres:17"
+const val TEST_POSTGRES_IMAGE = "postgres:18"

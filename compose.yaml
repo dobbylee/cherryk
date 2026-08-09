@@ -1,3 +1,5 @@
+# Local development only. Production uses the root-owned Compose file under
+# /opt/cherryk and never deploys this repository file.
 services:
   backend:
     profiles: ["backend"]
@@ -7,10 +9,13 @@ services:
       DATABASE_URL: jdbc:postgresql://backend-postgres:5432/cherryk
       DATABASE_USERNAME: cherryk
       DATABASE_PASSWORD: cherryk
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      ADMIN_EMAILS: ${ADMIN_EMAILS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-development-client}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-development-secret}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-local@cherryk.invalid}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      CHERRYK_LOCAL_LOGIN_ENABLED: ${CHERRYK_LOCAL_LOGIN_ENABLED:-true}
+      CHERRYK_LOCAL_LOGIN_EMAIL: ${CHERRYK_LOCAL_LOGIN_EMAIL:-local@cherryk.invalid}
+      CHERRYK_LOCAL_LOGIN_DISPLAY_NAME: ${CHERRYK_LOCAL_LOGIN_DISPLAY_NAME:-Local Learner}
       CHERRYK_MAINTENANCE_MODE: ${CHERRYK_MAINTENANCE_MODE:-off}
       CHERRYK_MAINTENANCE_BYPASS_TOKEN: ${CHERRYK_MAINTENANCE_BYPASS_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -30,20 +35,22 @@ services:
       DAILY_CORRECTION_LIMIT: ${DAILY_CORRECTION_LIMIT:-20}
       DAILY_OCR_LIMIT: ${DAILY_OCR_LIMIT:-10}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       backend-postgres:
         condition: service_healthy
 
   backend-postgres:
     profiles: ["backend"]
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_DB: cherryk
       POSTGRES_USER: cherryk
       POSTGRES_PASSWORD: cherryk
     volumes:
-      - backend_postgres17_data:/var/lib/postgresql/data
+      - backend_postgres18_data:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cherryk -d cherryk"]
       interval: 5s
@@ -51,4 +58,4 @@ services:
       retries: 10
 
 volumes:
-  backend_postgres17_data:
+  backend_postgres18_data:

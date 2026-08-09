@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "next dev",
+    "dev:local": "bash ops/dev-local.sh",
     "build": "next build",
     "build:backend": "./backend/gradlew -p backend bootJar",
     "compose:check": "docker compose --profile backend config --quiet",
