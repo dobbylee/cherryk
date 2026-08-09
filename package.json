@@ -16,7 +16,7 @@
     "test": "pnpm test:frontend && pnpm test:backend && pnpm test:ops",
     "test:frontend": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit",
     "test:backend": "./backend/gradlew -p backend test --rerun-tasks",
-    "test:ops": "bash ops/deploy-backend.test.sh && bash ops/deploy-backend-from-ghcr.test.sh && bash ops/verify-postgresql-18-migration.test.sh",
+    "test:ops": "bash ops/deploy-backend.test.sh && bash ops/deploy-backend-from-ghcr.test.sh",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "verify": "pnpm test && pnpm build && pnpm build:backend && pnpm compose:check"

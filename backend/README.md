@@ -38,10 +38,9 @@ The separate `backend_postgres18_data` volume intentionally avoids reusing local
 databases that predate Flyway history. Legacy local database data is not required
 by this workflow.
 
-Local Compose and backend integration tests target PostgreSQL 18. Production Neon
-remains on its currently deployed major until a separate, verified Neon project
-migration is completed; changing this repository's Docker image does not upgrade
-Production.
+Local Compose, backend integration tests, and Production Neon target PostgreSQL 18.
+Changing this repository's Docker image still does not upgrade a managed Production
+database; future major upgrades require a separate, verified Neon project migration.
 
 The local login endpoint is disabled by default in the base configuration and is
 enabled only when the local profile or explicit `CHERRYK_LOCAL_LOGIN_ENABLED` flag
@@ -130,68 +129,36 @@ await fetch("/api/maintenance/bypass", { method: "DELETE" });
 
 Remove or rotate the bypass token after the maintenance window.
 
-## PostgreSQL 18 Production migration
+## PostgreSQL 17 rollback retirement
 
-Neon PostgreSQL 18 is GA, but the current Production project remains on PostgreSQL
-17 until the isolated migration gate completes. Use separate PostgreSQL 18 Preview
-and Production projects in Singapore; a branch of the PostgreSQL 17 project cannot
-change the project's major version. Never reuse the Preview database for Production.
+Production completed its PostgreSQL 18 cutover on 2026-08-09. Keep the PostgreSQL
+17 rollback package for at least 72 hours after the final cutover smoke check. It is
+eligible for removal no earlier than **2026-08-13 00:00 KST**.
 
-Use PostgreSQL 18 client tools and direct, unpooled Neon endpoints. Put both
-connections in a `chmod 600` libpq service file so database passwords never appear
-in process arguments, commits, or reports. The protected file uses standard
-`[service]` sections with `host`, `port`, `dbname`, `user`, `password`, and
-`sslmode=require` entries. Before writing the target, confirm that it is a distinct,
-empty PostgreSQL 18 database:
+The retirement scope is limited to:
 
-```bash
-export PGSERVICEFILE='/protected/path/pg_service.conf'
-export SOURCE_DATABASE_SERVICE='cherryk_pg17_source'
-export TARGET_DATABASE_SERVICE='cherryk_pg18_target'
-ops/verify-postgresql-18-migration.sh preflight
-```
+- the Neon `cherryk-production-apac` PostgreSQL 17 source project;
+- `/opt/cherryk/migrations/postgresql-18-20260809T141322Z`, containing the PG17
+  dump and the protected PG17/PG18 environment and Compose snapshots;
+- the root-owned, mode-`600` migration-only libpq service file at
+  `/opt/cherryk/pg_service.postgresql-18.conf`;
+- the obsolete `cherryk-backend:b3afca85e530111c8aa04bf934fe59a63fe6e43d`
+  image and `cherryk-backend:rollback` tag only while both still resolve to image
+  ID `88e1a5319494`.
 
-During the authorized migration window, enable the dual-boundary write freeze and
-confirm public API requests return maintenance `503`. Create a protected local
-archive rather than piping a potentially long transfer, exclude Neon-managed auth,
-and restore atomically into the empty target:
+Perform removal as a separate, explicitly authorized maintenance action. Immediately
+before it, resolve every target read-only and confirm that Production still uses the
+PostgreSQL 18 project, the active backend image is not in the retirement scope,
+`/actuator/health` is `UP`, and authentication, correction, practice, and admin
+smoke checks pass. PostgreSQL 18 contains writes made after cutover, so the PG17
+source must no longer be treated as a current rollback target.
 
-```bash
-archive=$(mktemp /protected/path/cherryk-pg17.XXXXXX.dump)
-chmod 600 "$archive"
-pg_dump \
-  --dbname="service=$SOURCE_DATABASE_SERVICE" \
-  --format=custom \
-  --file="$archive" \
-  --no-owner \
-  --no-privileges \
-  --exclude-schema=neon_auth \
-  --verbose
-pg_restore \
-  --dbname="service=$TARGET_DATABASE_SERVICE" \
-  --no-owner \
-  --no-privileges \
-  --exit-on-error \
-  --single-transaction \
-  --verbose \
-  "$archive"
-ops/verify-postgresql-18-migration.sh parity
-```
-
-The parity check is read-only and compares database locale provider/version,
-public schema structure, constraints, indexes, complete sequence state, Flyway
-history, table row counts, and order-independent hashes of every public table. It
-intentionally prints hashes rather than row contents.
-
-Before cutover, start the exact Production backend image against the target and
-verify Flyway validation, Hibernate validation, authentication/session, correction,
-quiz, and admin behavior through the maintenance bypass. Resolve the root-owned OCI
-Compose environment file read-only, preserve its current database configuration,
-then change only that resolved `DATABASE_URL`/credential set and replace the backend.
-Keep the PostgreSQL 17 source untouched. A failed health, parity, or product check
-rolls back by restoring the preserved database configuration and replacing the
-backend again. Disable maintenance only after the public health and product smoke
-checks pass; retain the source and archive through the agreed rollback window.
+After removal, confirm the active container image and restart count, public health,
+signed-out authentication behavior, and the same product smoke checks. Do not remove
+the active `/opt/cherryk/compose.yaml`, its current environment, the current backend
+image, or the deployment wrapper's automatic previous-image/Compose rollback
+mechanism; each future deployment must continue to recreate and preserve its own
+immediate rollback point through verification.
 
 ## OpenAI correction
 
