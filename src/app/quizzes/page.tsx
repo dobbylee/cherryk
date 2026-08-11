@@ -29,6 +29,7 @@ import type {
   QuizType,
 } from "@/lib/contracts/quiz";
 import { invalidateLatestRequest, runLatestRequest } from "@/lib/latestRequest";
+import { scrollQuizActionsIntoView } from "@/lib/quizScroll";
 
 type FormStatus = "idle" | "loading";
 
@@ -72,6 +73,7 @@ function QuizWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const quizRequestIdRef = useRef(0);
   const initialLoadKeyRef = useRef<string | null>(null);
+  const quizActionsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (authStatus === "signed-out") {
@@ -80,6 +82,12 @@ function QuizWorkspace() {
       router.replace("/");
     }
   }, [authStatus, router]);
+
+  useEffect(() => {
+    if (quizAttempt) {
+      scrollQuizActionsIntoView(quizActionsRef.current);
+    }
+  }, [quizAttempt]);
 
   const hasExplicitTags = searchParams.has("tags");
   const quizType: QuizType =
@@ -567,7 +575,10 @@ function QuizWorkspace() {
                     </p>
                   </div>
                 ) : null}
-                <div className="mt-5 grid grid-cols-2 gap-2">
+                <div
+                  className="mt-5 grid scroll-mb-4 grid-cols-2 gap-2"
+                  ref={quizActionsRef}
+                >
                   <button
                     className="button-secondary w-full"
                     disabled={
