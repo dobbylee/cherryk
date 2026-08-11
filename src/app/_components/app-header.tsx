@@ -7,7 +7,6 @@ import { GoogleIcon, LogoMark } from "@/app/_components/icons";
 import type { AuthUser } from "@/lib/contracts/auth";
 
 const navigationItems = [
-  { href: "/", label: "Home" },
   { href: "/correction", label: "Correction" },
   { href: "/quizzes", label: "Practice" },
 ] as const;
@@ -62,7 +61,7 @@ export function AppHeader({
   }, [isUserMenuOpen]);
 
   return (
-    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-b border-[var(--line)] pb-4 sm:flex sm:min-h-14 sm:gap-6">
+    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-b border-[var(--line)] pb-4 sm:min-h-14 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-6">
       <Link
         aria-label="CherryK home"
         className="inline-flex min-w-0 items-center gap-2.5 justify-self-start"
@@ -77,13 +76,10 @@ export function AppHeader({
       {user ? (
         <nav
           aria-label="Primary navigation"
-          className="order-3 col-span-2 flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl bg-[var(--background-strong)] p-1 sm:order-none sm:col-auto sm:mr-auto sm:bg-transparent sm:p-0"
+          className="order-3 col-span-2 flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl bg-[var(--background-strong)] p-1 sm:order-none sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:bg-transparent sm:p-0"
         >
           {navigationItems.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+            const isActive = pathname.startsWith(item.href);
 
             return (
               <Link
@@ -103,7 +99,7 @@ export function AppHeader({
         </nav>
       ) : (
         <span
-          className="justify-self-end sm:ml-auto"
+          className="justify-self-end sm:col-start-3 sm:row-start-1"
           title={
             loginUnavailable ? "Sign-in is temporarily unavailable." : undefined
           }
@@ -126,7 +122,10 @@ export function AppHeader({
       )}
 
       {user && onLogout ? (
-        <div className="relative justify-self-end" ref={userMenuRef}>
+        <div
+          className="relative justify-self-end sm:col-start-3 sm:row-start-1"
+          ref={userMenuRef}
+        >
           <button
             aria-controls="user-menu"
             aria-expanded={isUserMenuOpen}
