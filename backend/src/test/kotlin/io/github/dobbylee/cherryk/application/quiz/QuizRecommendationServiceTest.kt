@@ -100,14 +100,61 @@ class QuizRecommendationServiceTest {
         )
     }
 
+    @Test
+    fun `scopes progress to effective tags and keeps all progress on fallback`() {
+        val particleQuizzes =
+            listOf(
+                quiz(1, tag = GrammarTag.PARTICLE_OBJECT),
+                quiz(2, tag = GrammarTag.PARTICLE_OBJECT),
+            )
+        val spacingQuiz = quiz(3, tag = GrammarTag.SPACING)
+        val repository =
+            FakeQuizReadRepository(
+                quizzes = particleQuizzes + spacingQuiz,
+                summaries =
+                    listOf(
+                        summary(1, attemptCount = 2, correctCount = 1),
+                        summary(3, attemptCount = 4, correctCount = 3),
+                    ),
+            )
+        val service = QuizRecommendationService(repository, QuizSelectionRandom { 0.5 })
+
+        val filtered = service.recommend(userId = 1, tags = listOf(GrammarTag.PARTICLE_OBJECT))
+
+        assertEquals(listOf(GrammarTag.PARTICLE_OBJECT), filtered.activeTags)
+        assertEquals(
+            QuizProgress(
+                solvedCount = 1,
+                totalCount = 2,
+                attemptCount = 2,
+                correctCount = 1,
+            ),
+            filtered.progress,
+        )
+
+        val fallback = service.recommend(userId = 1, tags = listOf(GrammarTag.HONORIFIC))
+
+        assertEquals(emptyList(), fallback.activeTags)
+        assertEquals(
+            QuizProgress(
+                solvedCount = 2,
+                totalCount = 3,
+                attemptCount = 6,
+                correctCount = 4,
+            ),
+            fallback.progress,
+        )
+    }
+
     private fun quiz(
         id: Long,
         quizType: QuizType = QuizType.GRAMMAR,
+        tag: GrammarTag = GrammarTag.PARTICLE_OBJECT,
     ) =
         RecommendedQuiz(
             id = id,
             quizType = quizType,
-            tag = GrammarTag.PARTICLE_OBJECT,
+            tag = tag,
             difficulty = UserLevel.BEGINNER,
             questionEn = "Question $id",
             sentenceKo = "문장 $id",

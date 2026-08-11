@@ -51,10 +51,10 @@ class QuizRecommendationService(
         val activeTags = requestedTags.filter(availableTagSet::contains)
         val matchingQuizzes = approvedQuizzes.filter { it.tag in activeTags }
         val candidates = matchingQuizzes.ifEmpty { approvedQuizzes }
-        val approvedQuizIds = approvedQuizzes.map(RecommendedQuiz::id).toSet()
-        val approvedAttemptSummaries =
-            repository.findAttemptSummaries(userId).filter { it.quizId in approvedQuizIds }
-        val summariesByQuizId = approvedAttemptSummaries.associateBy(QuizAttemptSummary::quizId)
+        val candidateQuizIds = candidates.map(RecommendedQuiz::id).toSet()
+        val candidateAttemptSummaries =
+            repository.findAttemptSummaries(userId).filter { it.quizId in candidateQuizIds }
+        val summariesByQuizId = candidateAttemptSummaries.associateBy(QuizAttemptSummary::quizId)
 
         return QuizRecommendation(
             quizzes = selectPracticeSet(candidates, summariesByQuizId),
@@ -62,10 +62,10 @@ class QuizRecommendationService(
             activeTags = if (matchingQuizzes.isEmpty()) emptyList() else activeTags,
             progress =
                 QuizProgress(
-                    solvedCount = approvedAttemptSummaries.size,
-                    totalCount = approvedQuizzes.size,
-                    attemptCount = approvedAttemptSummaries.sumOf(QuizAttemptSummary::attemptCount),
-                    correctCount = approvedAttemptSummaries.sumOf(QuizAttemptSummary::correctCount),
+                    solvedCount = candidateAttemptSummaries.size,
+                    totalCount = candidates.size,
+                    attemptCount = candidateAttemptSummaries.sumOf(QuizAttemptSummary::attemptCount),
+                    correctCount = candidateAttemptSummaries.sumOf(QuizAttemptSummary::correctCount),
                 ),
         )
     }
