@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
@@ -87,31 +88,19 @@ export function ImageIcon(props: IconProps) {
   );
 }
 
-export function LogoMark({ className, ...props }: IconProps) {
+export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg
+    <Image
+      alt=""
       aria-hidden="true"
       className={className}
-      fill="none"
-      viewBox="0 0 40 40"
-      {...props}
-    >
-      <rect fill="#087B93" height="40" rx="13" width="40" />
-      <path
-        d="M11 13.5c3.9 0 6.9 1 9 3 2.1-2 5.1-3 9-3v14c-3.9 0-6.9 1-9 3-2.1-2-5.1-3-9-3v-14Z"
-        stroke="white"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="m16 21 2.3 2.3L24 17.8"
-        stroke="#BDEBF1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
+      height={128}
+      preload
+      sizes="44px"
+      src="/brand/cherryk-mark-128.png"
+      unoptimized
+      width={128}
+    />
   );
 }
 

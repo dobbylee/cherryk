@@ -16,6 +16,7 @@
   --accent-strong: #075f73;
   --accent-soft: #e7f5f7;
   --accent-faint: #f3fafb;
+  --brand-cherry: #d95c62;
   --secondary: #426774;
   --warm: #98451f;
   --warm-soft: #fff2eb;
@@ -150,6 +151,16 @@ button:disabled {
   letter-spacing: 0.12em;
   line-height: 1.25rem;
   text-transform: uppercase;
+}
+
+.brand-wordmark {
+  font-family:
+    ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold",
+    "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -0.055em;
+  line-height: 1;
 }
 
 .page-title {

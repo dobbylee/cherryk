@@ -64,12 +64,12 @@ export function AppHeader({
     <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-b border-[var(--line)] pb-4 sm:min-h-14 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-6">
       <Link
         aria-label="CherryK home"
-        className="inline-flex min-w-0 items-center gap-2.5 justify-self-start"
+        className="inline-flex min-w-0 items-center gap-0.5 justify-self-start"
         href="/"
       >
         <LogoMark className="h-9 w-9 shrink-0" />
-        <span className="text-xl font-bold tracking-[-0.035em] text-[var(--foreground)]">
-          CherryK
+        <span className="brand-wordmark text-[var(--foreground)]">
+          Cherry<span className="text-[var(--brand-cherry)]">K</span>
         </span>
       </Link>
 
