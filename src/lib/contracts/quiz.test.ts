@@ -3,6 +3,7 @@ import { GrammarTags } from "./grammar-tags";
 import {
   AdminQuizDeleteResponseSchema,
   AdminQuizDraftGenerationResponseSchema,
+  AdminQuizTagCountsResponseSchema,
   QuizDraftInputSchema,
   AdminQuizUpdateRequestSchema,
   AdminQuizUpdateResponseSchema,
@@ -11,6 +12,13 @@ import {
   QuizRecommendationQuerySchema,
   QuizRecommendationResponseSchema,
 } from "./quiz";
+
+const completeTagCounts = GrammarTags.map((tag) => ({
+  tag,
+  totalCount: 3,
+  approvedCount: 2,
+  draftCount: 1,
+}));
 
 describe("QuizDraftInputSchema", () => {
   it("rejects unbounded draft generation counts", () => {
@@ -213,6 +221,37 @@ describe("AdminQuizUpdateRequestSchema", () => {
         }).success,
       ).toBe(false);
     });
+  });
+});
+
+describe("AdminQuizTagCountsResponseSchema", () => {
+  it("accepts one internally consistent count for every quiz tag", () => {
+    expect(
+      AdminQuizTagCountsResponseSchema.safeParse({
+        tagCounts: completeTagCounts,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects missing, duplicate, and inconsistent tag counts", () => {
+    expect(
+      AdminQuizTagCountsResponseSchema.safeParse({
+        tagCounts: completeTagCounts.slice(1),
+      }).success,
+    ).toBe(false);
+    expect(
+      AdminQuizTagCountsResponseSchema.safeParse({
+        tagCounts: [completeTagCounts[0], ...completeTagCounts.slice(0, -1)],
+      }).success,
+    ).toBe(false);
+    expect(
+      AdminQuizTagCountsResponseSchema.safeParse({
+        tagCounts: [
+          { ...completeTagCounts[0], totalCount: 4 },
+          ...completeTagCounts.slice(1),
+        ],
+      }).success,
+    ).toBe(false);
   });
 });
 

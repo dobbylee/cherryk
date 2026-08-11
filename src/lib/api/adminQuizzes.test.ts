@@ -2,12 +2,42 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   deleteAdminQuizDraft,
   generateAdminQuizDrafts,
+  getAdminQuizTagCounts,
   updateAdminQuiz,
 } from "./adminQuizzes";
 
 describe("admin quiz API helpers", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("gets current quiz counts for every tag", async () => {
+    const tagCounts = [
+      "particle_subject",
+      "particle_topic",
+      "particle_object",
+      "particle_location",
+      "verb_conjugation",
+      "honorific",
+      "spacing",
+      "word_choice",
+      "sentence_order",
+      "missing_word",
+      "unnatural",
+    ].map((tag, index) => ({
+      tag,
+      totalCount: index,
+      approvedCount: index,
+      draftCount: 0,
+    }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(input).toBe("/api/v1/admin/quizzes/tag-counts");
+      return Response.json({ tagCounts });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getAdminQuizTagCounts()).resolves.toEqual({ tagCounts });
   });
 
   it("generates quiz drafts with the current account session", async () => {

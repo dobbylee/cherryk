@@ -1,12 +1,34 @@
 package io.github.dobbylee.cherryk.presentation.quiz
 
 import io.github.dobbylee.cherryk.application.quiz.AdminQuizDraft
+import io.github.dobbylee.cherryk.application.quiz.AdminQuizTagCount
 import io.github.dobbylee.cherryk.application.quiz.QuizCommandResult
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 
 data class AdminQuizDraftGenerationResponse(
     val drafts: List<AdminQuizDraftResponse>,
 )
+
+data class AdminQuizTagCountsResponse(
+    val tagCounts: List<AdminQuizTagCountResponse>,
+)
+
+data class AdminQuizTagCountResponse(
+    val tag: String,
+    val totalCount: Long,
+    val approvedCount: Long,
+    val draftCount: Long,
+) {
+    companion object {
+        fun from(count: AdminQuizTagCount) =
+            AdminQuizTagCountResponse(
+                tag = count.tag.databaseValue,
+                totalCount = count.totalCount,
+                approvedCount = count.approvedCount,
+                draftCount = count.draftCount,
+            )
+    }
+}
 
 data class AdminQuizDraftResponse(
     val id: String,

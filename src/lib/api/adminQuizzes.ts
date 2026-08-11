@@ -5,9 +5,17 @@ import type {
 import {
   AdminQuizDeleteResponseSchema,
   AdminQuizDraftGenerationResponseSchema,
+  AdminQuizTagCountsResponseSchema,
   AdminQuizUpdateResponseSchema,
 } from "@/lib/contracts/quiz";
 import { fetchJson } from "./client";
+
+export function getAdminQuizTagCounts() {
+  return fetchJson(
+    "/api/v1/admin/quizzes/tag-counts",
+    AdminQuizTagCountsResponseSchema,
+  );
+}
 
 export function generateAdminQuizDrafts(input: QuizDraftInput) {
   return fetchJson(

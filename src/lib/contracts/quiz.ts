@@ -126,6 +126,38 @@ export const QuizAttemptResponseSchema = z.object({
 
 export const AdminQuizDraftChoiceSchema = QuizChoiceDraftSchema;
 
+export const AdminQuizTagCountSchema = z
+  .object({
+    tag: GrammarTagSchema,
+    totalCount: z.number().int().nonnegative(),
+    approvedCount: z.number().int().nonnegative(),
+    draftCount: z.number().int().nonnegative(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.totalCount !== value.approvedCount + value.draftCount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["totalCount"],
+        message: "Quiz tag total must equal approved plus draft counts.",
+      });
+    }
+  });
+
+export const AdminQuizTagCountsResponseSchema = z
+  .object({
+    tagCounts: z.array(AdminQuizTagCountSchema).length(GrammarTags.length),
+  })
+  .superRefine((value, ctx) => {
+    const tags = new Set(value.tagCounts.map((count) => count.tag));
+    if (tags.size !== GrammarTags.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["tagCounts"],
+        message: "Quiz tag counts must include every tag exactly once.",
+      });
+    }
+  });
+
 export const AdminQuizDraftSchema = QuizDraftQuestionSchema.extend({
   id: EntityIdSchema,
 });
@@ -237,6 +269,10 @@ export type QuizRecommendationResponse = z.infer<
 export type QuizAttemptRequest = z.infer<typeof QuizAttemptRequestSchema>;
 export type QuizAttemptResponse = z.infer<typeof QuizAttemptResponseSchema>;
 export type AdminQuizDraft = z.infer<typeof AdminQuizDraftSchema>;
+export type AdminQuizTagCount = z.infer<typeof AdminQuizTagCountSchema>;
+export type AdminQuizTagCountsResponse = z.infer<
+  typeof AdminQuizTagCountsResponseSchema
+>;
 export type AdminQuizDraftGenerationResponse = z.infer<
   typeof AdminQuizDraftGenerationResponseSchema
 >;

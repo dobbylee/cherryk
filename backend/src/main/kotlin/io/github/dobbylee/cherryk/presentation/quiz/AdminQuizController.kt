@@ -4,6 +4,7 @@ import io.github.dobbylee.cherryk.application.quiz.AdminQuizApplicationException
 import io.github.dobbylee.cherryk.application.quiz.AdminQuizApplicationService
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -17,6 +18,22 @@ import tools.jackson.databind.JsonNode
 class AdminQuizController(
     private val service: AdminQuizApplicationService,
 ) {
+    @GetMapping(
+        "/tag-counts",
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    fun getTagCounts(): AdminQuizTagCountsResponse {
+        val counts =
+            try {
+                service.getTagCounts()
+            } catch (exception: RuntimeException) {
+                throw AdminQuizUnavailableException("Quiz counts are unavailable.", exception)
+            }
+        return AdminQuizTagCountsResponse(
+            tagCounts = counts.map(AdminQuizTagCountResponse::from),
+        )
+    }
+
     @PostMapping(
         "/generate-drafts",
         produces = [MediaType.APPLICATION_JSON_VALUE],

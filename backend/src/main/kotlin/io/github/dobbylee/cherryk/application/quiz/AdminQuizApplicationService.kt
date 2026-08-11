@@ -9,6 +9,7 @@ import io.github.dobbylee.cherryk.domain.quiz.learningTarget
 import io.github.dobbylee.cherryk.domain.quiz.normalizeLearningTarget
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 data class AdminQuizDraftRequest(
@@ -23,6 +24,19 @@ data class AdminQuizDraft(
     val id: Long,
     val content: QuizContent,
 )
+
+data class AdminQuizTagCount(
+    val tag: GrammarTag,
+    val draftCount: Long,
+    val approvedCount: Long,
+) {
+    val totalCount: Long
+        get() = draftCount + approvedCount
+}
+
+fun interface AdminQuizInventoryRepository {
+    fun countActiveQuizzesByTag(): List<AdminQuizTagCount>
+}
 
 data class AdminQuizUpdate(
     val tag: GrammarTag? = null,
@@ -64,9 +78,18 @@ class AdminQuizApplicationException(
 class AdminQuizApplicationService(
     private val provider: QuizDraftProvider,
     private val commands: QuizCommandService,
+    private val inventory: AdminQuizInventoryRepository,
     private val vocabularyTargets: VocabularyTargetRepository,
     private val clock: Clock,
 ) {
+    @Transactional(readOnly = true)
+    fun getTagCounts(): List<AdminQuizTagCount> {
+        val countsByTag = inventory.countActiveQuizzesByTag().associateBy(AdminQuizTagCount::tag)
+        return GrammarTag.entries.map { tag ->
+            countsByTag[tag] ?: AdminQuizTagCount(tag, draftCount = 0, approvedCount = 0)
+        }
+    }
+
     fun generateDrafts(request: AdminQuizDraftRequest): List<AdminQuizDraft> {
         val candidateContents = mutableListOf<QuizContent>()
         val candidateFingerprints = mutableSetOf<String>()

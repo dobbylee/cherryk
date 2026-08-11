@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import {
   buildAdminQuizUpdateRequest,
@@ -11,11 +18,13 @@ import {
 import {
   deleteAdminQuizDraft,
   generateAdminQuizDrafts,
+  getAdminQuizTagCounts,
   updateAdminQuiz,
 } from "@/lib/api/adminQuizzes";
 import { UserLevels, type UserLevel } from "@/lib/contracts/common";
 import { GrammarTags, type GrammarTag } from "@/lib/contracts/grammar-tags";
-import { type QuizType } from "@/lib/contracts/quiz";
+import { type AdminQuizTagCount, type QuizType } from "@/lib/contracts/quiz";
+import { invalidateLatestRequest, runLatestRequest } from "@/lib/latestRequest";
 
 type FormStatus = "idle" | "loading";
 type ReviewAction = "save" | "approve" | "reject" | null;
@@ -34,11 +43,54 @@ export default function AdminQuizzesPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<MessageTone>("neutral");
+  const [tagCounts, setTagCounts] = useState<AdminQuizTagCount[]>([]);
+  const [tagCountStatus, setTagCountStatus] = useState<FormStatus>("loading");
+  const [tagCountError, setTagCountError] = useState<string | null>(null);
+  const tagCountRequestTracker = useRef(0);
 
   const activeDraft = useMemo(
     () => drafts.find((draft) => draft.id === activeDraftId) ?? null,
     [activeDraftId, drafts],
   );
+
+  const refreshTagCounts = useCallback(async () => {
+    setTagCountStatus("loading");
+    setTagCountError(null);
+    const result = await runLatestRequest(tagCountRequestTracker, () =>
+      getAdminQuizTagCounts(),
+    );
+    if (result.status === "success") {
+      setTagCounts(result.value.tagCounts);
+      setTagCountStatus("idle");
+    } else if (result.status === "error") {
+      setTagCountError(
+        result.error instanceof Error
+          ? result.error.message
+          : "Quiz counts could not be loaded.",
+      );
+      setTagCountStatus("idle");
+    }
+  }, []);
+
+  useEffect(() => {
+    const requestTracker = tagCountRequestTracker;
+    void runLatestRequest(requestTracker, getAdminQuizTagCounts).then(
+      (result) => {
+        if (result.status === "success") {
+          setTagCounts(result.value.tagCounts);
+          setTagCountStatus("idle");
+        } else if (result.status === "error") {
+          setTagCountError(
+            result.error instanceof Error
+              ? result.error.message
+              : "Quiz counts could not be loaded.",
+          );
+          setTagCountStatus("idle");
+        }
+      },
+    );
+    return () => invalidateLatestRequest(requestTracker);
+  }, []);
 
   async function handleGenerateDrafts(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,6 +118,7 @@ export default function AdminQuizzesPage() {
       setDrafts(generatedDrafts);
       setActiveDraftId(generatedDrafts[0]?.id ?? null);
       setIsEditing(false);
+      await refreshTagCounts();
       showMessage(
         generatedDrafts.length
           ? "Drafts generated. Review before approval."
@@ -103,6 +156,7 @@ export default function AdminQuizzesPage() {
     try {
       await updateAdminQuiz(activeDraft.id, update);
       setIsEditing(false);
+      await refreshTagCounts();
       showMessage("Changes saved.", "save");
     } catch (error) {
       showMessage(
@@ -137,6 +191,7 @@ export default function AdminQuizzesPage() {
         status: "approved",
       });
       removeDraftFromQueue(activeDraft.id);
+      await refreshTagCounts();
       showMessage("Quiz approved.", "approve");
     } catch (error) {
       showMessage(
@@ -159,6 +214,7 @@ export default function AdminQuizzesPage() {
     try {
       await deleteAdminQuizDraft(activeDraft.id);
       removeDraftFromQueue(activeDraft.id);
+      await refreshTagCounts();
       showMessage("Draft rejected and deleted.", "reject");
     } catch (error) {
       showMessage(
@@ -263,6 +319,97 @@ export default function AdminQuizzesPage() {
             {message}
           </div>
         ) : null}
+
+        <section
+          aria-labelledby="quiz-inventory-heading"
+          className="surface-card overflow-hidden"
+        >
+          <div className="flex flex-col gap-3 border-b border-[var(--line)] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="section-eyebrow">Quiz inventory</p>
+              <h2
+                className="mt-2 text-xl font-bold tracking-[-0.025em]"
+                id="quiz-inventory-heading"
+              >
+                Current quizzes by tag
+              </h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Active approved quizzes and drafts. Retired history is excluded.
+              </p>
+            </div>
+            <button
+              className="button-secondary w-full sm:w-auto"
+              disabled={tagCountStatus === "loading"}
+              onClick={() => void refreshTagCounts()}
+              type="button"
+            >
+              {tagCountStatus === "loading" ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+
+          {tagCountError ? (
+            <p
+              className="border-b border-[var(--danger-line)] bg-[var(--danger-bg)] px-5 py-3 text-sm font-semibold text-[var(--danger)]"
+              role="status"
+            >
+              {tagCountError}
+            </p>
+          ) : null}
+
+          {tagCounts.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-lg border-collapse text-left text-sm">
+                <thead className="bg-[var(--panel-soft)] text-xs uppercase tracking-wide text-[var(--muted)]">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold" scope="col">
+                      Tag
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right font-semibold"
+                      scope="col"
+                    >
+                      Total
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right font-semibold"
+                      scope="col"
+                    >
+                      Approved
+                    </th>
+                    <th
+                      className="px-5 py-3 text-right font-semibold"
+                      scope="col"
+                    >
+                      Drafts
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--line)]">
+                  {tagCounts.map((count) => (
+                    <tr key={count.tag}>
+                      <th className="px-5 py-3 font-semibold" scope="row">
+                        {formatLabel(count.tag)}
+                      </th>
+                      <td className="px-4 py-3 text-right font-bold">
+                        {count.totalCount}
+                      </td>
+                      <td className="px-4 py-3 text-right text-[var(--muted)]">
+                        {count.approvedCount}
+                      </td>
+                      <td className="px-5 py-3 text-right text-[var(--muted)]">
+                        {count.draftCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : tagCountStatus === "loading" ? (
+            <p className="p-5 text-sm text-[var(--muted)]" role="status">
+              Loading quiz inventory...
+            </p>
+          ) : null}
+        </section>
 
         <section className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
           <form

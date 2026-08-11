@@ -32,6 +32,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -262,6 +263,63 @@ class AdminQuizEndpointIntegrationTest(
             .andExpect(jsonPath("$.error.code").value("forbidden"))
 
         assertEquals(0, provider.callCount)
+    }
+
+    @Test
+    fun `tag counts require an authorized admin account`() {
+        mockMvc
+            .perform(get(TAG_COUNTS_PATH))
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("unauthorized"))
+
+        mockMvc
+            .perform(get(TAG_COUNTS_PATH).with(adminUser(email = "learner@example.com")))
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.error.code").value("forbidden"))
+    }
+
+    @Test
+    fun `admin tag counts include every tag and exclude retired quiz history`() {
+        val baselineDrafts = activeQuizCount(GrammarTag.PARTICLE_OBJECT, "draft")
+        val baselineApproved = activeQuizCount(GrammarTag.PARTICLE_OBJECT, "approved")
+
+        commands.createDraft(content("count-draft-${UUID.randomUUID()}"), NOW)
+
+        val approved = commands.createDraft(content("count-approved-${UUID.randomUUID()}"), NOW.plusSeconds(1))
+        commands.approveDraft(approved.quizId, NOW.plusSeconds(2))
+
+        val original = commands.createDraft(content("count-revision-${UUID.randomUUID()}"), NOW.plusSeconds(3))
+        commands.approveDraft(original.quizId, NOW.plusSeconds(4))
+        val revision =
+            assertIs<QuizCommandResult.Success>(
+                commands.createRevision(original.quizId, NOW.plusSeconds(5)),
+            )
+        commands.approveDraft(revision.quizId, NOW.plusSeconds(6))
+
+        val response =
+            mockMvc
+                .perform(get(TAG_COUNTS_PATH).with(adminUser()))
+                .andExpect(status().isOk)
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andReturn()
+                .response
+
+        val tagCounts = objectMapper.readTree(response.contentAsString).get("tagCounts").toList()
+        assertEquals(
+            GrammarTag.entries.map(GrammarTag::databaseValue),
+            tagCounts.map { count -> count.get("tag").stringValue() },
+        )
+        val particleObjectCount =
+            tagCounts.single { count -> count.get("tag").stringValue() == "particle_object" }
+        assertEquals(baselineDrafts + 1, particleObjectCount.get("draftCount").longValue())
+        assertEquals(baselineApproved + 2, particleObjectCount.get("approvedCount").longValue())
+        assertEquals(
+            baselineDrafts + baselineApproved + 3,
+            particleObjectCount.get("totalCount").longValue(),
+        )
+        val spacingCount = tagCounts.single { count -> count.get("tag").stringValue() == "spacing" }
+        assertEquals(activeQuizCount(GrammarTag.SPACING, "draft"), spacingCount.get("draftCount").longValue())
+        assertEquals(activeQuizCount(GrammarTag.SPACING, "approved"), spacingCount.get("approvedCount").longValue())
     }
 
     @Test
@@ -686,6 +744,23 @@ class AdminQuizEndpointIntegrationTest(
             .query(Int::class.java)
             .single()
 
+    private fun activeQuizCount(
+        tag: GrammarTag,
+        status: String,
+    ): Long =
+        jdbcClient
+            .sql(
+                """
+                SELECT count(*)
+                FROM quiz_questions
+                WHERE tag = :tag
+                  AND status = :status
+                """.trimIndent(),
+            ).param("tag", tag.databaseValue)
+            .param("status", status)
+            .query(Long::class.java)
+            .single()
+
     private fun content(marker: String) =
         QuizContent(
             tag = GrammarTag.PARTICLE_OBJECT,
@@ -848,3 +923,4 @@ private data class StoredQuiz(
 
 private const val ADMIN_QUIZ_PATH = "/api/v1/admin/quizzes"
 private const val GENERATE_PATH = "$ADMIN_QUIZ_PATH/generate-drafts"
+private const val TAG_COUNTS_PATH = "$ADMIN_QUIZ_PATH/tag-counts"
