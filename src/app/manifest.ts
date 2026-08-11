@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CherryK — Learn Korean with clarity",
+    name: "CherryK",
     short_name: "CherryK",
     description:
       "Turn Korean writing and handwriting into clear corrections and reviewed practice.",

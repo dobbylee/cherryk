@@ -2,13 +2,30 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
+const siteTitle = "CherryK — Learn Korean with clarity";
+const siteDescription =
+  "Turn Korean writing and handwriting into clear corrections and reviewed practice.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cherryk.kr"),
+  applicationName: "CherryK",
   title: {
-    default: "CherryK — Learn Korean with clarity",
+    default: siteTitle,
     template: "%s · CherryK",
   },
-  description:
-    "Turn Korean writing and handwriting into clear corrections and reviewed practice.",
+  description: siteDescription,
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    siteName: "CherryK",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+  },
   icons: {
     icon: [
       { url: "/brand/icons/favicon.ico", type: "image/x-icon" },
