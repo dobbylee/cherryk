@@ -105,6 +105,43 @@ class OpenAiQuizDraftProviderTest {
     }
 
     @Test
+    fun `adds construction rules for honorific and spacing quizzes`() {
+        listOf(
+            GrammarTag.HONORIFIC to
+                listOf(
+                    "distinct correctAnswer for every question",
+                    "honorific particles, complete predicates, and honorific vocabulary",
+                ),
+            GrammarTag.SPACING to
+                listOf(
+                    "sentenceKo must be intentionally incorrectly spaced",
+                    "same non-whitespace characters as sentenceKo",
+                ),
+        ).forEach { (tag, expectedRules) ->
+            val builder = RestClient.builder()
+            val localServer = MockRestServiceServer.bindTo(builder).build()
+            localServer
+                .expect(requestTo(RESPONSES_URL))
+                .andExpect { request ->
+                    val requestJson = objectMapper.readTree((request as MockClientHttpRequest).bodyAsString)
+                    val instructions = requestJson["instructions"].stringValue()
+                    expectedRules.forEach { rule -> assertTrue(instructions.contains(rule)) }
+                }.andRespond(withSuccess(response(validOutput()), MediaType.APPLICATION_JSON))
+            val localProvider =
+                OpenAiQuizDraftProvider(
+                    restClient = builder.build(),
+                    properties = properties(),
+                    objectMapper = objectMapper,
+                    randomIndex = { 0 },
+                )
+
+            localProvider.generate(input(tag = tag))
+
+            localServer.verify()
+        }
+    }
+
+    @Test
     fun `creates vocabulary questions from English definitions and Korean choices`() {
         server
             .expect(requestTo(RESPONSES_URL))

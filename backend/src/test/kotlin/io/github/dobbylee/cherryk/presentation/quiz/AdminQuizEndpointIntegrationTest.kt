@@ -13,6 +13,7 @@ import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizChoiceContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizContent
 import io.github.dobbylee.cherryk.domain.quiz.QuizType
+import io.github.dobbylee.cherryk.domain.quiz.normalizeLearningTarget
 import io.github.dobbylee.cherryk.domain.user.UserLevel
 import io.github.dobbylee.cherryk.infrastructure.persistence.jpa.JpaQuizCommandStore
 import org.hamcrest.Matchers.nullValue
@@ -480,6 +481,77 @@ class AdminQuizEndpointIntegrationTest(
     }
 
     @Test
+    fun `repeated honorific answers are skipped and regenerated`() {
+        val marker = UUID.randomUUID().toString()
+        provider.resultFactory = { input ->
+            val answers =
+                if (provider.callCount == 1) {
+                    listOf("세요", " 세요", "세요 ").take(input.count)
+                } else {
+                    listOf("주무세요", "계세요").take(input.count)
+                }
+            answers.mapIndexed { index, answer ->
+                honorificContent("$marker-${provider.callCount}-$index", answer)
+            }
+        }
+
+        val response =
+            mockMvc
+                .perform(grammarGenerateRequest(tag = "honorific", count = 3))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.drafts.length()").value(3))
+                .andReturn()
+                .response
+
+        val answers =
+            objectMapper
+                .readTree(response.contentAsString)
+                .get("drafts")
+                .toList()
+                .map(::correctAnswer)
+        assertEquals(3, answers.map(::normalizeLearningTarget).toSet().size)
+        assertEquals(2, provider.callCount)
+    }
+
+    @Test
+    fun `spacing generation rejects a correct stem or changed nonspacing text`() {
+        listOf(
+            spacingContent(
+                sentenceKo = "저는 학교에 가요.",
+                correctAnswer = "저는 학교에 가요.",
+            ),
+            spacingContent(
+                sentenceKo = "저는학교에와요.",
+                correctAnswer = "저는 학교에 가요.",
+            ),
+        ).forEach { invalidContent ->
+            provider.result = listOf(invalidContent)
+
+            mockMvc
+                .perform(grammarGenerateRequest(tag = "spacing", count = 1))
+                .andExpect(status().isBadGateway)
+                .andExpect(jsonPath("$.error.code").value("invalid_ai_output"))
+        }
+    }
+
+    @Test
+    fun `spacing generation accepts an incorrectly spaced version of the answer`() {
+        provider.result =
+            listOf(
+                spacingContent(
+                    sentenceKo = "저는학교에 가요.",
+                    correctAnswer = "저는 학교에 가요.",
+                ),
+            )
+
+        mockMvc
+            .perform(grammarGenerateRequest(tag = "spacing", count = 1))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.drafts[0].sentenceKo").value("저는학교에 가요."))
+            .andExpect(jsonPath("$.drafts[0].choices[0].text").value("저는 학교에 가요."))
+    }
+
+    @Test
     fun `nonduplicate failure rolls back every draft in the generated batch`() {
         val marker = UUID.randomUUID().toString()
         provider.result =
@@ -634,6 +706,23 @@ class AdminQuizEndpointIntegrationTest(
             ).with(adminUser())
             .with(csrf())
 
+    private fun grammarGenerateRequest(
+        tag: String,
+        count: Int,
+    ) =
+        post(GENERATE_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                """
+                {
+                  "tag": "$tag",
+                  "difficulty": "beginner",
+                  "count": $count
+                }
+                """.trimIndent(),
+            ).with(adminUser())
+            .with(csrf())
+
     private fun adminUser(email: String = "admin@example.com") =
         oidcLogin().idToken { token ->
             token
@@ -775,6 +864,44 @@ class AdminQuizEndpointIntegrationTest(
                     QuizChoiceContent("이-$marker", false, 3),
                 ),
             answerExplanationEn = "Admin endpoint test: $marker",
+        )
+
+    private fun honorificContent(
+        marker: String,
+        correctAnswer: String,
+    ) =
+        QuizContent(
+            tag = GrammarTag.HONORIFIC,
+            difficulty = UserLevel.BEGINNER,
+            questionEn = "Choose the correct honorific form.",
+            sentenceKo = "어르신 $marker ( ).",
+            choices =
+                listOf(
+                    QuizChoiceContent(correctAnswer, true, 0),
+                    QuizChoiceContent("먹어요-$marker", false, 1),
+                    QuizChoiceContent("자요-$marker", false, 2),
+                    QuizChoiceContent("있어요-$marker", false, 3),
+                ),
+            answerExplanationEn = "Admin endpoint test: honorific $marker",
+        )
+
+    private fun spacingContent(
+        sentenceKo: String,
+        correctAnswer: String,
+    ) =
+        QuizContent(
+            tag = GrammarTag.SPACING,
+            difficulty = UserLevel.BEGINNER,
+            questionEn = "Choose the correctly spaced sentence.",
+            sentenceKo = sentenceKo,
+            choices =
+                listOf(
+                    QuizChoiceContent(correctAnswer, true, 0),
+                    QuizChoiceContent("저는학교에 가요.", false, 1),
+                    QuizChoiceContent("저는 학교에가요.", false, 2),
+                    QuizChoiceContent("저는학교에가요.", false, 3),
+                ),
+            answerExplanationEn = "Admin endpoint test: spacing $sentenceKo",
         )
 
     private fun vocabularyContents(input: QuizDraftProviderInput): List<QuizContent> =

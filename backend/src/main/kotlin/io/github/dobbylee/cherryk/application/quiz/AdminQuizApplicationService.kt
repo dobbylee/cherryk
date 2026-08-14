@@ -94,6 +94,7 @@ class AdminQuizApplicationService(
         val candidateContents = mutableListOf<QuizContent>()
         val candidateFingerprints = mutableSetOf<String>()
         val candidateLearningTargets = mutableSetOf<String>()
+        val candidateHonorificAnswers = mutableSetOf<String>()
         val vocabularyClaims = mutableListOf<VocabularyTargetClaim>()
         val retryExclusions = linkedSetOf<String>()
 
@@ -141,10 +142,15 @@ class AdminQuizApplicationService(
                 commands.findNovelDrafts(contents).forEach { content ->
                     val fingerprint = content.fingerprint()
                     val learningTargetIdentity = learningTargetIdentity(content)
+                    val honorificAnswer = content.honorificAnswerIdentity()
                     if (
-                        candidateFingerprints.add(fingerprint) &&
-                        candidateLearningTargets.add(learningTargetIdentity)
+                        fingerprint !in candidateFingerprints &&
+                        learningTargetIdentity !in candidateLearningTargets &&
+                        (honorificAnswer == null || honorificAnswer !in candidateHonorificAnswers)
                     ) {
+                        candidateFingerprints += fingerprint
+                        candidateLearningTargets += learningTargetIdentity
+                        honorificAnswer?.let(candidateHonorificAnswers::add)
                         candidateContents += content
                     }
                 }
@@ -205,7 +211,11 @@ class AdminQuizApplicationService(
                         content.choices.single(QuizChoiceContent::correct).text,
                     )
                 } == input.vocabularyTargets.map(::normalizeLearningTarget)
-        if (!hasExpectedShape || !hasExpectedVocabularyTargets) {
+        val hasValidTagContent =
+            input.quizType != QuizType.GRAMMAR ||
+                input.tag != GrammarTag.SPACING ||
+                contents.all(QuizContent::isValidSpacingExercise)
+        if (!hasExpectedShape || !hasExpectedVocabularyTargets || !hasValidTagContent) {
             throw AdminQuizApplicationException(
                 code = "invalid_ai_output",
                 message = "AI quiz draft output is invalid.",
@@ -282,3 +292,21 @@ private fun learningTargetIdentity(content: QuizContent): String =
         content.tag.databaseValue,
         content.learningTarget().digest,
     ).joinToString("\u001f")
+
+private fun QuizContent.honorificAnswerIdentity(): String? =
+    if (quizType == QuizType.GRAMMAR && tag == GrammarTag.HONORIFIC) {
+        normalizeLearningTarget(choices.single(QuizChoiceContent::correct).text)
+    } else {
+        null
+    }
+
+private fun QuizContent.isValidSpacingExercise(): Boolean {
+    val exercise = sentenceKo ?: return false
+    val correctAnswer = choices.single(QuizChoiceContent::correct).text
+    val exerciseText = exercise.withoutWhitespace()
+    return exercise.trim() != correctAnswer.trim() &&
+        exerciseText == correctAnswer.withoutWhitespace() &&
+        choices.all { choice -> choice.text.withoutWhitespace() == exerciseText }
+}
+
+private fun String.withoutWhitespace(): String = filterNot { character -> character.isWhitespace() }
