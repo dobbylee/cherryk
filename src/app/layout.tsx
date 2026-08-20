@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { SiteFooter } from "@/app/_components/site-footer";
 import "./globals.css";
 
 const siteTitle = "CherryK — Learn Korean with clarity";
@@ -60,7 +61,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <div className="site-frame">
+          {children}
+          <SiteFooter />
+        </div>
         <Analytics />
       </body>
     </html>

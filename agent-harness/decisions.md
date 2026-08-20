@@ -68,6 +68,21 @@ evidence belongs under `local/`.
   behind `OcrProvider`; OpenAI remains behind correction and quiz-draft interfaces.
 - OCR returns an editable draft. Never persist voice recordings, OCR originals, or
   image bytes, and do not include extracted text or secrets in ordinary logs.
+- Keep OpenAI requests stateless with `store: false`. Use the default US processing
+  boundary and disclose the provider's default abuse-monitoring retention of up to
+  30 days. Keep CLOVA OCR in the Korea region; neither CherryK nor CLOVA stores OCR
+  originals or recognition results after the request completes.
+- Retain authenticated Spring sessions for 90 days after the last activity. Until
+  self-service account management exists, retain account and learning records until
+  a verified deletion request sent to the published support address is completed.
+  Complete valid requests within 30 days, delete active user-linked records together,
+  and require Neon restore history or backups containing deleted data to expire
+  within 30 days without ordinary restoration.
+- Public Privacy and Terms pages must match the deployed provider, region, analytics,
+  retention, and deletion behavior. Disclose OCI Chuncheon runtime processing and
+  cap its Nginx/OCI request metadata retention at 30 days. Disclose OpenAI US
+  processing, Vercel anonymous analytics, and Neon storage on AWS Singapore
+  separately from domestic CLOVA OCR.
 - Reserve usage atomically before provider calls; commit successful usage and release
   failed reservations. Meter text/OCR by request and future speech by duration.
 - Future speech transcription may produce the editable correction draft, but keep

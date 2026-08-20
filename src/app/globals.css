@@ -123,6 +123,17 @@ button:disabled {
   color: var(--foreground);
 }
 
+.site-frame {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.site-frame > .app-shell {
+  min-height: 0;
+  flex: 1;
+}
+
 .app-container {
   width: 100%;
   max-width: 72rem;
@@ -175,6 +186,79 @@ button:disabled {
   color: var(--muted);
   font-size: 0.9375rem;
   line-height: 1.75;
+}
+
+.policy-content {
+  display: grid;
+  gap: 2rem;
+  color: var(--foreground-soft);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+
+.policy-content section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.policy-content h2 {
+  color: var(--foreground);
+  font-size: 1.125rem;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+
+.policy-content p,
+.policy-content ul {
+  margin: 0;
+}
+
+.policy-content ul {
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.policy-content strong {
+  color: var(--foreground);
+}
+
+.policy-details {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.policy-details > div {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.875rem;
+  background: var(--panel-soft);
+  padding: 1rem;
+}
+
+.policy-details dt {
+  color: var(--foreground);
+  font-weight: 720;
+}
+
+.policy-details dd {
+  margin: 0;
+}
+
+.policy-content a {
+  color: var(--accent-strong);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgb(8 123 147 / 35%);
+  text-underline-offset: 0.18em;
+}
+
+.policy-content a:hover {
+  text-decoration-color: currentColor;
 }
 
 .button-primary,
