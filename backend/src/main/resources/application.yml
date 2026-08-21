@@ -20,6 +20,7 @@ spring:
     timeout: 90d
     jdbc:
       initialize-schema: never
+      cleanup-cron: "0 0 * * * *"
   security:
     oauth2:
       client:
