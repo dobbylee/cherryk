@@ -1,143 +1,131 @@
-# Project Decisions
+# 프로젝트 결정
 
-This file contains current choices that are not safely inferred from code. Exact
-versions and implemented structure belong in manifests and code; completed rollout
-evidence belongs under `local/`.
+이 파일에는 코드만으로 안전하게 추론할 수 없는 현재의 선택을 기록한다. 정확한
+버전과 구현 구조는 매니페스트와 코드에, 완료된 롤아웃 증거는 `local/` 아래에 둔다.
 
-## Architecture and Delivery
+## 아키텍처와 배포
 
-- Host the Next.js frontend on Vercel and backend behavior in one Kotlin/Spring MVC
-  container on OCI. Keep Production PostgreSQL on Neon in AWS Singapore, near OCI
-  Chuncheon.
-- Expose Production Spring at `api.cherryk.kr` behind Nginx. Do not operate a
-  permanent Preview frontend, backend, or database, and never route Preview to
-  Production. For hosted-integration risk, create an on-demand exact-SHA Vercel
-  Preview with a temporary backend and isolated Neon database, then remove all
-  Preview runtime resources after verification.
-- While CherryK has one developer, use local, `preview`, and `main`. Push reviewed
-  work to `preview` and use its full CI result as the normal gate. Require the
-  on-demand full-stack Preview only for authentication/session, database/data
-  migration, API routing, and deployment-infrastructure changes; other changes may
-  proceed from local verification and green CI. Fast-forward the same green commit
-  to `main`. Do not require feature branches or pull requests at this stage.
-- Keep Vercel Git-driven. After successful `main` verification, GitHub publishes an
-  immutable ARM64 image to GHCR and the Production-only OCI runner invokes only the
-  root-owned, serialized, health-gated deployment wrapper. Restrict the GitHub
-  `Production` environment to `main` and never run general CI on that runner.
-- Keep `Verify` as the required `main` check. Reuse the exact successful
-  push-triggered `preview` branch CI result; run the full gate when the SHA has no
-  matching success, the lookup fails, or the run is manual. Automatic Vercel Git
-  deployments are Production-only; create non-Production deployments manually
-  when the on-demand gate applies.
-- Preserve stable `/api/v1` contracts and do not use dual writes. Do not add Redis,
-  JWT, WebFlux, coroutines, microservices, or self-hosted PostgreSQL without measured
-  need and a new decision.
+- Next.js 프런트엔드는 Vercel에 호스팅하고 백엔드 동작은 OCI의 단일 Kotlin/Spring
+  MVC 컨테이너에서 실행한다. Production PostgreSQL은 OCI 춘천과 가까운 AWS
+  싱가포르의 Neon에 유지한다.
+- Production Spring은 Nginx 뒤의 `api.cherryk.kr`에서 제공한다. 영구 Preview
+  프런트엔드, 백엔드 또는 데이터베이스를 운영하지 않으며 Preview를 Production으로
+  라우팅하지 않는다. 호스팅된 통합 환경의 위험이 있는 경우 임시 백엔드와 격리된
+  Neon 데이터베이스를 갖춘 정확한 SHA의 Vercel Preview를 필요 시 생성하고, 검증 후
+  모든 Preview 런타임 리소스를 제거한다.
+- CherryK의 개발자가 한 명인 동안 로컬, `preview`, `main`을 사용한다. 리뷰를 마친
+  작업을 `preview`에 푸시하고 전체 CI 결과를 일반 게이트로 사용한다. 인증/세션,
+  데이터베이스/데이터 마이그레이션, API 라우팅, 배포 인프라 변경에만 필요 시 전체
+  스택 Preview를 요구하며, 그 밖의 변경은 로컬 검증과 성공한 CI를 거쳐 진행할 수
+  있다. 같은 성공 커밋을 `main`으로 fast-forward한다. 현 단계에서는 기능
+  브랜치나 pull request를 요구하지 않는다.
+- Vercel은 Git 기반으로 유지한다. `main` 검증이 성공하면 GitHub가 변경 불가능한
+  ARM64 이미지를 GHCR에 게시하고, Production 전용 OCI runner는 root 소유이며
+  직렬화되고 상태 게이트가 적용된 배포 래퍼만 호출한다. GitHub `Production`
+  환경은 `main`으로 제한하고 해당 runner에서 일반 CI를 실행하지 않는다.
+- `Verify`를 필수 `main` 검사로 유지한다. 푸시로 실행되어 정확히 성공한 `preview`
+  브랜치 CI 결과를 재사용하고, SHA와 일치하는 성공 결과가 없거나 조회에 실패하거나
+  수동 실행인 경우 전체 게이트를 실행한다. Vercel Git 자동 배포는 Production
+  전용이며, 필요 시 게이트가 적용되는 경우 비Production 배포를 수동으로 생성한다.
+- 안정된 `/api/v1` 계약을 보존하고 이중 쓰기를 사용하지 않는다. 측정된 필요와 새
+  결정 없이 Redis, JWT, WebFlux, 코루틴, 마이크로서비스 또는 자체 호스팅 PostgreSQL을
+  추가하지 않는다.
 
-## Authentication and Persistence
+## 인증과 영속성
 
-- Use Spring Security, Google OIDC, PostgreSQL-backed Spring Session, and verified
-  issuer/subject identity in `user_identities`; never merge users by email alone.
-- Guarded Flyway V9 removed legacy Better Auth tables after exact identity checks.
-  Preserve all historical migrations so clean databases replay the transition and
-  existing databases validate checksums.
-- Keep admin authorization as verified Google identity plus `ADMIN_EMAILS` until
-  role management is justified.
-- Flyway alone changes schema and Hibernate stays on `ddl-auto=validate`. Use JPA
-  for aggregate writes/simple CRUD and SQL projections for query-heavy reads. Keep
-  BIGINT identity keys internal and opaque string IDs in JSON.
-- Adopt a newer Neon GA PostgreSQL major only through a deliberate compatibility
-  and data-migration rollout. Local and integration tests may validate the target
-  major first, but changing a Docker image never implies that Production was
-  upgraded; Production requires an isolated target, restore, parity checks, and a
-  health-gated cutover.
-- Baseline an existing Neon database only after equivalence checks; never enable
-  automatic Production baselining.
-- Treat `neon_auth` as Neon-managed state; CherryK backups exclude it because
-  authentication is owned by Spring OIDC.
-- Resolve exact identifiers read-only before deleting expired external resources.
-  Preserve the current deployment's previous image and Compose backup through its
-  health and public smoke checks, and never remove the automatic rollback mechanism.
-- During a database migration window, enable the same fail-closed `write-frozen`
-  mode at Vercel and Spring. Block all public `/api/v1` and `/api/auth` requests,
-  including GET-based session/OAuth writes; operator access requires the short-lived
-  bypass cookie or protected header.
+- Spring Security, Google OIDC, PostgreSQL 기반 Spring Session과
+  `user_identities`의 검증된 발급자/주체 식별자를 사용하며, 이메일만으로 사용자를
+  병합하지 않는다.
+- 보호 절차를 거친 Flyway V9가 정확한 식별자 검사 후 기존 Better Auth 테이블을
+  제거했다. 깨끗한 데이터베이스가 전환 과정을 재현하고 기존 데이터베이스가
+  체크섬을 검증할 수 있도록 모든 과거 마이그레이션을 보존한다.
+- 역할 관리의 필요성이 입증될 때까지 관리자 권한은 검증된 Google 식별자와
+  `ADMIN_EMAILS`의 조합으로 유지한다.
+- 스키마 변경은 Flyway만 담당하고 Hibernate는 `ddl-auto=validate`로 유지한다.
+  애그리게이트 쓰기와 단순 CRUD에는 JPA를, 조회가 많은 읽기에는 SQL 프로젝션을
+  사용한다. BIGINT 식별 키는 내부에만 두고 JSON에는 불투명 문자열 ID를 사용한다.
+- 더 최신 Neon GA PostgreSQL 메이저 버전은 의도적인 호환성·데이터 마이그레이션
+  롤아웃을 통해서만 도입한다. 로컬과 통합 테스트에서 대상 메이저 버전을 먼저 검증할
+  수 있지만 Docker 이미지를 바꿨다고 Production이 업그레이드된 것은 아니다.
+  Production에는 격리된 대상, 복원, 동등성 검사, 상태 게이트가 적용된 전환이 필요하다.
+- 기존 Neon 데이터베이스는 동등성 검사 후에만 baseline을 설정하며 Production 자동
+  baselining을 활성화하지 않는다.
+- `neon_auth`는 Neon이 관리하는 상태로 취급한다. 인증은 Spring OIDC가 담당하므로
+  CherryK 백업에서 제외한다.
+- 만료된 외부 리소스를 삭제하기 전에 읽기 전용으로 정확한 식별자를 확인한다. 현재
+  배포의 상태 검사와 공개 smoke 검사가 끝날 때까지 이전 이미지와 Compose 백업을
+  보존하며, 자동 롤백 메커니즘을 제거하지 않는다.
+- 데이터베이스 마이그레이션 기간에는 Vercel과 Spring에서 동일한 fail-closed
+  `write-frozen` 모드를 활성화한다. GET 기반 세션/OAuth 쓰기를 포함한 모든 공개
+  `/api/v1` 및 `/api/auth` 요청을 차단한다. 운영자 접근에는 수명이 짧은 우회 쿠키
+  또는 보호된 헤더가 필요하다.
 
-## AI, OCR, and Privacy
+## AI, OCR, 개인정보 보호
 
-- Keep OCR and language-model providers separate. CLOVA General OCR V2 remains
-  behind `OcrProvider`; OpenAI remains behind correction and quiz-draft interfaces.
-- OCR returns an editable draft. Never persist voice recordings, OCR originals, or
-  image bytes, and do not include extracted text or secrets in ordinary logs.
-- Keep OpenAI requests stateless with `store: false`. Use the default US processing
-  boundary and disclose the provider's default abuse-monitoring retention of up to
-  30 days. Keep CLOVA OCR in the Korea region; neither CherryK nor CLOVA stores OCR
-  originals or recognition results after the request completes.
-- Retain authenticated Spring sessions for 90 days after the last activity. Until
-  self-service account management exists, retain account and learning records until
-  a verified deletion request sent to the published support address is completed.
-  Complete valid requests within 30 days, delete active user-linked records together,
-  and require Neon restore history or backups containing deleted data to expire
-  within 30 days without ordinary restoration.
-- Public Privacy and Terms pages must match the deployed provider, region, analytics,
-  retention, and deletion behavior. Disclose OCI Chuncheon runtime processing and
-  cap its Nginx/OCI request metadata retention at 30 days. Disclose OpenAI US
-  processing, Vercel anonymous analytics, and Neon storage on AWS Singapore
-  separately from domestic CLOVA OCR.
-- Reserve usage atomically before provider calls; commit successful usage and release
-  failed reservations. Meter text/OCR by request and future speech by duration.
-- Future speech transcription may produce the editable correction draft, but keep
-  pronunciation assessment as a separate provider/domain boundary.
-- Defer Google Cloud Vision, speech-provider selection, and pronunciation assessment
-  until representative quality, latency, and cost measurements justify them.
+- OCR 공급자와 언어 모델 공급자를 분리한다. CLOVA General OCR V2는
+  `OcrProvider` 뒤에, OpenAI는 교정 및 문제 초안 인터페이스 뒤에 유지한다.
+- OCR은 편집 가능한 초안을 반환한다. 음성 녹음, OCR 원본 또는 이미지 바이트를
+  영속화하지 않으며, 추출된 텍스트나 비밀 값을 일반 로그에 포함하지 않는다.
+- `store: false`로 OpenAI 요청을 무상태로 유지한다. 기본 미국 처리 경계를 사용하고
+  공급자의 기본 악용 모니터링 보존 기간이 최대 30일임을 공개한다. CLOVA OCR은 한국
+  리전에 유지하며, 요청이 끝난 뒤 CherryK와 CLOVA 모두 OCR 원본이나 인식 결과를
+  저장하지 않는다.
+- 인증된 Spring 세션은 마지막 활동 후 90일 동안 보존한다. 셀프서비스 계정 관리가
+  제공되기 전까지는 공개된 지원 주소로 전송된 검증된 삭제 요청이 완료될 때까지 계정과
+  학습 기록을 보존한다. 유효한 요청은 30일 이내에 완료하고 활성 사용자 연결 기록을
+  함께 삭제하며, 삭제된 데이터를 포함한 Neon 복원 이력이나 백업은 일반 복원 없이
+  30일 이내에 만료되도록 한다.
+- 공개 개인정보 처리방침과 이용약관 페이지는 배포된 공급자, 리전, 분석, 보존 및 삭제
+  동작과 일치해야 한다. OCI 춘천 런타임 처리를 공개하고 Nginx/OCI 요청 메타데이터의
+  보존 기간을 30일로 제한한다. 국내 CLOVA OCR과 별도로 OpenAI 미국 처리, Vercel
+  익명 분석, AWS 싱가포르의 Neon 저장을 공개한다.
+- 공급자 호출 전에 사용량을 원자적으로 예약하고 성공한 사용량은 확정하며 실패한 예약은
+  해제한다. 텍스트/OCR은 요청 단위로, 향후 음성은 음성 길이 단위로 측정한다.
+- 향후 음성 전사가 편집 가능한 교정 초안을 만들 수 있지만 발음 평가는 별도의
+  공급자/도메인 경계로 유지한다.
+- 대표적인 품질, 지연 시간, 비용 측정으로 타당성이 입증될 때까지 Google Cloud Vision,
+  음성 공급자 선택, 발음 평가를 보류한다.
 
-## Product UI
+## 제품 UI
 
-- Use a calm, high-contrast, mobile-first learning interface: warm white surfaces,
-  deep blue-teal primary actions, restrained supporting color, generous whitespace,
-  and explicit borders for controls and state changes. Keep shared page structure,
-  typography, focus treatment, and button hierarchy consistent across learner and
-  operator surfaces.
-- Treat streak tracking and guest MCQ as independent future modules. The dashboard
-  may reserve space and reusable presentation boundaries for them, but it must not
-  fabricate activity data or bypass the current authenticated API contract before
-  those product behaviors are implemented.
-- Keep the signed-out home usable when the passive session check is unavailable.
-  Suppress the passive authentication error there and disable header sign-in while
-  the authentication boundary is unavailable instead of retrying a known failing
-  maintenance endpoint.
-- Allow DB-backed internal testing without external OAuth only through the
-  explicit local Spring profile or local-login flag paired with insecure local
-  HTTP cookies. Keep the endpoint disabled by default, route only loopback
-  frontends to it, and persist the local learner through the same user/session
-  boundaries as Google OIDC.
+- 차분하고 대비가 높으며 모바일을 우선하는 학습 인터페이스를 사용한다. 따뜻한 흰색
+  표면, 짙은 청록색 주요 동작, 절제된 보조 색상, 넉넉한 여백, 컨트롤과 상태 변경을
+  나타내는 명확한 테두리를 적용한다. 학습자와 운영자 화면 전반에서 공통 페이지 구조,
+  타이포그래피, 포커스 처리, 버튼 계층을 일관되게 유지한다.
+- 연속 학습 추적과 비회원 객관식 문제를 서로 독립된 미래 모듈로 취급한다. 대시보드에
+  공간과 재사용 가능한 표현 경계를 미리 둘 수는 있지만, 해당 제품 동작을 구현하기 전에
+  활동 데이터를 꾸며내거나 현재의 인증 API 계약을 우회해서는 안 된다.
+- 백그라운드 세션 검사를 사용할 수 없을 때도 로그아웃 상태의 홈을 이용할 수 있게
+  한다. 실패가 알려진 유지보수 엔드포인트를 재시도하는 대신 홈에서 백그라운드 인증
+  오류를 숨기고, 인증 경계를 사용할 수 없는 동안 헤더 로그인을 비활성화한다.
+- 외부 OAuth 없이 데이터베이스 기반 내부 테스트를 허용할 때는 명시적인 로컬 Spring
+  프로필 또는 안전하지 않은 로컬 HTTP 쿠키와 함께 쓰는 로컬 로그인 플래그만 사용한다.
+  엔드포인트는 기본적으로 비활성화하고 loopback 프런트엔드만 라우팅하며, Google
+  OIDC와 같은 사용자/세션 경계를 통해 로컬 학습자를 영속화한다.
 
-## Quiz Domain
+## 문제 도메인
 
-- `Quiz` owns exactly four choices and one answer; `QuizAttempt` is a separate append-only
-  aggregate. Only approved quizzes are learner-visible, and approved content is
-  immutable; changes use a new draft and retire the prior version on approval.
-- Model grammar and vocabulary as explicit quiz types. Vocabulary uses an English
-  definition, four Korean choices, one answer, and the compatibility tag
-  `word_choice`.
-- `questionEn` owns the learner instruction. Grammar `sentenceKo` contains only
-  exercise content, except `unnatural`, which has no separate stem and may repeat
-  the Korean instruction.
-- Keep exact fingerprints separate from learning-target identity. Vocabulary uses
-  the normalized answer; `sentence_order` and `unnatural` use the normalized correct
-  choice; other grammar uses normalized exercise plus answer, scoped by type/tag.
-- Reserve append-only target history for ordinary generation and edits, even after
-  rejection or retirement. An unchanged target is allowed only for an explicit
-  revision.
-- Select vocabulary targets from the difficulty-tiered database catalog before the
-  provider call; the provider cannot choose or replace them. PostgreSQL remains
-  authoritative for full-history rejection. Never serialize accumulated target
-  history into AI input; grammar retries may include only bounded current-batch
-  exclusions.
-- Attempts may reference only a choice belonging to the quiz. Learner reads never
-  expose unapproved content, lifecycle state, or answers before submission.
-- Keep admin command DTOs separate from learner read DTOs.
+- `Quiz`는 정확히 선택지 4개와 정답 1개를 소유하며 `QuizAttempt`는 별도의 추가 전용
+  애그리게이트이다. 승인된 문제만 학습자에게 공개하고 승인된 콘텐츠는 변경할 수
+  없다. 변경할 때는 새 초안을 만들고 승인 시 이전 버전을 폐기한다.
+- 문법과 어휘를 명시적인 문제 유형으로 모델링한다. 어휘 문제는 영어 정의, 한국어
+  선택지 4개, 정답 1개와 호환성 태그 `word_choice`를 사용한다.
+- `questionEn`은 학습자 지시문을 담당한다. 문법 문제의 `sentenceKo`에는 연습 내용만
+  넣는다. 단, 별도 문제 줄기가 없는 `unnatural`은 한국어 지시문을 반복할 수 있다.
+- 정확한 fingerprint와 학습 목표 식별자를 분리한다. 어휘는 정규화된 정답을,
+  `sentence_order`와 `unnatural`은 정규화된 정답 선택지를 사용한다. 그 밖의 문법
+  문제는 유형/태그 범위 안에서 정규화된 연습 내용과 정답을 함께 사용한다.
+- 거절되거나 폐기된 뒤에도 일반 생성과 수정에는 추가 전용 목표 이력을 예약한다.
+  명시적인 개정일 때만 변경되지 않은 목표를 허용한다.
+- 공급자 호출 전에 난이도 계층이 적용된 데이터베이스 카탈로그에서 어휘 목표를
+  선택한다. 공급자는 목표를 선택하거나 바꿀 수 없다. 전체 이력에 따른 거절은
+  PostgreSQL이 계속 담당한다. 누적된 목표 이력을 AI 입력으로 직렬화하지 않으며,
+  문법 재시도에는 크기가 제한된 현재 배치의 제외 항목만 포함할 수 있다.
+- 시도는 해당 문제에 속한 선택지만 참조할 수 있다. 학습자 읽기 응답은 승인되지
+  않은 콘텐츠, 수명 주기 상태 또는 제출 전 정답을 공개하지 않는다.
+- 관리자 명령 DTO와 학습자 읽기 DTO를 분리한다.
 
-## Deferred
+## 보류 항목
 
-- Reconsider deferred infrastructure, authentication, OCR, and speech choices only
-  with measured need and a new durable decision.
+- 보류된 인프라, 인증, OCR, 음성 선택은 측정된 필요와 지속해서 적용할 새 결정이 있을
+  때만 재검토한다.

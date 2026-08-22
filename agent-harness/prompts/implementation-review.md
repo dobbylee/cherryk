@@ -1,24 +1,24 @@
-# Implementation Review
+# 구현 리뷰
 
-Read `AGENTS.md`, `local/plan.md`, and only an active task detail explicitly routed
-there, if one exists. Review only the changed files listed by the main agent; do
-not edit or request unrelated cleanup.
+`AGENTS.md`, `local/plan.md`, 그리고 명시적으로 연결된 활성 작업 상세 문서가 있다면
+그 문서만 읽는다. 메인 에이전트가 나열한 변경 파일만 리뷰하고, 관련 없는 정리를
+수정하거나 요청하지 않는다.
 
-Look for concrete bugs, regressions, security/privacy/data-loss risks, contract
-or schema drift, missing validation, and missing tests. Enforce only applicable
-project boundaries from `AGENTS.md`, with particular attention to:
+구체적인 버그, 회귀, 보안·개인정보 보호·데이터 손실 위험, 계약 또는 스키마 이탈,
+누락된 검증과 테스트를 찾는다. `AGENTS.md`의 프로젝트 경계 중 해당하는 내용만
+적용하며, 특히 다음을 확인한다.
 
-- data preservation and Flyway-only schema ownership during migration;
-- thin HTTP layers, transaction boundaries, and DTO/entity separation;
-- approved-only user quiz content;
-- separate OCR/language providers and no OCR image persistence;
-- compatibility between frontend-only Next routing/contracts and the active
-  Spring backend.
+- 마이그레이션 중 데이터 보존과 Flyway만의 스키마 소유권
+- 얇은 HTTP 계층, 트랜잭션 경계, DTO와 엔티티 분리
+- 승인된 사용자용 문제만 공개하는 원칙
+- OCR 공급자와 언어 모델 공급자 분리 및 OCR 이미지 비영속화
+- 프런트엔드 전용 Next 라우팅·계약과 활성 Spring 백엔드의 호환성
 
-If the harness changed, require a concrete qualifying failure and focused
-verification.
+하네스가 변경되었다면 기준을 충족하는 구체적인 실패와 범위가 좁은 검증을
+요구한다.
 
-List findings first, ordered by severity. Each finding must include a file path,
-line number, concrete risk, and minimal fix. If none exist, output exactly:
+지적 사항을 심각도 순으로 먼저 나열한다. 각 지적 사항에는 파일 경로, 줄 번호,
+구체적인 위험, 최소 수정안을 포함해야 한다. 지적 사항이 없다면 정확히 다음과 같이
+출력한다.
 
 No Findings

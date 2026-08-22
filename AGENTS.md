@@ -1,55 +1,63 @@
-# Agent Operating Rules
+# 에이전트 운영 규칙
 
-This repository is the CherryK MVP with a Next.js frontend and Kotlin/Spring
-backend.
+이 저장소는 Next.js 프런트엔드와 Kotlin/Spring 백엔드로 구성된 CherryK MVP이다.
 
-Before planning or editing, read this file and `local/plan.md`. Keep the plan a
-current-state router: do not copy completed rollout logs, test counts, or commit
-lists into it. Read only the detail document linked for an active task. Durable
-choices belong in `agent-harness/decisions.md`; completed history belongs in the
-task detail, while resolved versions and structure come from manifests and code.
+계획하거나 수정하기 전에 이 파일과 `local/plan.md`를 읽는다. 계획은 현재 상태를
+안내하는 라우터로 유지하며, 완료된 롤아웃 로그, 테스트 개수, 커밋 목록을 복사하지
+않는다. 활성 작업에 연결된 상세 문서만 읽는다. 지속해서 적용할 선택은
+`agent-harness/decisions.md`에, 완료된 이력은 작업 상세 문서에 기록하며, 확정된
+버전과 구조는 매니페스트와 코드에서 확인한다.
 
-## Execution
+## 실행
 
-- Resolve ambiguity only when it can change correctness, product behavior, privacy, operations, or rollout. Record durable choices in `agent-harness/decisions.md` and task-local rollout detail in the routed plan.
-- Implement the smallest coherent slice. Do not refactor, reformat, or add future layers outside it.
-- Define checkable success criteria. Add focused checks for bugs, validation, and behavior-preserving refactors.
-- Use `pnpm` for app commands. `pnpm test` is the default full gate; backend integration tests require Docker.
-- Report verification that could not run and its blocker.
+- 모호함이 정확성, 제품 동작, 개인정보 보호, 운영 또는 롤아웃을 바꿀 수 있을 때만
+  해소한다. 지속해서 적용할 선택은 `agent-harness/decisions.md`에, 작업별 롤아웃
+  상세는 라우팅된 계획에 기록한다.
+- 가장 작은 일관된 단위를 구현한다. 범위를 벗어난 리팩터링, 재포맷 또는 미래
+  계층 추가를 하지 않는다.
+- 확인 가능한 성공 기준을 정의한다. 버그, 검증, 동작을 보존하는 리팩터링에는
+  범위가 좁은 검사를 추가한다.
+- 앱 명령에는 `pnpm`을 사용한다. 기본 전체 게이트는 `pnpm test`이며, 백엔드
+  통합 테스트에는 Docker가 필요하다.
+- 실행하지 못한 검증과 그 차단 요인을 보고한다.
 
-## Project Boundaries
+## 프로젝트 경계
 
-- Keep contracts in `src/lib/contracts`, frontend API helpers in `src/lib/api`,
-  and backend AI integrations under the Spring provider boundaries.
-- Keep Spring controllers thin. Put transactions in application services and
-  never serialize JPA entities as API responses.
-- Flyway alone owns new schema changes; Hibernate stays on `ddl-auto=validate`. Use JPA for aggregate writes/simple CRUD and SQL projections for query-heavy reads.
-- Keep OCR and language-model providers separate. Never persist OCR image originals or expose unapproved AI quiz drafts.
-- Keep ignored plans and handoffs under `local/`.
+- 계약은 `src/lib/contracts`에, 프런트엔드 API 도우미는 `src/lib/api`에 두고,
+  백엔드 AI 연동은 Spring 공급자 경계 안에 둔다.
+- Spring 컨트롤러는 얇게 유지한다. 트랜잭션은 애플리케이션 서비스에 두고 JPA
+  엔티티를 API 응답으로 직렬화하지 않는다.
+- 새 스키마 변경은 Flyway만 담당하며 Hibernate는 `ddl-auto=validate`로 유지한다.
+  애그리게이트 쓰기와 단순 CRUD에는 JPA를, 조회가 많은 읽기에는 SQL 프로젝션을
+  사용한다.
+- OCR 공급자와 언어 모델 공급자를 분리한다. OCR 이미지 원본을 영속화하거나
+  승인되지 않은 AI 문제 초안을 공개하지 않는다.
+- 무시되는 계획과 인수인계 문서는 `local/` 아래에 둔다.
 
-## Delivery
+## 배포
 
-- Implement on `preview` and use its full CI result as the normal pre-Production
-  gate. The branch is a verification lane, not a permanently hosted environment.
-- Require an on-demand full-stack Preview only for changes whose risk depends on
-  hosted integration, including authentication/session behavior, database or data
-  migration, API routing, and deployment infrastructure. It must use a temporary
-  backend and isolated non-Production database, and it must be removed after
-  verification.
-- After the required local/CI and, when applicable, on-demand Preview verification,
-  fast-forward that exact commit to `main` and push `main` for Production.
-- Never route Preview to Production or treat a frontend-only/read-only deployment as
-  full-stack verification.
-- Do not use Vercel Promote to Production.
+- `preview`에서 구현하고 전체 CI 결과를 일반적인 Production 전 게이트로 사용한다.
+  이 브랜치는 검증 레인이며 영구 호스팅 환경이 아니다.
+- 인증/세션 동작, 데이터베이스 또는 데이터 마이그레이션, API 라우팅, 배포 인프라처럼
+  호스팅된 통합 환경에 따라 위험이 달라지는 변경에만 필요 시 전체 스택 Preview를
+  요구한다. 임시 백엔드와 격리된 비Production 데이터베이스를 사용해야 하며,
+  검증 후 제거해야 한다.
+- 필요한 로컬/CI 검증과, 해당하는 경우 필요 시 Preview 검증을 마친 뒤 정확히 그
+  커밋을 `main`으로 fast-forward하고 Production을 위해 `main`을 푸시한다.
+- Preview를 Production으로 라우팅하거나 프런트엔드 전용 또는 읽기 전용 배포를 전체
+  스택 검증으로 취급하지 않는다.
+- Vercel Promote to Production을 사용하지 않는다.
 
-## Required Review
+## 필수 리뷰
 
-Every implementation or harness change must:
+모든 구현 또는 하네스 변경은 다음 절차를 따라야 한다.
 
-1. Run relevant verification.
-2. Use the project `reviewer` with `agent-harness/prompts/implementation-review.md`, limited to changed files.
-3. Fix findings and repeat verification/review until the result is exactly `No Findings`.
-4. Report verification commands and the final review result.
+1. 관련 검증을 실행한다.
+2. 변경된 파일만 대상으로 `agent-harness/prompts/implementation-review.md`와 프로젝트
+   `reviewer`를 사용한다.
+3. 결과가 정확히 `No Findings`가 될 때까지 지적 사항을 수정하고 검증과 리뷰를
+   반복한다.
+4. 검증 명령과 최종 리뷰 결과를 보고한다.
 
-Add harness weight only for a concrete, repeatable failure that qualifies under
-`agent-harness/workflow.md`.
+`agent-harness/workflow.md`의 기준을 충족하는 구체적이고 반복 가능한 실패에만 하네스
+규칙을 추가한다.

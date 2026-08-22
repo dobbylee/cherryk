@@ -1,49 +1,49 @@
-# Harness Evolution
+# 하네스 발전
 
-Standard execution, verification, and review rules live in `AGENTS.md`. This
-document is only for deciding whether a failure deserves permanent harness
-weight.
+표준 실행, 검증, 리뷰 규칙은 `AGENTS.md`에 있다. 이 문서는 실패에 영구적인
+하네스 규칙을 추가할 가치가 있는지 판단할 때만 사용한다.
 
-## Qualification
+## 판정 기준
 
-Score a concrete bug, review miss, manual-test miss, or recurring confusion from
-0 to 3 on each axis:
+구체적인 버그, 리뷰 누락, 수동 테스트 누락 또는 반복되는 혼란을 각 항목별로
+0점부터 3점까지 평가한다.
 
-- Severity: cosmetic `0`; inconvenience `1`; user-visible/repeated cost `2`; security, privacy, data-loss, or trust risk `3`.
-- Recurrence: one-off `0`; rare `1`; repeated/likely nearby `2`; systemic `3`.
-- Detectability: normally obvious `0`; likely caught in review `1`; easy to miss `2`; invisible until runtime/manual testing `3`.
-- Rule fit: speculative `0`; prose reminder `1`; focused checklist `2`; cheap executable check `3`.
+- 심각도: 외형상 문제 `0`, 불편 `1`, 사용자에게 보이거나 반복 비용 발생 `2`, 보안,
+  개인정보 보호, 데이터 손실 또는 신뢰 위험 `3`.
+- 재발성: 일회성 `0`, 드묾 `1`, 반복되거나 인접 영역에서 발생 가능 `2`, 구조적 `3`.
+- 탐지 가능성: 대체로 명확함 `0`, 리뷰에서 발견될 가능성이 높음 `1`, 놓치기 쉬움
+  `2`, 런타임 또는 수동 테스트 전에는 보이지 않음 `3`.
+- 규칙 적합성: 추측에 불과함 `0`, 문장형 알림 `1`, 범위가 좁은 체크리스트 `2`,
+  저비용 실행 검사 `3`.
 
-Change the harness only when the total is at least 8, or Severity is 3 and Rule
-fit is at least 2. Otherwise leave a task note instead.
+총점이 8점 이상이거나 심각도가 3점이면서 규칙 적합성이 2점 이상일 때만 하네스를
+변경한다. 그 외에는 작업 메모만 남긴다.
 
-## Smallest Placement
+## 최소 배치 위치
 
-- Deterministic and cheap: test or executable check.
-- Judgment-based: reviewer prompt.
-- Required for every task: `AGENTS.md`.
-- Process/rubric: this file.
-- Durable project choice: `agent-harness/decisions.md`.
-- Current plan or handoff: the task-specific document routed by `local/plan.md`.
+- 결정적이고 저비용인 항목: 테스트 또는 실행 가능한 검사.
+- 판단이 필요한 항목: 리뷰어 프롬프트.
+- 모든 작업에 필요한 항목: `AGENTS.md`.
+- 절차 또는 평가 기준: 이 파일.
+- 지속해서 적용할 프로젝트 선택: `agent-harness/decisions.md`.
+- 현재 계획 또는 인수인계: `local/plan.md`가 안내하는 작업별 문서.
 
-When changing the harness, record the triggering failure, score, and why the
-chosen placement is the smallest effective safeguard. Tighten an existing rule
-instead of adding a duplicate.
+하네스를 변경할 때는 계기가 된 실패, 점수, 선택한 위치가 가장 작은 효과적 안전
+장치인 이유를 기록한다. 중복 규칙을 추가하는 대신 기존 규칙을 강화한다.
 
-## Recorded Safeguards
+## 기록된 안전장치
 
-- `pnpm test` reruns backend tests and checks formatting; `pnpm verify` also builds
-  both applications and validates Compose. This was added after cached Gradle
-  output hid Docker-blocked integration tests and seven files drifted from the
-  repository formatter (severity `2`, recurrence `2`, detectability `2`, rule fit
-  `3`; total `9`). Package scripts are the smallest deterministic check.
-- Keep `local/plan.md` current-only, durable decisions actionable, and completed
-  rollout evidence in task details. This tightened the existing ownership rule
-  after completed migration work remained duplicated as active guidance across
-  all three layers (severity `2`, recurrence `2`, detectability `2`, rule fit `2`;
-  total `8`).
-- Keep the `preview` branch as a CI lane, disable automatic non-Production Vercel
-  deployments, and provision a complete isolated Preview only for hosted-integration
-  risk. This replaced a repeatedly read-only Preview that returned maintenance
-  errors and could not verify authentication or product flows (severity `2`,
-  recurrence `2`, detectability `2`, rule fit `2`; total `8`).
+- `pnpm test`는 백엔드 테스트를 다시 실행하고 포맷을 검사하며, `pnpm verify`는 두
+  애플리케이션을 빌드하고 Compose도 검증한다. 캐시된 Gradle 출력이 Docker로 인해
+  차단된 통합 테스트를 숨기고 파일 7개가 저장소 포매터 형식에서 벗어난 뒤 이 규칙을
+  추가했다(심각도 `2`, 재발성 `2`, 탐지 가능성 `2`, 규칙 적합성 `3`, 총점
+  `9`). 패키지 스크립트가 가장 작은 결정적 검사이다.
+- `local/plan.md`는 현재 상태만 담고, 지속해서 적용할 결정은 실행 가능하게 유지하며,
+  완료된 롤아웃 증거는 작업 상세에 둔다. 완료된 마이그레이션 작업이 세 계층 모두에
+  활성 지침처럼 중복해서 남은 뒤 기존 소유권 규칙을 강화했다(심각도 `2`, 재발성
+  `2`, 탐지 가능성 `2`, 규칙 적합성 `2`, 총점 `8`).
+- `preview` 브랜치는 CI 레인으로 유지하고 비Production Vercel 자동 배포는 비활성화하며,
+  호스팅된 통합 환경의 위험이 있을 때만 완전히 격리된 Preview를 준비한다. 이 규칙은
+  유지보수 오류를 반환해 인증이나 제품 흐름을 검증할 수 없었던 반복적인 읽기 전용
+  Preview를 대체했다(심각도 `2`, 재발성 `2`, 탐지 가능성 `2`, 규칙 적합성 `2`,
+  총점 `8`).
