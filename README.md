@@ -3,54 +3,90 @@
   CherryK
 </h1>
 
-글쓰기 교정, 손글씨 OCR, 검수된 객관식 문제 풀이를 지원하는 한국어 학습 앱이다.
+한국어 글쓰기 교정, 손글씨 OCR, 검수된 객관식 연습을 하나의 흐름으로
+제공하는 학습 서비스
 
-## 로컬 실행
+학습자는 직접 쓴 문장이나 손글씨 초안을 바탕으로 필요한 부분만 교정받고, 이해한
+내용을 문법·어휘 문제로 반복해 익힌다.
 
-```bash
-pnpm install
-cp .env.example .env.local
-# .env.local에 Spring 백엔드 공급자와 OAuth 값을 설정한다.
-docker compose --env-file .env.local --profile backend up --build -d
-pnpm dev
-```
+## 서비스 이용
 
-로컬 Spring 백엔드와 Flyway가 관리하는 PostgreSQL 데이터베이스는 Docker에서
-실행된다. Next.js는 프런트엔드만 담당하며 `/api/v1`과 `/api/auth` 요청을
-설정된 `SPRING_BACKEND_ORIGIN`으로 프록시한다.
+### 글쓰기 교정
 
-사용자는 Google 계정으로 가입하거나 로그인한다. 로컬 개발을 위해 Google
-Cloud에 다음 승인된 리디렉션 URI를 설정한다.
+Google 계정으로 로그인한 뒤 한국어 문장을 쓰면,
+필요한 변경과 쉬운 영어 설명을 함께 확인할 수 있다.
+
+교정 전후의 텍스트와 변경 이유를
+한 화면에서 검토하고 복사할 수 있다.
+
+### 손글씨 OCR
+
+손글씨 이미지를 올리면 CLOVA OCR이 편집 가능한 한국어 초안을 만든다. 초안을 직접
+확인하고 수정한 뒤에만 교정을 요청하므로, 이미지 원본이나 의도하지 않은 텍스트가
+교정 입력으로 바로 사용되지 않는다.
+
+### 문제 연습
+
+검수된 문법·어휘 객관식 문제를 풀고, 선택 직후 정답과 설명을 확인할 수 있다.
+
+문제는 학습 이력과 선택한 문법 태그를 기준으로 추천되며 진행 상황을 기록한다.
+
+## 주요 기능
+
+- 필요한 변경만 제시하는 한국어 텍스트 교정과 영어 설명
+- CLOVA OCR 기반 손글씨 초안 추출 및 편집 확인
+- 승인된 문법·어휘 객관식 문제와 선택 직후 피드백
+- 학습 이력과 태그 기반 문제 추천·진행 상황 기록
+- Google OIDC 로그인과 PostgreSQL 기반 세션
+- 운영자용 AI 문제 초안 생성, 수정, 승인·거절 워크플로
+- 모바일 우선 반응형 화면, 개인정보처리방침·이용약관, Vercel Analytics
+
+## 기술 구성
+
+| 영역           | 기술                                                                      |
+| -------------- | ------------------------------------------------------------------------- |
+| Frontend       | Next.js 16, React 19, TypeScript 6, Tailwind CSS 4                        |
+| Backend        | Kotlin 2.3, Spring Boot 4.1, Java 25                                      |
+| Database       | PostgreSQL 18.6, Flyway, JPA, Spring Session JDBC                         |
+| AI/OCR         | OpenAI Responses API, NAVER Cloud CLOVA OCR                               |
+| Authentication | Google OIDC, Spring Security, CSRF-protected sessions                     |
+| Infrastructure | Vercel, OCI, Docker Compose, Nginx                                        |
+| Testing        | Vitest, JUnit 5, Testcontainers                                           |
+| CI/CD          | GitHub Actions, immutable ARM64 images, exact-SHA deployment verification |
+
+## 시스템 구성
 
 ```text
-http://localhost:3000/api/auth/callback/google
+Browser
+  |
+  v
+Vercel / Next.js
+  ├── pages and static assets
+  └── /api/v1/*, /api/auth/* ──> OCI Nginx
+                                      |
+                                      v
+                                Kotlin / Spring
+                                  ├── PostgreSQL 18.6
+                                  ├── Google OIDC
+                                  ├── CLOVA OCR
+                                  └── OpenAI Responses API
 ```
 
-`DAILY_CORRECTION_LIMIT`와 `DAILY_OCR_LIMIT`는 사용자별 UTC 기준 일일 AI 사용
-한도를 제어한다. 기본값은 교정 20회와 사진 OCR 요청 10회이다.
-`ADMIN_EMAILS`는 문제 검수 워크플로에 접근할 수 있는 Google 계정 이메일 주소를
-쉼표로 구분한 허용 목록이다.
+프로덕션 PostgreSQL은 OCI의 내부 Docker 네트워크에서만 Spring 백엔드와 연결된다.
+배포는 검증된 정확한 `main` 커밋의 ARM64 이미지로 진행하며, 서비스 상태와 공개 API를
+확인한 뒤 완료한다.
 
-## 프로젝트 방향
+## 프로젝트 구조
 
-- 프런트엔드는 Vercel의 Next.js로 유지하고, Kotlin/Spring이 모든 API, 인증, AI,
-  영속성 동작을 담당한다.
-- OCI의 Docker PostgreSQL 18.6을 단일 진실 공급원으로 유지한다. 데이터베이스는
-  백엔드와 동일한 내부 Docker 네트워크에서만 연결되며 공개 포트를 열지 않는다.
-- AI 문제 초안은 운영자가 승인해야 사용자에게 공개된다.
-- 백엔드 마이그레이션과 데이터베이스 운영 명령은
-  [`backend/README.md`](backend/README.md)에 정리되어 있다.
-
-## 주요 명령
-
-```bash
-pnpm test
-pnpm verify
-pnpm test:unit
-pnpm build
-pnpm build:backend
+```text
+cherryk/
+├── src/app/                 # Next.js 화면과 same-origin API proxy
+├── src/lib/                 # 프런트엔드 계약, API helper, 학습 UI 로직
+├── backend/src/main/kotlin/ # Spring 도메인, 애플리케이션, HTTP 계층
+├── backend/src/main/resources/db/migration/
+│                            # Flyway migration history
+├── public/brand/            # CherryK 브랜드 자산
+├── ops/                     # OCI 배포, PostgreSQL backup, 운영 안전성 검사
+├── agent-harness/           # 프로젝트 결정과 리뷰 기준
+└── .github/workflows/       # CI와 exact-SHA backend 배포 workflow
 ```
-
-`pnpm test`는 항상 백엔드 테스트를 다시 실행하므로 Testcontainers 통합 테스트를
-위해 Docker가 필요하다. `pnpm verify`는 두 애플리케이션의 프로덕션 빌드와
-Compose 설정 검증까지 추가로 실행한다.
