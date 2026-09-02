@@ -31,7 +31,9 @@ describe("legal pages and footer", () => {
     expect(markup).toContain("request content such as correction text");
     expect(markup).toContain("retained for no more than 30 days");
     expect(markup).toContain("discarded after 24 hours");
-    expect(markup).toContain("Neon Inc. · AWS Singapore");
+    expect(markup).toContain("PostgreSQL database");
+    expect(markup).toContain("Root-only PostgreSQL logical backups");
+    expect(markup).toContain("OCI PostgreSQL storage is required");
     expect(markup).toContain("90 days after the last activity");
     expect(markup).toContain("completes a valid request within 30 days");
     expect(markup).toContain('href="mailto:leekw1245@gmail.com"');

@@ -38,9 +38,9 @@ The separate `backend_postgres18_data` volume intentionally avoids reusing local
 databases that predate Flyway history. Legacy local database data is not required
 by this workflow.
 
-Local Compose, backend integration tests, and Production Neon target PostgreSQL 18.
-Changing this repository's Docker image still does not upgrade a managed Production
-database; future major upgrades require a separate, verified Neon project migration.
+Local Compose and backend integration tests target PostgreSQL 18. Production uses
+the Docker Official Image pinned to `postgres:18.6`; patch or major updates require
+a separate backup, restore rehearsal, and compatibility verification.
 
 The local login endpoint is disabled by default in the base configuration and is
 enabled only when the local profile or explicit `CHERRYK_LOCAL_LOGIN_ENABLED` flag
@@ -64,14 +64,15 @@ not copied into it.
 
 The Vercel-hosted Next.js application is frontend-only. It rewrites `/api/v1/*` and
 `/api/auth/*` to the required `SPRING_BACKEND_ORIGIN`. Production uses
-`https://api.cherryk.kr`, backed by one Spring container behind the OCI Nginx proxy
-and the Production Neon database in Singapore.
+`https://api.cherryk.kr`, backed by one Spring container, PostgreSQL 18.6, and the
+OCI Nginx proxy. PostgreSQL has no published port: Spring connects only to the
+`postgres` Compose service on the internal Docker network.
 
 The `preview` branch is a CI verification lane, not a permanent hosted environment.
 Automatic non-Production Vercel deployments are disabled. Changes involving
 authentication/session behavior, database or data migration, API routing, or
 deployment infrastructure require an on-demand exact-SHA Vercel Preview connected
-to a temporary backend and isolated Neon database. Preview must never use the
+to a temporary backend and isolated PostgreSQL database. Preview must never use the
 Production container or database, and all temporary runtime resources are removed
 after verification.
 
@@ -129,36 +130,29 @@ await fetch("/api/maintenance/bypass", { method: "DELETE" });
 
 Remove or rotate the bypass token after the maintenance window.
 
-## PostgreSQL 17 rollback retirement
+## OCI PostgreSQL operations
 
-Production completed its PostgreSQL 18 cutover on 2026-08-09. Keep the PostgreSQL
-17 rollback package for at least 72 hours after the final cutover smoke check. It is
-eligible for removal no earlier than **2026-08-13 00:00 KST**.
+The root-owned `/opt/cherryk/compose.yaml` runs `backend`, `postgres`, and `nginx`.
+`postgres` is pinned to `postgres:18.6`, uses the named
+`cherryk_postgres18_data` volume mounted at `/var/lib/postgresql`, and is never
+published to the host network. `/opt/cherryk/backend.env.production` and
+`/opt/cherryk/postgres.env.production` are mode `600`; the deployment wrapper
+continues to replace only `backend` with `--no-deps`.
 
-The retirement scope is limited to:
+`/usr/local/sbin/cherryk-postgres-backup` creates a consistent custom-format
+`pg_dump` from the running container every day at 03:30 KST through the root-owned
+systemd timer. It validates each archive with `pg_restore --list`, retains it mode
+`600` under `/opt/cherryk/backups/postgres`, and removes archives older than 7 days.
+These are host-local recovery copies, not off-host disaster recovery.
 
-- the Neon `cherryk-production-apac` PostgreSQL 17 source project;
-- `/opt/cherryk/migrations/postgresql-18-20260809T141322Z`, containing the PG17
-  dump and the protected PG17/PG18 environment and Compose snapshots;
-- the root-owned, mode-`600` migration-only libpq service file at
-  `/opt/cherryk/pg_service.postgresql-18.conf`;
-- the obsolete `cherryk-backend:b3afca85e530111c8aa04bf934fe59a63fe6e43d`
-  image and `cherryk-backend:rollback` tag only while both still resolve to image
-  ID `88e1a5319494`.
-
-Perform removal as a separate, explicitly authorized maintenance action. Immediately
-before it, resolve every target read-only and confirm that Production still uses the
-PostgreSQL 18 project, the active backend image is not in the retirement scope,
-`/actuator/health` is `UP`, and authentication, correction, practice, and admin
-smoke checks pass. PostgreSQL 18 contains writes made after cutover, so the PG17
-source must no longer be treated as a current rollback target.
-
-After removal, confirm the active container image and restart count, public health,
-signed-out authentication behavior, and the same product smoke checks. Do not remove
-the active `/opt/cherryk/compose.yaml`, its current environment, the current backend
-image, or the deployment wrapper's automatic previous-image/Compose rollback
-mechanism; each future deployment must continue to recreate and preserve its own
-immediate rollback point through verification.
+The Neon-to-OCI cutover archive is root-only at
+`/opt/cherryk/migrations/oci-postgresql-20260902T011158Z`. It contains the final
+custom-format dump, protected pre-cutover environment and Compose snapshots, and
+data-equivalence evidence; `neon_auth` was excluded. Do not delete the archive or
+legacy Neon source before **2026-09-09 00:00 KST**, and only do so as a separately
+authorized action after reading the exact targets and confirming current backups,
+the active OCI container state, Flyway, and public health. Legacy Neon credentials
+must never be reintroduced into the active backend environment.
 
 ## OpenAI correction
 

@@ -35,7 +35,8 @@ http://localhost:3000/api/auth/callback/google
 
 - 프런트엔드는 Vercel의 Next.js로 유지하고, Kotlin/Spring이 모든 API, 인증, AI,
   영속성 동작을 담당한다.
-- Neon Postgres를 단일 진실 공급원으로 유지한다.
+- OCI의 Docker PostgreSQL 18.6을 단일 진실 공급원으로 유지한다. 데이터베이스는
+  백엔드와 동일한 내부 Docker 네트워크에서만 연결되며 공개 포트를 열지 않는다.
 - AI 문제 초안은 운영자가 승인해야 사용자에게 공개된다.
 - 백엔드 마이그레이션과 데이터베이스 운영 명령은
   [`backend/README.md`](backend/README.md)에 정리되어 있다.

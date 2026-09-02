@@ -5,13 +5,14 @@
 
 ## 아키텍처와 배포
 
-- Next.js 프런트엔드는 Vercel에 호스팅하고 백엔드 동작은 OCI의 단일 Kotlin/Spring
-  MVC 컨테이너에서 실행한다. Production PostgreSQL은 OCI 춘천과 가까운 AWS
-  싱가포르의 Neon에 유지한다.
+- Next.js 프런트엔드는 Vercel에 호스팅하고 백엔드 동작과 Production PostgreSQL은
+  OCI 춘천에서 실행한다. PostgreSQL은 Docker Official Image `postgres:18.6`을
+  고정하고, Spring과 같은 내부 Compose 네트워크의 전용 named volume에서만 사용하며
+  공개 포트를 열지 않는다.
 - Production Spring은 Nginx 뒤의 `api.cherryk.kr`에서 제공한다. 영구 Preview
   프런트엔드, 백엔드 또는 데이터베이스를 운영하지 않으며 Preview를 Production으로
   라우팅하지 않는다. 호스팅된 통합 환경의 위험이 있는 경우 임시 백엔드와 격리된
-  Neon 데이터베이스를 갖춘 정확한 SHA의 Vercel Preview를 필요 시 생성하고, 검증 후
+  격리된 PostgreSQL 데이터베이스를 갖춘 정확한 SHA의 Vercel Preview를 필요 시 생성하고, 검증 후
   모든 Preview 런타임 리소스를 제거한다.
 - CherryK의 개발자가 한 명인 동안 로컬, `preview`, `main`을 사용한다. 리뷰를 마친
   작업을 `preview`에 푸시하고 전체 CI 결과를 일반 게이트로 사용한다. 인증/세션,
@@ -27,9 +28,9 @@
   브랜치 CI 결과를 재사용하고, SHA와 일치하는 성공 결과가 없거나 조회에 실패하거나
   수동 실행인 경우 전체 게이트를 실행한다. Vercel Git 자동 배포는 Production
   전용이며, 필요 시 게이트가 적용되는 경우 비Production 배포를 수동으로 생성한다.
-- 안정된 `/api/v1` 계약을 보존하고 이중 쓰기를 사용하지 않는다. 측정된 필요와 새
-  결정 없이 Redis, JWT, WebFlux, 코루틴, 마이크로서비스 또는 자체 호스팅 PostgreSQL을
-  추가하지 않는다.
+- 안정된 `/api/v1` 계약을 보존하고 이중 쓰기를 사용하지 않는다. Neon compute quota로
+  Production 연결이 차단된 측정된 필요에 따라 자체 호스팅 PostgreSQL을 선택했다. Redis,
+  JWT, WebFlux, 코루틴, 마이크로서비스는 측정된 필요와 새 결정 없이는 추가하지 않는다.
 
 ## 인증과 영속성
 
@@ -44,14 +45,11 @@
 - 스키마 변경은 Flyway만 담당하고 Hibernate는 `ddl-auto=validate`로 유지한다.
   애그리게이트 쓰기와 단순 CRUD에는 JPA를, 조회가 많은 읽기에는 SQL 프로젝션을
   사용한다. BIGINT 식별 키는 내부에만 두고 JSON에는 불투명 문자열 ID를 사용한다.
-- 더 최신 Neon GA PostgreSQL 메이저 버전은 의도적인 호환성·데이터 마이그레이션
-  롤아웃을 통해서만 도입한다. 로컬과 통합 테스트에서 대상 메이저 버전을 먼저 검증할
-  수 있지만 Docker 이미지를 바꿨다고 Production이 업그레이드된 것은 아니다.
-  Production에는 격리된 대상, 복원, 동등성 검사, 상태 게이트가 적용된 전환이 필요하다.
-- 기존 Neon 데이터베이스는 동등성 검사 후에만 baseline을 설정하며 Production 자동
-  baselining을 활성화하지 않는다.
-- `neon_auth`는 Neon이 관리하는 상태로 취급한다. 인증은 Spring OIDC가 담당하므로
-  CherryK 백업에서 제외한다.
+- PostgreSQL 패치와 메이저 버전은 의도적인 호환성·데이터 마이그레이션 롤아웃으로만
+  올린다. `postgres:18.6`을 현재 Production 기준으로 고정하며, 새 버전에는 격리된
+  대상, 복원, 동등성 검사, 상태 게이트를 적용한다.
+- Flyway 자동 baselining을 Production에서 활성화하지 않는다. Neon 원본에서 가져온
+  cutover dump에는 Neon 관리 `neon_auth`를 포함하지 않으며 Spring OIDC가 인증을 담당한다.
 - 만료된 외부 리소스를 삭제하기 전에 읽기 전용으로 정확한 식별자를 확인한다. 현재
   배포의 상태 검사와 공개 smoke 검사가 끝날 때까지 이전 이미지와 Compose 백업을
   보존하며, 자동 롤백 메커니즘을 제거하지 않는다.
@@ -73,12 +71,11 @@
 - 인증된 Spring 세션은 마지막 활동 후 90일 동안 보존한다. 셀프서비스 계정 관리가
   제공되기 전까지는 공개된 지원 주소로 전송된 검증된 삭제 요청이 완료될 때까지 계정과
   학습 기록을 보존한다. 유효한 요청은 30일 이내에 완료하고 활성 사용자 연결 기록을
-  함께 삭제하며, 삭제된 데이터를 포함한 Neon 복원 이력이나 백업은 일반 복원 없이
-  30일 이내에 만료되도록 한다.
+  함께 삭제하며, OCI의 root 전용 논리 백업은 일반 복원 없이 7일 이내에 만료되도록 한다.
 - 공개 개인정보 처리방침과 이용약관 페이지는 배포된 공급자, 리전, 분석, 보존 및 삭제
   동작과 일치해야 한다. OCI 춘천 런타임 처리를 공개하고 Nginx/OCI 요청 메타데이터의
   보존 기간을 30일로 제한한다. 국내 CLOVA OCR과 별도로 OpenAI 미국 처리, Vercel
-  익명 분석, AWS 싱가포르의 Neon 저장을 공개한다.
+  익명 분석, OCI 춘천의 PostgreSQL 저장을 공개한다.
 - 공급자 호출 전에 사용량을 원자적으로 예약하고 성공한 사용량은 확정하며 실패한 예약은
   해제한다. 텍스트/OCR은 요청 단위로, 향후 음성은 음성 길이 단위로 측정한다.
 - 향후 음성 전사가 편집 가능한 교정 초안을 만들 수 있지만 발음 평가는 별도의

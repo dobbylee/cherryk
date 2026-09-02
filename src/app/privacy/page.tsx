@@ -65,9 +65,12 @@ export default function PrivacyPage() {
             <dt>Oracle Corporation · Chuncheon, South Korea</dt>
             <dd>
               <strong>Purpose and data:</strong> Oracle Cloud Infrastructure
-              hosts CherryK&apos;s Nginx and Spring backend. Each authentication
-              or API request can include account claims, session cookies, IP and
-              request metadata, OCR images, correction text, or quiz requests.
+              hosts CherryK&apos;s Nginx, Spring backend, and PostgreSQL
+              database. Each authentication or API request can include account
+              claims, session cookies, IP and request metadata, OCR images,
+              correction text, or quiz requests. PostgreSQL stores account,
+              identity, session, correction, quiz, learning-progress, and usage
+              records.
             </dd>
             <dd>
               <strong>Timing and method:</strong> each authentication and API
@@ -77,8 +80,9 @@ export default function PrivacyPage() {
               <strong>Retention:</strong> request content is processed in memory
               and is not included in ordinary logs. Nginx and OCI security
               access metadata such as IP, path, time, status, and user agent is
-              retained for no more than 30 days. Account and learning records
-              are stored separately on Neon as described below.
+              retained for no more than 30 days. Root-only PostgreSQL logical
+              backups are retained on OCI for no more than 7 days and are not
+              used for ordinary processing.
             </dd>
             <dd>
               <strong>Contact:</strong> Oracle Korea privacy representative,
@@ -172,31 +176,6 @@ export default function PrivacyPage() {
               <a href="mailto:privacy@vercel.com">privacy@vercel.com</a>
             </dd>
           </div>
-
-          <div>
-            <dt>Neon Inc. · AWS Singapore</dt>
-            <dd>
-              <strong>Purpose and data:</strong> PostgreSQL storage for account,
-              identity, session, correction, quiz, learning-progress, and usage
-              records.
-            </dd>
-            <dd>
-              <strong>Timing and method:</strong> continuously while the account
-              service is used, through an encrypted database connection from the
-              CherryK backend.
-            </dd>
-            <dd>
-              <strong>Retention:</strong> active records remain until a verified
-              account-deletion request is completed. Rolling restore history or
-              backups containing deleted records expire within 30 days and are
-              not used for ordinary processing.
-            </dd>
-            <dd>
-              <strong>Contact:</strong>
-              {` `}
-              <a href="mailto:privacy@neon.tech">privacy@neon.tech</a>
-            </dd>
-          </div>
         </dl>
       </PolicySection>
 
@@ -216,7 +195,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Provider and backup data:</strong> for the periods stated in
-            the overseas-processing section above.
+            this notice.
           </li>
         </ul>
         <p>
@@ -231,9 +210,9 @@ export default function PrivacyPage() {
           Send a request to the privacy contact above. After verifying control
           of the account, CherryK completes a valid request within 30 days by
           permanently deleting the account and linked learning records from the
-          active database. Provider-side records and Neon restore history then
-          expire within the periods stated above. Backup data is isolated from
-          ordinary use and is not restored except for disaster recovery or a
+          active database. Provider-side records expire within the periods
+          stated above. OCI backup data is isolated from ordinary use, expires
+          within 7 days, and is not restored except for disaster recovery or a
           legal requirement.
         </p>
       </PolicySection>
@@ -258,8 +237,9 @@ export default function PrivacyPage() {
             learning features.
           </li>
           <li>
-            Neon storage is required for signed-in accounts and saved learning
-            records; refusing it means CherryK cannot provide those features.
+            OCI PostgreSQL storage is required for signed-in accounts and saved
+            learning records; refusing it means CherryK cannot provide those
+            features.
           </li>
         </ul>
       </PolicySection>

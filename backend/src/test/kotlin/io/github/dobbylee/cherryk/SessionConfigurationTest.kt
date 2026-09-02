@@ -1,6 +1,7 @@
 package io.github.dobbylee.cherryk
 
 import org.junit.jupiter.api.Test
+import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionProperties
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer
@@ -25,6 +26,16 @@ class SessionConfigurationTest {
     }
 
     @TestConfiguration(proxyBeanMethods = false)
-    @EnableConfigurationProperties(JdbcSessionProperties::class)
+    @EnableConfigurationProperties(JdbcSessionProperties::class, DataSourceProperties::class)
     private class SessionPropertiesConfiguration
+
+    @Test
+    fun `default datasource uses the local Compose port`() {
+        contextRunner.run { context ->
+            assertEquals(
+                "jdbc:postgresql://localhost:5434/cherryk",
+                context.getBean(DataSourceProperties::class.java).url,
+            )
+        }
+    }
 }
