@@ -102,7 +102,6 @@ function GuestHome() {
             title="Scan & review"
           />
           <CapabilityCard
-            badge="Guest mode planned"
             description="Practice approved grammar and vocabulary questions based on what you are learning."
             icon={<QuizIcon className="h-5 w-5" />}
             step="03"
@@ -307,13 +306,11 @@ function FeatureCard({
 }
 
 function CapabilityCard({
-  badge,
   description,
   icon,
   step,
   title,
 }: {
-  badge?: string;
   description: string;
   icon: React.ReactNode;
   step: string;
@@ -333,11 +330,6 @@ function CapabilityCard({
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
         {description}
       </p>
-      {badge ? (
-        <span className="mt-auto w-fit rounded-full bg-[var(--warm-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--warm)]">
-          {badge}
-        </span>
-      ) : null}
     </article>
   );
 }
