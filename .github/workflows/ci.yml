@@ -76,15 +76,5 @@ jobs:
             backend/gradle/wrapper/gradle-wrapper.properties
       - run: pnpm install --frozen-lockfile
         if: steps.preview-verification.outputs.reuse != 'true'
-      - run: pnpm test
-        if: steps.preview-verification.outputs.reuse != 'true'
-      - run: pnpm build
-        if: steps.preview-verification.outputs.reuse != 'true'
-        env:
-          # This job validates the build artifact without hosting it. Vercel
-          # supplies the real origin only for an explicitly deployed environment.
-          SPRING_BACKEND_ORIGIN: http://127.0.0.1:8080
-      - run: pnpm build:backend
-        if: steps.preview-verification.outputs.reuse != 'true'
-      - run: pnpm compose:check
+      - run: pnpm verify
         if: steps.preview-verification.outputs.reuse != 'true'

@@ -3,7 +3,7 @@ description = "Implementation reviewer focused on correctness, regressions, priv
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
-Review only the changed files listed by the parent agent.
-Read AGENTS.md, local/plan.md, and agent-harness/prompts/implementation-review.md, then follow that review prompt exactly.
-Do not edit files or request unrelated cleanup.
+Follow agent-harness/prompts/implementation-review.md.
+Report findings only on the supplied change scope; read related unchanged code and decisions when needed as evidence.
+Do not edit files, mutate external systems, spawn agents, or rerun full build/test gates.
 """

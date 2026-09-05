@@ -15,11 +15,11 @@
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:frontend && pnpm test:backend && pnpm test:ops",
     "test:frontend": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit",
-    "test:backend": "./backend/gradlew -p backend test --rerun-tasks",
-    "test:ops": "bash ops/deploy-backend.test.sh && bash ops/deploy-backend-from-ghcr.test.sh && bash ops/backup-postgres.test.sh",
+    "test:backend": "docker info > /dev/null && ./backend/gradlew -p backend test --rerun-tasks",
+    "test:ops": "node --test ops/verification.test.mjs && bash ops/deploy-backend.test.sh && bash ops/deploy-backend-from-ghcr.test.sh && bash ops/backup-postgres.test.sh",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "verify": "pnpm test && pnpm build && pnpm build:backend && pnpm compose:check"
+    "verify": "pnpm test && SPRING_BACKEND_ORIGIN=http://127.0.0.1:8080 pnpm build && pnpm build:backend && pnpm compose:check"
   },
   "dependencies": {
     "@vercel/analytics": "2.0.1",

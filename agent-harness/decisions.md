@@ -5,20 +5,26 @@
 
 ## 아키텍처와 배포
 
-- Next.js 프런트엔드는 Vercel에 호스팅하고 백엔드 동작과 Production PostgreSQL은
-  OCI 춘천에서 실행한다. PostgreSQL은 Docker Official Image `postgres:18.6`을
-  고정하고, Spring과 같은 내부 Compose 네트워크의 전용 named volume에서만 사용하며
+- Next.js는 프런트엔드만 담당하며 Vercel에 호스팅하고, API·인증·AI·영속성과
+  Production PostgreSQL은 Kotlin/Spring과 함께 OCI 춘천에서 실행한다.
+  PostgreSQL은 Spring과 같은 내부 Compose 네트워크의 전용 named volume에서만 사용하며
   공개 포트를 열지 않는다.
+- 공개 계약은 `src/lib/contracts`, 프런트엔드 API 도우미는 `src/lib/api`에 둔다.
+  Spring 컨트롤러는 얇게 유지하고 트랜잭션은 애플리케이션 서비스가 담당한다.
+  JPA 엔티티를 API 응답으로 직렬화하지 않는다. 기능을 나눌 때도 이 경계를 보존하며,
+  폴더 이동만으로 새 프레임워크나 추상 계층을 도입하지 않는다.
 - Production Spring은 Nginx 뒤의 `api.cherryk.kr`에서 제공한다. 영구 Preview
   프런트엔드, 백엔드 또는 데이터베이스를 운영하지 않으며 Preview를 Production으로
   라우팅하지 않는다. 호스팅된 통합 환경의 위험이 있는 경우 임시 백엔드와 격리된
-  격리된 PostgreSQL 데이터베이스를 갖춘 정확한 SHA의 Vercel Preview를 필요 시 생성하고, 검증 후
+  PostgreSQL 데이터베이스를 갖춘 정확한 SHA의 Vercel Preview를 필요 시 생성하고, 검증 후
   모든 Preview 런타임 리소스를 제거한다.
 - CherryK의 개발자가 한 명인 동안 로컬, `preview`, `main`을 사용한다. 리뷰를 마친
   작업을 `preview`에 푸시하고 전체 CI 결과를 일반 게이트로 사용한다. 인증/세션,
   데이터베이스/데이터 마이그레이션, API 라우팅, 배포 인프라 변경에만 필요 시 전체
   스택 Preview를 요구하며, 그 밖의 변경은 로컬 검증과 성공한 CI를 거쳐 진행할 수
-  있다. 같은 성공 커밋을 `main`으로 fast-forward한다. 현 단계에서는 기능
+  있다. 같은 성공 커밋을 `main`으로 fast-forward하고 승인된 Production 전달을 위해
+  `main`을 푸시한다. 프런트엔드 전용 또는 읽기 전용 배포를 전체 스택 검증으로
+  취급하지 않으며 Vercel Promote to Production을 사용하지 않는다. 현 단계에서는 기능
   브랜치나 pull request를 요구하지 않는다.
 - Vercel은 Git 기반으로 유지한다. `main` 검증이 성공하면 GitHub가 변경 불가능한
   ARM64 이미지를 GHCR에 게시하고, Production 전용 OCI runner는 root 소유이며
@@ -37,17 +43,17 @@
 - Spring Security, Google OIDC, PostgreSQL 기반 Spring Session과
   `user_identities`의 검증된 발급자/주체 식별자를 사용하며, 이메일만으로 사용자를
   병합하지 않는다.
-- 보호 절차를 거친 Flyway V9가 정확한 식별자 검사 후 기존 Better Auth 테이블을
-  제거했다. 깨끗한 데이터베이스가 전환 과정을 재현하고 기존 데이터베이스가
-  체크섬을 검증할 수 있도록 모든 과거 마이그레이션을 보존한다.
+- 깨끗한 데이터베이스가 전환 과정을 재현하고 기존 데이터베이스가 체크섬을 검증할
+  수 있도록 모든 과거 Flyway 마이그레이션을 변경 없이 보존한다.
 - 역할 관리의 필요성이 입증될 때까지 관리자 권한은 검증된 Google 식별자와
   `ADMIN_EMAILS`의 조합으로 유지한다.
 - 스키마 변경은 Flyway만 담당하고 Hibernate는 `ddl-auto=validate`로 유지한다.
   애그리게이트 쓰기와 단순 CRUD에는 JPA를, 조회가 많은 읽기에는 SQL 프로젝션을
   사용한다. BIGINT 식별 키는 내부에만 두고 JSON에는 불투명 문자열 ID를 사용한다.
-- PostgreSQL 패치와 메이저 버전은 의도적인 호환성·데이터 마이그레이션 롤아웃으로만
-  올린다. `postgres:18.6`을 현재 Production 기준으로 고정하며, 새 버전에는 격리된
-  대상, 복원, 동등성 검사, 상태 게이트를 적용한다.
+- PostgreSQL 이미지는 버전을 고정하며 패치와 메이저 버전 모두 의도적인 호환성·데이터
+  마이그레이션 롤아웃으로만 올린다. 새 버전에는 격리된 대상, 복원, 동등성 검사,
+  상태 게이트를 적용한다. 실제 버전과 롤아웃 절차는 `backend/README.md`와 배포 설정에서
+  확인한다.
 - Flyway 자동 baselining을 Production에서 활성화하지 않는다. Neon 원본에서 가져온
   cutover dump에는 Neon 관리 `neon_auth`를 포함하지 않으며 Spring OIDC가 인증을 담당한다.
 - 만료된 외부 리소스를 삭제하기 전에 읽기 전용으로 정확한 식별자를 확인한다. 현재
@@ -125,3 +131,12 @@
 
 - 보류된 인프라, 인증, OCR, 음성 선택은 측정된 필요와 지속해서 적용할 새 결정이 있을
   때만 재검토한다.
+
+## 에이전트 구성
+
+- 프로젝트는 모델 ID를 고정하지 않는다. 실제 선택은 현재 세션과 사용자 설정에서
+  확인한다. `reviewer`의 추론 수준은 `.codex/agents/reviewer.toml`이 소유하며,
+  모델 업데이트만을 이유로 컨텍스트 크기·추론 수준·동시 실행 수를 늘리지 않는다.
+- 리뷰어에게는 목적·파일·관련 근거만 전달하며 검증 결과는 메인 에이전트가 책임진다.
+  리뷰어는 파일 수정이나 외부 변경을 하지 않는다. 읽기 전용 TOML 설정만으로 모든
+  도구 권한이 제한된다고 가정하지 않고 실제 세션 권한을 확인한다.
