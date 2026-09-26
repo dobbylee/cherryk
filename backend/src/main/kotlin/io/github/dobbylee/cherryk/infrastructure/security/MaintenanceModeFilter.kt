@@ -1,6 +1,6 @@
 package io.github.dobbylee.cherryk.infrastructure.security
 
-import io.github.dobbylee.cherryk.presentation.apiError
+import io.github.dobbylee.cherryk.platform.web.apiError
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

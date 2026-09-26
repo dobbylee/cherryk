@@ -2,8 +2,8 @@ package io.github.dobbylee.cherryk.presentation.ocr
 
 import io.github.dobbylee.cherryk.application.ocr.OcrApplicationException
 import io.github.dobbylee.cherryk.application.usage.UsageLimitExceededException
-import io.github.dobbylee.cherryk.presentation.ApiErrorResponse
-import io.github.dobbylee.cherryk.presentation.apiError
+import io.github.dobbylee.cherryk.platform.web.ApiErrorResponse
+import io.github.dobbylee.cherryk.platform.web.apiError
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler

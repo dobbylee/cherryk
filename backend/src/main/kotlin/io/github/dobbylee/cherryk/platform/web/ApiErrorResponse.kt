@@ -1,4 +1,4 @@
-package io.github.dobbylee.cherryk.presentation
+package io.github.dobbylee.cherryk.platform.web
 
 data class ApiErrorResponse(
     val error: ApiErrorBody,

@@ -1,7 +1,7 @@
 package io.github.dobbylee.cherryk.infrastructure.security
 
 import io.github.dobbylee.cherryk.application.auth.OidcIdentityResolver
-import io.github.dobbylee.cherryk.presentation.apiError
+import io.github.dobbylee.cherryk.platform.web.apiError
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean

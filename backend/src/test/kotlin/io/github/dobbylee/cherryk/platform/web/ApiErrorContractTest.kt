@@ -1,4 +1,4 @@
-package io.github.dobbylee.cherryk.presentation
+package io.github.dobbylee.cherryk.platform.web
 
 import org.junit.jupiter.api.Test
 import org.springframework.core.io.ClassPathResource

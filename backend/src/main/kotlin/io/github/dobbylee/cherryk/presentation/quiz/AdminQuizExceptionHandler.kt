@@ -1,8 +1,8 @@
 package io.github.dobbylee.cherryk.presentation.quiz
 
 import io.github.dobbylee.cherryk.application.quiz.AdminQuizApplicationException
-import io.github.dobbylee.cherryk.presentation.ApiErrorResponse
-import io.github.dobbylee.cherryk.presentation.apiError
+import io.github.dobbylee.cherryk.platform.web.ApiErrorResponse
+import io.github.dobbylee.cherryk.platform.web.apiError
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
