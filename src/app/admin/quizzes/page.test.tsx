@@ -9,6 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import fixtures from "@/lib/contracts/fixtures/api-v1.json";
 import AdminQuizzesPage from "./page";
 
 const mocks = vi.hoisted(() => ({
@@ -64,5 +65,30 @@ describe("AdminQuizzesPage generation transitions", () => {
       expect(mocks.generateAdminQuizDrafts).toHaveBeenCalledTimes(2),
     );
     expect(await screen.findByText("No drafts were generated.")).toBeTruthy();
+  });
+
+  it("approves a reviewed draft and removes it from the queue", async () => {
+    mocks.generateAdminQuizDrafts.mockResolvedValue(
+      fixtures.adminQuizDraftResponse,
+    );
+    mocks.updateAdminQuiz.mockResolvedValue(fixtures.adminQuizUpdateResponse);
+    render(<AdminQuizzesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    expect(
+      (
+        await screen.findAllByText(
+          "Choose the particle for where an action happens.",
+        )
+      ).length,
+    ).toBe(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    expect(await screen.findByText("Quiz approved.")).toBeTruthy();
+    expect(mocks.updateAdminQuiz).toHaveBeenCalledWith(
+      "3001",
+      expect.objectContaining({ status: "approved" }),
+    );
+    expect(screen.getByText("No generated drafts")).toBeTruthy();
   });
 });

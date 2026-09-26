@@ -1,299 +1,52 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
 import Link from "next/link";
-import {
-  buildAdminQuizUpdateRequest,
-  toEditableAdminQuizDraft,
-  type EditableAdminQuizChoice,
-  type EditableAdminQuizDraft,
-} from "@/lib/adminQuizReview";
-import {
-  deleteAdminQuizDraft,
-  generateAdminQuizDrafts,
-  getAdminQuizTagCounts,
-  updateAdminQuiz,
-} from "@/lib/api/adminQuizzes";
 import { UserLevels, type UserLevel } from "@/lib/contracts/common";
 import { GrammarTags, type GrammarTag } from "@/lib/contracts/grammar-tags";
-import { type AdminQuizTagCount, type QuizType } from "@/lib/contracts/quiz";
-import { invalidateLatestRequest, runLatestRequest } from "@/lib/latestRequest";
-
-type FormStatus = "idle" | "loading";
-type ReviewAction = "save" | "approve" | "reject" | null;
-type MessageTone = "neutral" | "save" | "approve" | "reject" | "error";
+import type { QuizType } from "@/lib/contracts/quiz";
+import { QuizReviewPreview } from "./_components/quiz-review-preview";
+import {
+  useAdminQuizReview,
+  type MessageTone,
+} from "./_hooks/use-admin-quiz-review";
+import { isValidDraftCount } from "./_lib/admin-quiz-count";
+import { formatLabel } from "./_lib/admin-quiz-label";
 
 export default function AdminQuizzesPage() {
-  const [quizType, setQuizType] = useState<QuizType>("grammar");
-  const [tag, setTag] = useState<GrammarTag>("particle_object");
-  const [difficulty, setDifficulty] = useState<UserLevel>("beginner");
-  const [count, setCount] = useState(3);
-  const [instruction, setInstruction] = useState("");
-  const [drafts, setDrafts] = useState<EditableAdminQuizDraft[]>([]);
-  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
-  const [draftStatus, setDraftStatus] = useState<FormStatus>("idle");
-  const [reviewAction, setReviewAction] = useState<ReviewAction>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageTone, setMessageTone] = useState<MessageTone>("neutral");
-  const [tagCounts, setTagCounts] = useState<AdminQuizTagCount[]>([]);
-  const [tagCountStatus, setTagCountStatus] = useState<FormStatus>("loading");
-  const [tagCountError, setTagCountError] = useState<string | null>(null);
-  const tagCountRequestTracker = useRef(0);
-
-  const activeDraft = useMemo(
-    () => drafts.find((draft) => draft.id === activeDraftId) ?? null,
-    [activeDraftId, drafts],
-  );
-
-  const refreshTagCounts = useCallback(async () => {
-    setTagCountStatus("loading");
-    setTagCountError(null);
-    const result = await runLatestRequest(tagCountRequestTracker, () =>
-      getAdminQuizTagCounts(),
-    );
-    if (result.status === "success") {
-      setTagCounts(result.value.tagCounts);
-      setTagCountStatus("idle");
-    } else if (result.status === "error") {
-      setTagCountError(
-        result.error instanceof Error
-          ? result.error.message
-          : "Quiz counts could not be loaded.",
-      );
-      setTagCountStatus("idle");
-    }
-  }, []);
-
-  useEffect(() => {
-    const requestTracker = tagCountRequestTracker;
-    void runLatestRequest(requestTracker, getAdminQuizTagCounts).then(
-      (result) => {
-        if (result.status === "success") {
-          setTagCounts(result.value.tagCounts);
-          setTagCountStatus("idle");
-        } else if (result.status === "error") {
-          setTagCountError(
-            result.error instanceof Error
-              ? result.error.message
-              : "Quiz counts could not be loaded.",
-          );
-          setTagCountStatus("idle");
-        }
-      },
-    );
-    return () => invalidateLatestRequest(requestTracker);
-  }, []);
-
-  async function handleGenerateDrafts(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (
-      !isValidDraftCount(count) ||
-      draftStatus === "loading" ||
-      reviewAction !== null
-    ) {
-      return;
-    }
-
-    setMessage(null);
-    setDraftStatus("loading");
-
-    try {
-      const trimmedInstruction = instruction.trim();
-      const response = await generateAdminQuizDrafts({
-        quizType,
-        tag: quizType === "vocabulary" ? "word_choice" : tag,
-        difficulty,
-        count,
-        ...(trimmedInstruction ? { instruction: trimmedInstruction } : {}),
-      });
-      const generatedDrafts = response.drafts.map(toEditableAdminQuizDraft);
-      setDrafts(generatedDrafts);
-      setActiveDraftId(generatedDrafts[0]?.id ?? null);
-      setIsEditing(false);
-      await refreshTagCounts();
-      showMessage(
-        generatedDrafts.length
-          ? "Drafts generated. Review before approval."
-          : "No drafts were generated.",
-        "neutral",
-      );
-    } catch (error) {
-      showMessage(
-        error instanceof Error ? error.message : "Draft generation failed.",
-        "error",
-      );
-    } finally {
-      setDraftStatus("idle");
-    }
-  }
-
-  async function handleSaveDraft(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!isEditing || !activeDraft || reviewAction !== null) {
-      return;
-    }
-
-    const update = buildAdminQuizUpdateRequest(activeDraft);
-    if (!update) {
-      showMessage(
-        "Fill every quiz field and select exactly one answer.",
-        "error",
-      );
-      return;
-    }
-
-    setMessage(null);
-    setReviewAction("save");
-
-    try {
-      await updateAdminQuiz(activeDraft.id, update);
-      setIsEditing(false);
-      await refreshTagCounts();
-      showMessage("Changes saved.", "save");
-    } catch (error) {
-      showMessage(
-        error instanceof Error ? error.message : "Quiz update failed.",
-        "error",
-      );
-    } finally {
-      setReviewAction(null);
-    }
-  }
-
-  async function handleApproveDraft() {
-    if (!activeDraft || reviewAction !== null) {
-      return;
-    }
-
-    const update = buildAdminQuizUpdateRequest(activeDraft);
-    if (!update) {
-      showMessage(
-        "Fill every quiz field and select exactly one answer.",
-        "error",
-      );
-      return;
-    }
-
-    setMessage(null);
-    setReviewAction("approve");
-
-    try {
-      await updateAdminQuiz(activeDraft.id, {
-        ...update,
-        status: "approved",
-      });
-      removeDraftFromQueue(activeDraft.id);
-      await refreshTagCounts();
-      showMessage("Quiz approved.", "approve");
-    } catch (error) {
-      showMessage(
-        error instanceof Error ? error.message : "Approval failed.",
-        "error",
-      );
-    } finally {
-      setReviewAction(null);
-    }
-  }
-
-  async function handleRejectDraft() {
-    if (!activeDraft || reviewAction !== null) {
-      return;
-    }
-
-    setMessage(null);
-    setReviewAction("reject");
-
-    try {
-      await deleteAdminQuizDraft(activeDraft.id);
-      removeDraftFromQueue(activeDraft.id);
-      await refreshTagCounts();
-      showMessage("Draft rejected and deleted.", "reject");
-    } catch (error) {
-      showMessage(
-        error instanceof Error ? error.message : "Rejection failed.",
-        "error",
-      );
-    } finally {
-      setReviewAction(null);
-    }
-  }
-
-  function removeDraftFromQueue(draftId: string) {
-    const draftIndex = drafts.findIndex((draft) => draft.id === draftId);
-    const remainingDrafts = drafts.filter((draft) => draft.id !== draftId);
-    setDrafts(remainingDrafts);
-    setIsEditing(false);
-    setActiveDraftId(
-      remainingDrafts[draftIndex]?.id ??
-        remainingDrafts[draftIndex - 1]?.id ??
-        null,
-    );
-  }
-
-  function showMessage(text: string, tone: MessageTone) {
-    setMessage(text);
-    setMessageTone(tone);
-  }
-
-  function updateDraft(
-    draftId: string,
-    updater: (draft: EditableAdminQuizDraft) => EditableAdminQuizDraft,
-  ) {
-    setDrafts((currentDrafts) =>
-      currentDrafts.map((draft) =>
-        draft.id === draftId ? updater(draft) : draft,
-      ),
-    );
-  }
-
-  function updateActiveDraft(input: Partial<EditableAdminQuizDraft>) {
-    if (!activeDraft) {
-      return;
-    }
-
-    updateDraft(activeDraft.id, (draft) => ({
-      ...draft,
-      ...input,
-    }));
-  }
-
-  function updateActiveChoice(
-    index: number,
-    input: Partial<EditableAdminQuizChoice>,
-  ) {
-    if (!activeDraft) {
-      return;
-    }
-
-    updateDraft(activeDraft.id, (draft) => ({
-      ...draft,
-      choices: draft.choices.map((choice, choiceIndex) =>
-        choiceIndex === index ? { ...choice, ...input } : choice,
-      ),
-    }));
-  }
-
-  function selectCorrectChoice(index: number) {
-    if (!activeDraft) {
-      return;
-    }
-
-    updateDraft(activeDraft.id, (draft) => ({
-      ...draft,
-      choices: draft.choices.map((choice, choiceIndex) => ({
-        ...choice,
-        isCorrect: choiceIndex === index,
-      })),
-    }));
-  }
+  const {
+    quizType,
+    setQuizType,
+    tag,
+    setTag,
+    difficulty,
+    setDifficulty,
+    count,
+    setCount,
+    instruction,
+    setInstruction,
+    drafts,
+    activeDraftId,
+    setActiveDraftId,
+    draftStatus,
+    reviewAction,
+    isEditing,
+    setIsEditing,
+    message,
+    setMessage,
+    messageTone,
+    tagCounts,
+    tagCountStatus,
+    tagCountError,
+    activeDraft,
+    refreshTagCounts,
+    handleGenerateDrafts,
+    handleSaveDraft,
+    handleApproveDraft,
+    handleRejectDraft,
+    updateActiveDraft,
+    updateActiveChoice,
+    selectCorrectChoice,
+  } = useAdminQuizReview();
 
   return (
     <main className="app-shell">
@@ -762,67 +515,6 @@ function Field({
   );
 }
 
-function QuizReviewPreview({ draft }: { draft: EditableAdminQuizDraft }) {
-  return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap gap-2 text-xs font-semibold text-[var(--muted)]">
-        <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1">
-          {formatLabel(draft.quizType)}
-        </span>
-        <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1">
-          {formatLabel(draft.tag)}
-        </span>
-        <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1">
-          {formatLabel(draft.difficulty)}
-        </span>
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Question
-        </p>
-        <p className="mt-1 text-base font-semibold">{draft.questionEn}</p>
-      </div>
-
-      {draft.quizType === "grammar" ? (
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-4 text-lg leading-8">
-          {draft.sentenceKo}
-        </div>
-      ) : null}
-
-      <div className="grid gap-2">
-        {draft.choices.map((choice, index) => (
-          <div
-            className={`rounded-xl border px-3 py-2.5 text-sm ${
-              choice.isCorrect
-                ? "border-[var(--success)] bg-[var(--success-bg)] font-semibold text-[var(--success)]"
-                : "border-[var(--line-strong)] bg-white"
-            }`}
-            key={index}
-          >
-            {String.fromCharCode(65 + index)}. {choice.text}
-            {choice.isCorrect ? " · Correct" : ""}
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Explanation
-        </p>
-        <p className="mt-1 text-sm leading-6">{draft.answerExplanationEn}</p>
-      </div>
-    </div>
-  );
-}
-
-function formatLabel(value: string) {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function messageToneClassName(tone: MessageTone) {
   if (tone === "save" || tone === "approve") {
     return "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]";
@@ -833,8 +525,4 @@ function messageToneClassName(tone: MessageTone) {
   }
 
   return "border-[var(--line)] bg-white text-[var(--muted)]";
-}
-
-function isValidDraftCount(count: number) {
-  return Number.isInteger(count) && count >= 1 && count <= 20;
 }
