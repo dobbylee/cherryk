@@ -1,7 +1,9 @@
 package io.github.dobbylee.cherryk.presentation.quiz
 
 import io.github.dobbylee.cherryk.application.quiz.AdminQuizApplicationException
-import io.github.dobbylee.cherryk.application.quiz.AdminQuizApplicationService
+import io.github.dobbylee.cherryk.application.quiz.GenerateQuizDrafts
+import io.github.dobbylee.cherryk.application.quiz.GetQuizInventory
+import io.github.dobbylee.cherryk.application.quiz.ReviewQuizDraft
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -16,7 +18,9 @@ import tools.jackson.databind.JsonNode
 @RestController
 @RequestMapping("/api/v1/admin/quizzes")
 class AdminQuizController(
-    private val service: AdminQuizApplicationService,
+    private val inventory: GetQuizInventory,
+    private val generator: GenerateQuizDrafts,
+    private val review: ReviewQuizDraft,
 ) {
     @GetMapping(
         "/tag-counts",
@@ -25,7 +29,7 @@ class AdminQuizController(
     fun getTagCounts(): AdminQuizTagCountsResponse {
         val counts =
             try {
-                service.getTagCounts()
+                inventory.getTagCounts()
             } catch (exception: RuntimeException) {
                 throw AdminQuizUnavailableException("Quiz counts are unavailable.", exception)
             }
@@ -46,7 +50,7 @@ class AdminQuizController(
                 ?: throw AdminQuizInvalidRequestException("Quiz draft request is invalid.")
         val drafts =
             try {
-                service.generateDrafts(request.toApplicationRequest())
+                generator.generateDrafts(request.toApplicationRequest())
             } catch (exception: AdminQuizApplicationException) {
                 throw exception
             } catch (exception: RuntimeException) {
@@ -74,7 +78,7 @@ class AdminQuizController(
                 ?: throw AdminQuizInvalidRequestException("Quiz update request is invalid.")
         val updated =
             try {
-                service.updateDraft(quizId, request.toApplicationUpdate())
+                review.updateDraft(quizId, request.toApplicationUpdate())
             } catch (exception: AdminQuizApplicationException) {
                 throw exception
             } catch (exception: RuntimeException) {
@@ -95,7 +99,7 @@ class AdminQuizController(
         val quizId = id.toPositiveLongOrNull() ?: throw invalidQuizId()
         val deletedId =
             try {
-                service.rejectDraft(quizId)
+                review.rejectDraft(quizId)
             } catch (exception: AdminQuizApplicationException) {
                 throw exception
             } catch (exception: RuntimeException) {
