@@ -3,6 +3,7 @@ package io.github.dobbylee.cherryk.application.quiz
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizType
 import io.github.dobbylee.cherryk.domain.user.UserLevel
+import io.github.dobbylee.cherryk.learning.api.TopLearningTags
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import kotlin.test.assertEquals
@@ -24,6 +25,7 @@ class QuizRecommendationServiceTest {
         val service =
             QuizRecommendationService(
                 repository = repository,
+                learningTags = TopLearningTags { emptyList() },
                 random = QuizSelectionRandom { randomValues.removeFirst() },
             )
 
@@ -40,7 +42,6 @@ class QuizRecommendationServiceTest {
         val repository =
             FakeQuizReadRepository(
                 quizzes = quizzes,
-                topTags = listOf(GrammarTag.PARTICLE_OBJECT),
                 summaries =
                     listOf(
                         summary(1, 4, 1, lastCorrect = true),
@@ -52,7 +53,12 @@ class QuizRecommendationServiceTest {
                         retiredSummary,
                     ),
             )
-        val service = QuizRecommendationService(repository, QuizSelectionRandom { 0.5 })
+        val service =
+            QuizRecommendationService(
+                repository,
+                TopLearningTags { listOf(GrammarTag.PARTICLE_OBJECT) },
+                QuizSelectionRandom { 0.5 },
+            )
 
         val result = service.recommend(userId = 1, tags = null)
 
@@ -79,7 +85,7 @@ class QuizRecommendationServiceTest {
                 quizzes = listOf(grammar, vocabulary),
                 summaries = listOf(summary(grammar.id), summary(vocabulary.id, correctCount = 1)),
             )
-        val service = QuizRecommendationService(repository, QuizSelectionRandom { 0.5 })
+        val service = QuizRecommendationService(repository, TopLearningTags { emptyList() }, QuizSelectionRandom { 0.5 })
 
         val result =
             service.recommend(
@@ -117,7 +123,7 @@ class QuizRecommendationServiceTest {
                         summary(3, attemptCount = 4, correctCount = 3),
                     ),
             )
-        val service = QuizRecommendationService(repository, QuizSelectionRandom { 0.5 })
+        val service = QuizRecommendationService(repository, TopLearningTags { emptyList() }, QuizSelectionRandom { 0.5 })
 
         val filtered = service.recommend(userId = 1, tags = listOf(GrammarTag.PARTICLE_OBJECT))
 
@@ -182,7 +188,6 @@ class QuizRecommendationServiceTest {
 private class FakeQuizReadRepository(
     private val quizzes: List<RecommendedQuiz>,
     private val summaries: List<QuizAttemptSummary>,
-    private val topTags: List<GrammarTag> = emptyList(),
 ) : QuizReadRepository {
     override fun findApprovedQuizzesByTags(
         quizType: QuizType,
@@ -191,5 +196,4 @@ private class FakeQuizReadRepository(
 
     override fun findAttemptSummaries(userId: Long) = summaries
 
-    override fun findTopUserTags(userId: Long) = topTags
 }

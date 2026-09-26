@@ -2,6 +2,7 @@ package io.github.dobbylee.cherryk.application.quiz
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizType
+import io.github.dobbylee.cherryk.learning.api.TopLearningTags
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import kotlin.random.Random
@@ -37,6 +38,7 @@ class DefaultQuizSelectionRandom : QuizSelectionRandom {
 @Service
 class QuizRecommendationService(
     private val repository: QuizReadRepository,
+    private val learningTags: TopLearningTags,
     private val random: QuizSelectionRandom,
 ) {
     fun recommend(
@@ -44,7 +46,7 @@ class QuizRecommendationService(
         tags: List<GrammarTag>?,
         quizType: QuizType = QuizType.GRAMMAR,
     ): QuizRecommendation {
-        val requestedTags = (tags ?: repository.findTopUserTags(userId)).distinct()
+        val requestedTags = (tags ?: learningTags.findTopTags(userId)).distinct()
         val approvedQuizzes = repository.findApprovedQuizzesByTags(quizType, emptySet())
         val availableTagSet = approvedQuizzes.map(RecommendedQuiz::tag).toSet()
         val availableTags = GrammarTag.entries.filter(availableTagSet::contains)

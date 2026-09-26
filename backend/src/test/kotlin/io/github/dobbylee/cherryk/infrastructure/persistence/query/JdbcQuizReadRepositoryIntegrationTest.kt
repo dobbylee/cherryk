@@ -16,7 +16,6 @@ import jakarta.persistence.EntityManager
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
@@ -31,7 +30,6 @@ class JdbcQuizReadRepositoryIntegrationTest(
     @Autowired private val quizRepository: QuizJpaRepository,
     @Autowired private val attemptRepository: QuizAttemptJpaRepository,
     @Autowired private val entityManager: EntityManager,
-    @Autowired private val jdbcClient: JdbcClient,
 ) : PostgreSqlIntegrationTest() {
     @Test
     fun `read model matches the current Drizzle query semantics`() {
@@ -67,9 +65,6 @@ class JdbcQuizReadRepositoryIntegrationTest(
             ),
         )
         entityManager.flush()
-        insertTagStat(user.id, "particle_location", 2, "2026-07-20T00:00:00Z")
-        insertTagStat(user.id, "unknown_future_tag", 10, "2026-07-22T00:00:00Z")
-        insertTagStat(user.id, "particle_object", 2, "2026-07-21T00:00:00Z")
 
         val quizzes = readRepository.findApprovedQuizzesByTags(QuizType.GRAMMAR, emptySet())
         assertEquals(listOf(approved.id), quizzes.map { it.id })
@@ -99,10 +94,6 @@ class JdbcQuizReadRepositoryIntegrationTest(
                 ),
             ),
             readRepository.findAttemptSummaries(user.id),
-        )
-        assertEquals(
-            listOf(GrammarTag.PARTICLE_OBJECT, GrammarTag.PARTICLE_LOCATION),
-            readRepository.findTopUserTags(user.id),
         )
     }
 
@@ -135,22 +126,4 @@ class JdbcQuizReadRepositoryIntegrationTest(
         }
     }
 
-    private fun insertTagStat(
-        userId: Long,
-        tag: String,
-        count: Int,
-        lastSeenAt: String,
-    ) {
-        jdbcClient
-            .sql(
-                """
-                INSERT INTO user_tag_stats (user_id, tag, count, last_seen_at)
-                VALUES (:userId, :tag, :count, :lastSeenAt::timestamptz)
-                """.trimIndent(),
-            ).param("userId", userId)
-            .param("tag", tag)
-            .param("count", count)
-            .param("lastSeenAt", lastSeenAt)
-            .update()
-    }
 }

@@ -115,19 +115,6 @@ class JdbcQuizReadRepository(
             )
         }
 
-    override fun findTopUserTags(userId: Long): List<GrammarTag> =
-        jdbcTemplate
-            .query(
-                """
-                SELECT tag
-                FROM user_tag_stats
-                WHERE user_id = :userId
-                ORDER BY count DESC, last_seen_at DESC
-                """.trimIndent(),
-                mapOf("userId" to userId),
-            ) { resultSet, _ ->
-                resultSet.getString("tag")
-            }.mapNotNull(GrammarTag::fromDatabaseOrNull)
 }
 
 private data class ApprovedQuizRow(

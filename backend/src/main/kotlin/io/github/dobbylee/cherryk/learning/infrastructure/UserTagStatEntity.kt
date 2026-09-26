@@ -1,6 +1,7 @@
-package io.github.dobbylee.cherryk.infrastructure.persistence.jpa
+package io.github.dobbylee.cherryk.learning.infrastructure
 
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.infrastructure.persistence.jpa.GrammarTagConverter
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Embeddable

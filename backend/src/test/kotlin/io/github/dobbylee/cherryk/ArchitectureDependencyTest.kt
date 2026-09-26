@@ -4,6 +4,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import io.github.dobbylee.cherryk.architecture.fixture.domain.DomainWithSpringDependency
+import io.github.dobbylee.cherryk.architecture.fixture.learning.api.LearningApiWithImplementationDependency
 import org.junit.jupiter.api.Test
 import kotlin.test.assertTrue
 
@@ -15,7 +16,7 @@ class ArchitectureDependencyTest {
 
     @Test
     fun `architecture scan includes every existing layer`() {
-        listOf("domain", "application", "infrastructure", "presentation", "platform").forEach { layer ->
+        listOf("domain", "application", "infrastructure", "presentation", "platform", "learning").forEach { layer ->
             assertTrue(productionClasses.any { it.packageName.contains(".$layer.") })
         }
     }
@@ -66,6 +67,17 @@ class ArchitectureDependencyTest {
         val invalidClasses = ClassFileImporter().importClasses(DomainWithSpringDependency::class.java)
         assertTrue(domainRule.evaluate(invalidClasses).hasViolation())
     }
+
+    @Test
+    fun `learning API has no implementation or framework dependency`() {
+        learningApiRule.check(productionClasses)
+    }
+
+    @Test
+    fun `learning API rule rejects an implementation dependency`() {
+        val invalidClasses = ClassFileImporter().importClasses(LearningApiWithImplementationDependency::class.java)
+        assertTrue(learningApiRule.evaluate(invalidClasses).hasViolation())
+    }
 }
 
 private val domainRule =
@@ -80,4 +92,16 @@ private val domainRule =
             "..infrastructure..",
             "..presentation..",
             "..platform..",
+        )
+
+private val learningApiRule =
+    noClasses()
+        .that().resideInAPackage("..learning.api..")
+        .should().dependOnClassesThat()
+        .resideInAnyPackage(
+            "..infrastructure..",
+            "..application..",
+            "..presentation..",
+            "org.springframework..",
+            "jakarta.persistence..",
         )

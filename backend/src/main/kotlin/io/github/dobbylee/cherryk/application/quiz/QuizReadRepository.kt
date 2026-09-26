@@ -13,7 +13,6 @@ interface QuizReadRepository {
 
     fun findAttemptSummaries(userId: Long): List<QuizAttemptSummary>
 
-    fun findTopUserTags(userId: Long): List<GrammarTag>
 }
 
 data class RecommendedQuiz(

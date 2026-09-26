@@ -18,6 +18,9 @@
   실행 검사로 보호한다. 기능 간 API는 실제 소비자가 생길 때만 두며, 공통 HTTP
   오류 표현은 `platform.web`에 둔다. 기존 직렬화 세션 principal의 클래스 경로는
   호환성 확인 없이 이동하지 않는다.
+- `user_tag_stats`는 learning이 소유한다. 교정 기록이 남기는 태그는 learning의
+  기록 포트를 호출해 같은 DB 트랜잭션에서 갱신하고, 퀴즈 추천은 learning의 조회
+  포트에서 태그 값만 받는다. 기능 사이에 JPA entity를 전달하지 않는다.
 - Production Spring은 Nginx 뒤의 `api.cherryk.kr`에서 제공한다. 영구 Preview
   프런트엔드, 백엔드 또는 데이터베이스를 운영하지 않으며 Preview를 Production으로
   라우팅하지 않는다. 호스팅된 통합 환경의 위험이 있는 경우 임시 백엔드와 격리된

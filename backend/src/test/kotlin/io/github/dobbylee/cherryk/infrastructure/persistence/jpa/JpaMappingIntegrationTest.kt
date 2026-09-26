@@ -7,6 +7,8 @@ import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
 import io.github.dobbylee.cherryk.domain.quiz.QuizSource
 import io.github.dobbylee.cherryk.domain.quiz.QuizStatus
 import io.github.dobbylee.cherryk.domain.user.UserLevel
+import io.github.dobbylee.cherryk.learning.infrastructure.UserTagStatEntity
+import io.github.dobbylee.cherryk.learning.infrastructure.UserTagStatId
 import jakarta.persistence.EntityManager
 import jakarta.persistence.EntityManagerFactory
 import org.junit.jupiter.api.Test
