@@ -192,7 +192,10 @@ private class FakeQuizReadRepository(
     override fun findApprovedQuizzesByTags(
         quizType: QuizType,
         tags: Set<GrammarTag>,
-    ) = quizzes.filter { it.quizType == quizType }
+    ): List<RecommendedQuiz> {
+        check(tags.isEmpty()) { "Recommendation selection requires the full approved tag set." }
+        return quizzes.filter { it.quizType == quizType }
+    }
 
     override fun findAttemptSummaries(userId: Long) = summaries
 
