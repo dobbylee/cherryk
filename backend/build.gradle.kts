@@ -80,3 +80,10 @@ sourceSets {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.register<JavaExec>("generateSessionFixture") {
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("io.github.dobbylee.cherryk.SessionFixtureGenerator")
+    args(layout.buildDirectory.file("session-fixtures/security-context-bed7bf3.bin").get().asFile.absolutePath)
+}
