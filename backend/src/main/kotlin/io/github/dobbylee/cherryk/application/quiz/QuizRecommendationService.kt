@@ -39,8 +39,10 @@ class DefaultQuizSelectionRandom : QuizSelectionRandom {
 class QuizRecommendationService(
     private val repository: QuizReadRepository,
     private val learningTags: TopLearningTags,
-    private val random: QuizSelectionRandom,
+    random: QuizSelectionRandom,
 ) {
+    private val policy = QuizPracticePolicy(random)
+
     fun recommend(
         userId: Long,
         tags: List<GrammarTag>?,
@@ -59,69 +61,10 @@ class QuizRecommendationService(
         val summariesByQuizId = candidateAttemptSummaries.associateBy(QuizAttemptSummary::quizId)
 
         return QuizRecommendation(
-            quizzes = selectPracticeSet(candidates, summariesByQuizId),
+            quizzes = policy.select(candidates, summariesByQuizId),
             availableTags = availableTags,
             activeTags = if (matchingQuizzes.isEmpty()) emptyList() else activeTags,
-            progress =
-                QuizProgress(
-                    solvedCount = candidateAttemptSummaries.size,
-                    totalCount = candidates.size,
-                    attemptCount = candidateAttemptSummaries.sumOf(QuizAttemptSummary::attemptCount),
-                    correctCount = candidateAttemptSummaries.sumOf(QuizAttemptSummary::correctCount),
-                ),
+            progress = policy.progress(candidates, candidateAttemptSummaries),
         )
     }
-
-    private fun selectPracticeSet(
-        quizzes: List<RecommendedQuiz>,
-        summariesByQuizId: Map<Long, QuizAttemptSummary>,
-    ): List<QuizPracticeItem> =
-        quizzes
-            .map { quiz ->
-                PracticeCandidate(
-                    quiz = quiz,
-                    summary = summariesByQuizId[quiz.id],
-                    randomOrder = random.nextDouble(),
-                )
-            }.sortedWith(PRACTICE_CANDIDATE_COMPARATOR)
-            .take(PRACTICE_SET_SIZE)
-            .map { candidate ->
-                QuizPracticeItem(
-                    quiz = candidate.quiz,
-                    attemptCount = candidate.summary?.attemptCount ?: 0,
-                )
-            }
 }
-
-private data class PracticeCandidate(
-    val quiz: RecommendedQuiz,
-    val summary: QuizAttemptSummary?,
-    val randomOrder: Double,
-)
-
-private val PRACTICE_CANDIDATE_COMPARATOR =
-    Comparator<PracticeCandidate> { left, right ->
-        when {
-            left.summary == null && right.summary == null ->
-                left.randomOrder.compareTo(right.randomOrder)
-            left.summary == null -> -1
-            right.summary == null -> 1
-            left.summary.lastAttemptCorrect != right.summary.lastAttemptCorrect ->
-                left.summary.lastAttemptCorrect.compareTo(right.summary.lastAttemptCorrect)
-            else -> {
-                val accuracyComparison =
-                    left.summary.correctCount.toLong() * right.summary.attemptCount -
-                        right.summary.correctCount.toLong() * left.summary.attemptCount
-                when {
-                    accuracyComparison != 0L -> accuracyComparison.compareTo(0L)
-                    left.summary.attemptCount != right.summary.attemptCount ->
-                        left.summary.attemptCount.compareTo(right.summary.attemptCount)
-                    left.summary.lastAttemptedAt != right.summary.lastAttemptedAt ->
-                        left.summary.lastAttemptedAt.compareTo(right.summary.lastAttemptedAt)
-                    else -> left.randomOrder.compareTo(right.randomOrder)
-                }
-            }
-        }
-    }
-
-private const val PRACTICE_SET_SIZE = 5
