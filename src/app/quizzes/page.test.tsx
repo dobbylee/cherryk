@@ -66,6 +66,11 @@ function deferred<T>() {
 describe("QuizzesPage request and URL transitions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Element.prototype.scrollIntoView = vi.fn();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({ matches: false })),
+    });
     mocks.searchParams = new URLSearchParams();
     mocks.useAuthSession.mockReturnValue({
       message: null,
@@ -110,5 +115,42 @@ describe("QuizzesPage request and URL transitions", () => {
     expect(mocks.replace).toHaveBeenCalledWith("/quizzes?tags=", {
       scroll: false,
     });
+  });
+
+  it("submits one selected answer and updates progress after feedback", async () => {
+    const pending = deferred<{
+      isCorrect: boolean;
+      correctChoiceId: string;
+      explanationEn: string;
+    }>();
+    mocks.fetchQuizRecommendations.mockResolvedValue(recommendation);
+    mocks.submitQuizAttempt.mockReturnValue(pending.promise);
+    render(<QuizzesPage />);
+    expect(
+      await screen.findByText("Choose the correct particle."),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "를" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check answer" }));
+    expect(screen.getByRole("button", { name: "Checking..." })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(mocks.submitQuizAttempt).toHaveBeenCalledWith({
+      quizId: "1",
+      selectedChoiceId: "12",
+    });
+
+    await act(async () => {
+      pending.resolve({
+        isCorrect: true,
+        correctChoiceId: "12",
+        explanationEn: "Use 를 for the object.",
+      });
+      await pending.promise;
+    });
+    expect(screen.getByText("Use 를 for the object.")).toBeTruthy();
+    expect(screen.getByText("1 / 1")).toBeTruthy();
+    expect(mocks.submitQuizAttempt).toHaveBeenCalledTimes(1);
   });
 });
