@@ -1,3 +1,4 @@
+import "server-only";
 import { normalizeSpringBackendOrigin } from "@/lib/springBackendOrigin";
 
 type SpringAdminAccess = "allowed" | "unauthorized" | "forbidden";
