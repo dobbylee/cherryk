@@ -145,14 +145,11 @@ systemd timer. It validates each archive with `pg_restore --list`, retains it mo
 `600` under `/opt/cherryk/backups/postgres`, and removes archives older than 7 days.
 These are host-local recovery copies, not off-host disaster recovery.
 
-The Neon-to-OCI cutover archive is root-only at
-`/opt/cherryk/migrations/oci-postgresql-20260902T011158Z`. It contains the final
-custom-format dump, protected pre-cutover environment and Compose snapshots, and
-data-equivalence evidence; `neon_auth` was excluded. Do not delete the archive or
-legacy Neon source before **2026-09-09 00:00 KST**, and only do so as a separately
-authorized action after reading the exact targets and confirming current backups,
-the active OCI container state, Flyway, and public health. Legacy Neon credentials
-must never be reintroduced into the active backend environment.
+The retired Neon source, Vercel integration, cutover package, and migration-only
+libpq service file were removed after the retention period and checks of the
+active OCI database, Flyway, current backups, and public health. Keep using the
+OCI database and daily backups; legacy Neon credentials must never be reintroduced
+into the active backend environment.
 
 ## OpenAI correction
 
