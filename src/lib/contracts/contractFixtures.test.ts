@@ -1,3 +1,4 @@
+import { LearningRhythmResponseSchema } from "./learning";
 import { describe, expect, it } from "vitest";
 import fixtures from "./fixtures/api-v1.json";
 import { MeResponseSchema } from "./auth";
@@ -19,6 +20,9 @@ import {
 describe("Spring migration API fixtures", () => {
   it("remain valid examples of every public v1 contract", () => {
     expect(fixtures.version).toBe(3);
+    expect(
+      LearningRhythmResponseSchema.parse(fixtures.learningRhythmResponse),
+    ).toEqual(fixtures.learningRhythmResponse);
     expect(ApiErrorSchema.parse(fixtures.apiError)).toEqual(fixtures.apiError);
     expect(MeResponseSchema.parse(fixtures.meResponse)).toEqual(
       fixtures.meResponse,

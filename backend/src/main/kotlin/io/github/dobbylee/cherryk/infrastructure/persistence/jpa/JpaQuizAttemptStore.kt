@@ -31,7 +31,7 @@ class JpaQuizAttemptStore(
             quiz.choices.singleOrNull { it.correct }
                 ?: throw IllegalStateException("Approved quiz must have exactly one correct choice.")
 
-        attemptRepository.saveAndFlush(
+        val attempt = attemptRepository.saveAndFlush(
             QuizAttemptEntity(
                 userId = input.userId,
                 quizQuestionId = quiz.id,
@@ -42,6 +42,7 @@ class JpaQuizAttemptStore(
         )
         return QuizAttemptResult.Success(
             QuizAttemptSuccess(
+                attemptId = attempt.id,
                 correct = selectedChoice.correct,
                 correctChoiceId = correctChoice.id,
                 explanationEn = quiz.answerExplanationEn,

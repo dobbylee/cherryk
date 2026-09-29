@@ -2,6 +2,8 @@ package io.github.dobbylee.cherryk.application.correction
 
 import io.github.dobbylee.cherryk.domain.correction.CorrectionInputType
 import io.github.dobbylee.cherryk.domain.grammar.GrammarTag
+import io.github.dobbylee.cherryk.learning.api.LearningActivityRecorder
+import io.github.dobbylee.cherryk.learning.api.LearningActivitySource
 import io.github.dobbylee.cherryk.learning.api.CorrectionTagRecorder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,12 +34,14 @@ interface CorrectionPersistence {
 class TransactionalCorrectionPersistence(
     private val store: CorrectionRecordStore,
     private val tagRecorder: CorrectionTagRecorder,
+    private val activityRecorder: LearningActivityRecorder,
 ) : CorrectionPersistence {
     @Transactional
     override fun persist(input: CorrectionPersistenceInput): PersistedCorrection {
         val recommendedTags = input.output.mistakes.map(CorrectionMistake::tag).distinct()
         val correctionId = store.create(input)
         tagRecorder.recordCorrectionTags(input.userId, recommendedTags, input.now)
+        activityRecorder.record(input.userId, LearningActivitySource.CORRECTION, correctionId, input.now)
         return PersistedCorrection(
             correctionId = correctionId,
             recommendedTags = recommendedTags,

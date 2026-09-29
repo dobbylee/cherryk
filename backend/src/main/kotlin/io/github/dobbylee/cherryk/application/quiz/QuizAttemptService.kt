@@ -1,5 +1,7 @@
 package io.github.dobbylee.cherryk.application.quiz
 
+import io.github.dobbylee.cherryk.learning.api.LearningActivityRecorder
+import io.github.dobbylee.cherryk.learning.api.LearningActivitySource
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -12,6 +14,7 @@ data class QuizAttemptInput(
 )
 
 data class QuizAttemptSuccess(
+    val attemptId: Long,
     val correct: Boolean,
     val correctChoiceId: Long,
     val explanationEn: String,
@@ -43,8 +46,15 @@ interface QuizAttemptStore {
 class QuizAttemptService(
     private val store: QuizAttemptStore,
     private val clock: Clock,
+    private val activityRecorder: LearningActivityRecorder,
 ) {
     @Transactional
-    fun submit(input: QuizAttemptInput): QuizAttemptResult =
-        store.record(input, clock.instant())
+    fun submit(input: QuizAttemptInput): QuizAttemptResult {
+        val now = clock.instant()
+        val result = store.record(input, now)
+        if (result is QuizAttemptResult.Success) {
+            activityRecorder.record(input.userId, LearningActivitySource.QUIZ_ATTEMPT, result.value.attemptId, now)
+        }
+        return result
+    }
 }

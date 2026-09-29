@@ -33,7 +33,9 @@ export default function PrivacyPage() {
           <li>
             <strong>Learning content:</strong> Korean text you type or confirm
             after OCR, correction results and explanations, identified learning
-            tags, and quiz answers and progress.
+            tags, quiz answers and progress, and the times of completed learning
+            activities. Your browser’s time zone is used to calculate local
+            learning days and streaks.
           </li>
           <li>
             <strong>Service usage:</strong> daily correction and OCR usage

@@ -21,6 +21,10 @@
 - `user_tag_stats`는 learning이 소유한다. 교정 기록이 남기는 태그는 learning의
   기록 포트를 호출해 같은 DB 트랜잭션에서 갱신하고, 퀴즈 추천은 learning의 조회
   포트에서 태그 값만 받는다. 기능 사이에 JPA entity를 전달하지 않는다.
+- 학습 활동은 learning이 소유하며 원본 교정/퀴즈 시도 저장과 같은 트랜잭션에서
+  기록한다. source unique key와 JDBC `ON CONFLICT`로 중복 기록을 원자적으로
+  방지한다. 기존 실제 기록을 backfill하고 사용자·원본 삭제 시 활동도 cascade 삭제한다.
+  OCR 추출·페이지 방문·실패한 요청은 학습 완료로 기록하지 않는다.
 - Production Spring은 Nginx 뒤의 `api.cherryk.kr`에서 제공한다. 영구 Preview
   프런트엔드, 백엔드 또는 데이터베이스를 운영하지 않으며 Preview를 Production으로
   라우팅하지 않는다. 호스팅된 통합 환경의 위험이 있는 경우 임시 백엔드와 격리된
