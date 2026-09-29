@@ -42,7 +42,7 @@ export function LearningRhythmCard() {
             </p>
             <button
               type="button"
-              className="btn-secondary mt-3"
+              className="button-secondary mt-3"
               onClick={retry}
             >
               Try again
