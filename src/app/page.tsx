@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LearningRhythmCard } from "@/app/_components/learning-rhythm-card";
 import { AppHeader } from "@/app/_components/app-header";
 import {
   ArrowRightIcon,
@@ -136,7 +137,7 @@ function LearnerDashboard({ user }: { user: AuthUser }) {
           </div>
         </div>
 
-        <LearningRhythmCard />
+        <LearningRhythmCard key={user.id} />
       </section>
 
       <section aria-labelledby="practice-tools-title" className="pt-2">
@@ -234,37 +235,6 @@ function LearningFlowPreview() {
         </p>
       </div>
     </aside>
-  );
-}
-
-function LearningRhythmCard() {
-  return (
-    <article className="surface-card flex flex-col justify-between overflow-hidden p-5 sm:p-6">
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--warm-soft)] text-[var(--warm)]">
-            <StreakIcon className="h-6 w-6" />
-          </span>
-          <span className="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
-            Coming soon
-          </span>
-        </div>
-        <h2 className="mt-5 text-xl font-bold tracking-[-0.025em]">
-          Build your learning rhythm
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          Short, regular sessions turn feedback into long-term progress.
-        </p>
-      </div>
-      <div className="mt-6 grid grid-cols-7 gap-1.5" aria-hidden="true">
-        {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-          <span
-            className="aspect-square rounded-lg border border-[var(--line)] bg-[var(--panel-soft)]"
-            key={day}
-          />
-        ))}
-      </div>
-    </article>
   );
 }
 
